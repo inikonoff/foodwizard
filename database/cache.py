@@ -11,13 +11,13 @@ logger = logging.getLogger(__name__)
 class GroqCache:
     @staticmethod
     def _generate_hash(prompt: str, lang: str, model: str) -> str:
-        """ƒ¥­¥à¨àã¥â ã­¨ª «ì­ë© å¥è ¤«ï § ¯à®á """
+        """Генерирует уникальный хеш для запроса"""
         data = f"{prompt}_{lang}_{model}"
         return hashlib.sha256(data.encode()).hexdigest()
     
     @staticmethod
     def _get_ttl(cache_type: str) -> int:
-        """‚®§¢à é ¥â TTL ¢ á¥ªã­¤ å ¢ § ¢¨á¨¬®áâ¨ ®â â¨¯  § ¯à®á """
+        """Возвращает TTL в секундах в зависимости от типа запроса"""
         ttl_map = {
             'recipe': CACHE_TTL_RECIPE,
             'analysis': CACHE_TTL_ANALYSIS,
@@ -27,7 +27,7 @@ class GroqCache:
     
     @staticmethod
     async def get(prompt: str, lang: str, model: str, cache_type: str = 'recipe') -> Optional[str]:
-        """®«ãç ¥â à¥§ã«ìâ â ¨§ ªíè , ¥á«¨ ®­ ¥áâì ¨ ­¥ ¨áâñª"""
+        """Получает результат из кэша, если он есть и не истёк"""
         async with db.connection() as conn:
             hash_key = GroqCache._generate_hash(prompt, lang, model)
             
@@ -40,16 +40,16 @@ class GroqCache:
             row = await conn.fetchrow(query, hash_key)
             
             if row:
-                logger.info(f"Šíè ¯®¯ ¤ ­¨¥ ¤«ï {hash_key[:8]}...")
+                logger.info(f"Кэш попадание для {hash_key[:8]}...")
                 return row['response']
             else:
-                logger.info(f"Šíè ¯à®¬ å ¤«ï {hash_key[:8]}...")
+                logger.info(f"Кэш промах для {hash_key[:8]}...")
                 return None
     
     @staticmethod
     async def set(prompt: str, lang: str, model: str, response: str, 
                   cache_type: str = 'recipe', tokens_used: Optional[int] = None) -> bool:
-        """‘®åà ­ï¥â à¥§ã«ìâ â ¢ ªíè"""
+        """Сохраняет результат в кэш"""
         async with db.connection() as conn:
             hash_key = GroqCache._generate_hash(prompt, lang, model)
             ttl_seconds = GroqCache._get_ttl(cache_type)
@@ -77,24 +77,24 @@ class GroqCache:
                     tokens_used,
                     expires_at
                 )
-                logger.info(f"Šíè á®åà ­ñ­: {hash_key[:8]}... (TTL: {ttl_seconds} á¥ª)")
+                logger.info(f"Кэш сохранён: {hash_key[:8]}... (TTL: {ttl_seconds} сек)")
                 return True
             except Exception as e:
-                logger.error(f"Žè¨¡ª  á®åà ­¥­¨ï ¢ ªíè: {e}")
+                logger.error(f"Ошибка сохранения в кэш: {e}")
                 return False
     
     @staticmethod
     async def clear_expired() -> int:
-        """Žç¨é ¥â ¯à®áà®ç¥­­ë¥ § ¯¨á¨ ¨§ ªíè  ¨ ¢®§¢à é ¥â ª®«¨ç¥áâ¢® ã¤ «ñ­­ëå"""
+        """Очищает просроченные записи из кэша и возвращает количество удалённых"""
         async with db.connection() as conn:
             query = "DELETE FROM groq_cache WHERE expires_at <= NOW() RETURNING hash"
             rows = await conn.fetch(query)
-            logger.info(f"Žç¨é¥­® {len(rows)} ¯à®áà®ç¥­­ëå § ¯¨á¥© ªíè ")
+            logger.info(f"Очищено {len(rows)} просроченных записей кэша")
             return len(rows)
     
     @staticmethod
     async def get_stats() -> Dict[str, Any]:
-        """‚®§¢à é ¥â áâ â¨áâ¨ªã ªíè """
+        """Возвращает статистику кэша"""
         async with db.connection() as conn:
             stats_query = """
             SELECT 
@@ -116,5 +116,5 @@ class GroqCache:
                 'total_tokens_saved': row['total_tokens'] or 0
             }
 
-# ‘®§¤ ñ¬ íª§¥¬¯«ïà ¤«ï ã¤®¡­®£® ¨¬¯®àâ 
+# Создаём экземпляр для удобного импорта
 groq_cache = GroqCache()
