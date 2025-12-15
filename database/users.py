@@ -9,11 +9,11 @@ from config import FREE_USER_LIMITS, PREMIUM_USER_LIMITS
 logger = logging.getLogger(__name__)
 
 class UserRepository:
-    """Репозиторий для работы с пользователями с поддержкой лимитов"""
+    """┬Р┬е┬п┬о┬з┬и├в┬о├а┬и┬й ┬д┬л├п ├а┬а┬б┬о├в├л ├б ┬п┬о┬л├м┬з┬о┬в┬а├в┬е┬л├п┬м┬и ├б ┬п┬о┬д┬д┬е├а┬ж┬к┬о┬й ┬л┬и┬м┬и├в┬о┬в"""
     
     @staticmethod
     async def _reset_daily_limits_if_needed(user_id: int) -> None:
-        """Сбрасывает дневные лимиты, если наступил новый день"""
+        """тАШ┬б├а┬а├б├л┬в┬а┬е├в ┬д┬н┬е┬в┬н├л┬е ┬л┬и┬м┬и├в├л, ┬е├б┬л┬и ┬н┬а├б├в├г┬п┬и┬л ┬н┬о┬в├л┬й ┬д┬е┬н├м"""
         async with db.connection() as conn:
             user = await conn.fetchrow(
                 "SELECT last_reset_date FROM users WHERE user_id = $1", 
@@ -35,19 +35,19 @@ class UserRepository:
                         """,
                         today, user_id
                     )
-                    logger.info(f"Сброшены лимиты для пользователя {user_id}")
+                    logger.info(f"тАШ┬б├а┬о├и┬е┬н├л ┬л┬и┬м┬и├в├л ┬д┬л├п ┬п┬о┬л├м┬з┬о┬в┬а├в┬е┬л├п {user_id}")
     
     @staticmethod
     async def check_and_increment_request(user_id: int, request_type: str = "text") -> Tuple[bool, int, int]:
         """
-        Проверяет и увеличивает счетчик запросов.
-        Возвращает (разрешён, использовано, лимит)
+        ┬П├а┬о┬в┬е├а├п┬е├в ┬и ├г┬в┬е┬л┬и├з┬и┬в┬а┬е├в ├б├з┬е├в├з┬и┬к ┬з┬а┬п├а┬о├б┬о┬в.
+        тАЪ┬о┬з┬в├а┬а├й┬а┬е├в (├а┬а┬з├а┬е├и├▒┬н, ┬и├б┬п┬о┬л├м┬з┬о┬в┬а┬н┬о, ┬л┬и┬м┬и├в)
         """
-        # Сначала сбрасываем лимиты если нужно
+        # тАШ┬н┬а├з┬а┬л┬а ├б┬б├а┬а├б├л┬в┬а┬е┬м ┬л┬и┬м┬и├в├л ┬е├б┬л┬и ┬н├г┬ж┬н┬о
         await UserRepository._reset_daily_limits_if_needed(user_id)
         
         async with db.connection() as conn:
-            # Блокируем строку для атомарного обновления
+            # ┬Б┬л┬о┬к┬и├а├г┬е┬м ├б├в├а┬о┬к├г ┬д┬л├п ┬а├в┬о┬м┬а├а┬н┬о┬г┬о ┬о┬б┬н┬о┬в┬л┬е┬н┬и├п
             user = await conn.fetchrow(
                 """
                 SELECT is_premium, requests_today, voice_requests_today 
@@ -63,13 +63,13 @@ class UserRepository:
             
             is_premium = user['is_premium']
             
-            # Выбираем лимиты в зависимости от типа пользователя
+            # тАЪ├л┬б┬и├а┬а┬е┬м ┬л┬и┬м┬и├в├л ┬в ┬з┬а┬в┬и├б┬и┬м┬о├б├в┬и ┬о├в ├в┬и┬п┬а ┬п┬о┬л├м┬з┬о┬в┬а├в┬е┬л├п
             if is_premium:
                 limits = PREMIUM_USER_LIMITS
             else:
                 limits = FREE_USER_LIMITS
             
-            # Выбираем нужный счетчик и лимит
+            # тАЪ├л┬б┬и├а┬а┬е┬м ┬н├г┬ж┬н├л┬й ├б├з┬е├в├з┬и┬к ┬и ┬л┬и┬м┬и├в
             if request_type == "voice":
                 current_count = user['voice_requests_today']
                 limit = limits['voice_per_day']
@@ -79,11 +79,11 @@ class UserRepository:
                 limit = limits['daily_requests']
                 update_field = "requests_today"
             
-            # Проверяем лимит
+            # ┬П├а┬о┬в┬е├а├п┬е┬м ┬л┬и┬м┬и├в
             if current_count >= limit:
                 return False, current_count, limit
             
-            # Увеличиваем счетчик
+            # тАЬ┬в┬е┬л┬и├з┬и┬в┬а┬е┬м ├б├з┬е├в├з┬и┬к
             new_count = current_count + 1
             await conn.execute(
                 f"""
@@ -100,7 +100,7 @@ class UserRepository:
     
     @staticmethod
     async def get_usage_stats(user_id: int) -> Dict[str, Any]:
-        """Возвращает статистику использования"""
+        """тАЪ┬о┬з┬в├а┬а├й┬а┬е├в ├б├в┬а├в┬и├б├в┬и┬к├г ┬и├б┬п┬о┬л├м┬з┬о┬в┬а┬н┬и├п"""
         async with db.connection() as conn:
             row = await conn.fetchrow(
                 """
@@ -120,7 +120,7 @@ class UserRepository:
             if not row:
                 return {}
             
-            # Определяем лимиты
+            # ┼╜┬п├а┬е┬д┬е┬л├п┬е┬м ┬л┬и┬м┬и├в├л
             if row['is_premium']:
                 limits = PREMIUM_USER_LIMITS
             else:
@@ -141,7 +141,7 @@ class UserRepository:
     
     @staticmethod
     async def activate_premium(user_id: int, days: int = 30) -> bool:
-        """Активирует премиум на указанное количество дней"""
+        """тВм┬к├в┬и┬в┬и├а├г┬е├в ┬п├а┬е┬м┬и├г┬м ┬н┬а ├г┬к┬а┬з┬а┬н┬н┬о┬е ┬к┬о┬л┬и├з┬е├б├в┬в┬о ┬д┬н┬е┬й"""
         async with db.connection() as conn:
             premium_until = datetime.now() + timedelta(days=days)
             
@@ -159,7 +159,7 @@ class UserRepository:
     
     @staticmethod
     async def deactivate_premium(user_id: int) -> bool:
-        """Деактивирует премиум"""
+        """тАЮ┬е┬а┬к├в┬и┬в┬и├а├г┬е├в ┬п├а┬е┬м┬и├г┬м"""
         async with db.connection() as conn:
             result = await conn.execute(
                 """
@@ -175,7 +175,7 @@ class UserRepository:
     
     @staticmethod
     async def check_premium_expiry() -> int:
-        """Проверяет истечение срока премиума, возвращает количество деактивированных"""
+        """┬П├а┬о┬в┬е├а├п┬е├в ┬и├б├в┬е├з┬е┬н┬и┬е ├б├а┬о┬к┬а ┬п├а┬е┬м┬и├г┬м┬а, ┬в┬о┬з┬в├а┬а├й┬а┬е├в ┬к┬о┬л┬и├з┬е├б├в┬в┬о ┬д┬е┬а┬к├в┬и┬в┬и├а┬о┬в┬а┬н┬н├л├е"""
         async with db.connection() as conn:
             result = await conn.execute(
                 """
@@ -187,7 +187,7 @@ class UserRepository:
                 """
             )
             
-            # Извлекаем количество обновленных строк
+            # ╦Ж┬з┬в┬л┬е┬к┬а┬е┬м ┬к┬о┬л┬и├з┬е├б├в┬в┬о ┬о┬б┬н┬о┬в┬л┬е┬н┬н├л├е ├б├в├а┬о┬к
             if result and "UPDATE" in result:
                 count_str = result.split(" ")[1]
                 return int(count_str)
@@ -197,7 +197,7 @@ class UserRepository:
     async def get_or_create(user_id: int, first_name: str, 
                            username: Optional[str] = None, 
                            language: UserLanguage = UserLanguage.RU) -> Dict[str, Any]:
-        """Получает или создаёт пользователя (обновлённая версия)"""
+        """┬П┬о┬л├г├з┬а┬е├в ┬и┬л┬и ├б┬о┬з┬д┬а├▒├в ┬п┬о┬л├м┬з┬о┬в┬а├в┬е┬л├п (┬о┬б┬н┬о┬в┬л├▒┬н┬н┬а├п ┬в┬е├а├б┬и├п)"""
         async with db.connection() as conn:
             query = """
             INSERT INTO users (
@@ -227,14 +227,14 @@ class UserRepository:
                 if row:
                     return dict(row)
             except Exception as e:
-                logger.error(f"Ошибка при создании пользователя {user_id}: {e}")
+                logger.error(f"┼╜├и┬и┬б┬к┬а ┬п├а┬и ├б┬о┬з┬д┬а┬н┬и┬и ┬п┬о┬л├м┬з┬о┬в┬а├в┬е┬л├п {user_id}: {e}")
                 raise
         
         return {}
     
     @staticmethod
     async def get_user(user_id: int) -> Optional[Dict[str, Any]]:
-        """Получает данные пользователя"""
+        """┬П┬о┬л├г├з┬а┬е├в ┬д┬а┬н┬н├л┬е ┬п┬о┬л├м┬з┬о┬в┬а├в┬е┬л├п"""
         async with db.connection() as conn:
             query = """
             SELECT user_id, first_name, username, language_code, is_premium, 
@@ -249,7 +249,7 @@ class UserRepository:
     
     @staticmethod
     async def update_language(user_id: int, language: UserLanguage) -> bool:
-        """Обновляет язык пользователя"""
+        """┼╜┬б┬н┬о┬в┬л├п┬е├в ├п┬з├л┬к ┬п┬о┬л├м┬з┬о┬в┬а├в┬е┬л├п"""
         async with db.connection() as conn:
             query = "UPDATE users SET language_code = $1 WHERE user_id = $2"
             result = await conn.execute(query, language.value, user_id)
@@ -257,7 +257,7 @@ class UserRepository:
     
     @staticmethod
     async def set_premium(user_id: int, is_premium: bool = True) -> bool:
-        """Устанавливает премиум статус"""
+        """тАЬ├б├в┬а┬н┬а┬в┬л┬и┬в┬а┬е├в ┬п├а┬е┬м┬и├г┬м ├б├в┬а├в├г├б"""
         async with db.connection() as conn:
             query = "UPDATE users SET is_premium = $1 WHERE user_id = $2"
             result = await conn.execute(query, is_premium, user_id)
@@ -265,14 +265,14 @@ class UserRepository:
     
     @staticmethod
     async def update_activity(user_id: int) -> None:
-        """Обновляет время последней активности"""
+        """┼╜┬б┬н┬о┬в┬л├п┬е├в ┬в├а┬е┬м├п ┬п┬о├б┬л┬е┬д┬н┬е┬й ┬а┬к├в┬и┬в┬н┬о├б├в┬и"""
         async with db.connection() as conn:
             query = "UPDATE users SET last_active_at = NOW() WHERE user_id = $1"
             await conn.execute(query, user_id)
     
     @staticmethod
     async def get_all_users(limit: int = 1000) -> list:
-        """Получает всех пользователей (для администратора)"""
+        """┬П┬о┬л├г├з┬а┬е├в ┬в├б┬е├е ┬п┬о┬л├м┬з┬о┬в┬а├в┬е┬л┬е┬й (┬д┬л├п ┬а┬д┬м┬и┬н┬и├б├в├а┬а├в┬о├а┬а)"""
         async with db.connection() as conn:
             query = "SELECT * FROM users ORDER BY last_active_at DESC LIMIT $1"
             rows = await conn.fetch(query, limit)
@@ -280,10 +280,10 @@ class UserRepository:
     
     @staticmethod
     async def count_users() -> int:
-        """Считает общее количество пользователей"""
+        """тАШ├з┬и├в┬а┬е├в ┬о┬б├й┬е┬е ┬к┬о┬л┬и├з┬е├б├в┬в┬о ┬п┬о┬л├м┬з┬о┬в┬а├в┬е┬л┬е┬й"""
         async with db.connection() as conn:
             query = "SELECT COUNT(*) FROM users"
             return await conn.fetchval(query)
 
-# Создаём глобальный экземпляр для импорта
+# тАШ┬о┬з┬д┬а├▒┬м ┬г┬л┬о┬б┬а┬л├м┬н├л┬й ├н┬к┬з┬е┬м┬п┬л├п├а ┬д┬л├п ┬и┬м┬п┬о├а├в┬а
 users_repo = UserRepository()
