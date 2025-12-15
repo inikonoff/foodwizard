@@ -14,27 +14,27 @@ from config import SUPPORTED_LANGUAGES, ADMIN_IDS, SECRET_PROMO_CODE
 
 logger = logging.getLogger(__name__)
 
-# --- ŠŽŒ€„€ /START ---
+# --- КОМАНДА /START ---
 async def cmd_start(message: Message):
     user_id = message.from_user.id
     first_name = message.from_user.first_name or "User"
     username = message.from_user.username
     
-    # ®«ãç ¥¬ ¨«¨ á®§¤ ñ¬ ¯®«ì§®¢ â¥«ï
+    # Получаем или создаём пользователя
     user_data = await users_repo.get_or_create(
         user_id=user_id,
         first_name=first_name,
         username=username
     )
     
-    # Ž¯à¥¤¥«ï¥¬ ï§ëª ¯®«ì§®¢ â¥«ï
+    # Определяем язык пользователя
     lang = user_data.get('language_code', 'ru') if user_data else 'ru'
     
-    # Žâ¯à ¢«ï¥¬ ¯à¨¢¥âáâ¢¥­­®¥ á®®¡é¥­¨¥
+    # Отправляем приветственное сообщение
     welcome_text = get_text(lang, "welcome", name=first_name)
     start_manual = get_text(lang, "start_manual")
     
-    # ‘®§¤ ñ¬ ª« ¢¨ âãàã á ®á­®¢­ë¬¨ ª®¬ ­¤ ¬¨
+    # Создаём клавиатуру с основными командами
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(
@@ -56,35 +56,35 @@ async def cmd_start(message: Message):
     full_text = f"{welcome_text}\n\n{start_manual}"
     await message.answer(full_text, reply_markup=builder.as_markup(), parse_mode="Markdown")
     
-    # ‹®£¨àã¥¬ á®¡ëâ¨¥
+    # Логируем событие
     await metrics.track_event(user_id, "start_command", {"language": lang})
 
-# --- ŠŽŒ€„€ /FAVORITES ---
+# --- КОМАНДА /FAVORITES ---
 async def cmd_favorites(message: Message):
     user_id = message.from_user.id
     
-    # ®«ãç ¥¬ ¤ ­­ë¥ ¯®«ì§®¢ â¥«ï
+    # Получаем данные пользователя
     user_data = await users_repo.get_user(user_id)
     lang = user_data.get('language_code', 'ru') if user_data else 'ru'
     
-    # ®«ãç ¥¬ ¯¥à¢ãî áâà ­¨æã ¨§¡à ­­®£®
+    # Получаем первую страницу избранного
     favorites, total_pages = await favorites_repo.get_favorites_page(user_id, page=1)
     
     if not favorites:
         await message.answer(get_text(lang, "favorites_empty"))
         return
     
-    # ”®à¬ â¨àã¥¬ á¯¨á®ª à¥æ¥¯â®¢
+    # Форматируем список рецептов
     recipes_text = ""
     for i, fav in enumerate(favorites, 1):
         date_str = fav['created_at'].strftime("%d.%m.%Y")
         recipes_text += get_text(lang, "favorites_recipe_item", 
                                num=i, dish=fav['dish_name'], date=date_str)
     
-    # ‘®§¤ ñ¬ ª« ¢¨ âãàã á ¯ £¨­ æ¨¥©
+    # Создаём клавиатуру с пагинацией
     builder = InlineKeyboardBuilder()
     
-    # Š­®¯ª¨ ¯ £¨­ æ¨¨
+    # Кнопки пагинации
     if total_pages > 1:
         builder.row(
             InlineKeyboardButton(
@@ -101,7 +101,7 @@ async def cmd_favorites(message: Message):
             )
         )
     
-    # Š­®¯ª  ¢®§¢à â 
+    # Кнопка возврата
     builder.row(
         InlineKeyboardButton(
             text=get_text(lang, "btn_back"),
@@ -109,25 +109,25 @@ async def cmd_favorites(message: Message):
         )
     )
     
-    # Žâ¯à ¢«ï¥¬ á®®¡é¥­¨¥
+    # Отправляем сообщение
     text = get_text(lang, "favorites_list", page=1, total_pages=total_pages, recipes=recipes_text)
     await message.answer(text, reply_markup=builder.as_markup(), parse_mode="Markdown")
     
-    # ‹®£¨àã¥¬ á®¡ëâ¨¥
+    # Логируем событие
     await metrics.track_event(user_id, "favorites_viewed", {"page": 1, "total": len(favorites)})
 
-# --- ŠŽŒ€„€ /LANG ---
+# --- КОМАНДА /LANG ---
 async def cmd_lang(message: Message):
     user_id = message.from_user.id
     
-    # ®«ãç ¥¬ ¤ ­­ë¥ ¯®«ì§®¢ â¥«ï
+    # Получаем данные пользователя
     user_data = await users_repo.get_user(user_id)
     current_lang = user_data.get('language_code', 'ru') if user_data else 'ru'
     
-    # ‘®§¤ ñ¬ ª« ¢¨ âãàã ¢ë¡®à  ï§ëª 
+    # Создаём клавиатуру выбора языка
     builder = InlineKeyboardBuilder()
     
-    # „®¡ ¢«ï¥¬ ª­®¯ª¨ ¤«ï ¢á¥å ¯®¤¤¥à¦¨¢ ¥¬ëå ï§ëª®¢
+    # Добавляем кнопки для всех поддерживаемых языков
     for lang_code in SUPPORTED_LANGUAGES:
         builder.row(
             InlineKeyboardButton(
@@ -136,7 +136,7 @@ async def cmd_lang(message: Message):
             )
         )
     
-    # „®¡ ¢«ï¥¬ ª­®¯ªã ®â¬¥­ë
+    # Добавляем кнопку отмены
     builder.row(
         InlineKeyboardButton(
             text=get_text(current_lang, "btn_back"),
@@ -150,17 +150,17 @@ async def cmd_lang(message: Message):
         parse_mode="Markdown"
     )
 
-# --- ŠŽŒ€„€ /HELP ---
+# --- КОМАНДА /HELP ---
 async def cmd_help(message: Message):
     user_id = message.from_user.id
     
-    # ®«ãç ¥¬ ¤ ­­ë¥ ¯®«ì§®¢ â¥«ï
+    # Получаем данные пользователя
     user_data = await users_repo.get_user(user_id)
     lang = user_data.get('language_code', 'ru') if user_data else 'ru'
     
     help_text = f"{get_text(lang, 'help_title')}\n{get_text(lang, 'help_text')}"
     
-    # ‘®§¤ ñ¬ ª« ¢¨ âãàã
+    # Создаём клавиатуру
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(
@@ -171,23 +171,23 @@ async def cmd_help(message: Message):
     
     await message.answer(help_text, reply_markup=builder.as_markup(), parse_mode="Markdown")
     
-    # ‹®£¨àã¥¬ á®¡ëâ¨¥
+    # Логируем событие
     await metrics.track_event(user_id, "help_viewed", {"language": lang})
 
-# --- ŠŽŒ€„€ /CODE ---
+# --- КОМАНДА /CODE ---
 async def cmd_code(message: Message):
-    """€ªâ¨¢ æ¨ï ¯à¥¬¨ã¬  ¯® ¯à®¬®ª®¤ã"""
+    """Активация премиума по промокоду"""
     user_id = message.from_user.id
     
-    # ®«ãç ¥¬ ¤ ­­ë¥ ¯®«ì§®¢ â¥«ï
+    # Получаем данные пользователя
     user_data = await users_repo.get_user(user_id)
     lang = user_data.get('language_code', 'ru') if user_data else 'ru'
     
-    # à®¢¥àï¥¬  à£ã¬¥­âë
+    # Проверяем аргументы
     args = message.text.split()
     if len(args) < 2:
         await message.answer(
-            "‚¢¥¤¨â¥ ª®¤. à¨¬¥à:\n"
+            "Введите код. Пример:\n"
             f"<code>/code {SECRET_PROMO_CODE}</code>",
             parse_mode="HTML"
         )
@@ -196,70 +196,70 @@ async def cmd_code(message: Message):
     code = args[1].strip()
     
     if code == SECRET_PROMO_CODE:
-        # €ªâ¨¢¨àã¥¬ ¯à¥¬¨ã¬ ­  99 «¥â (èãâª )
+        # Активируем премиум на 99 лет (шутка)
         success = await users_repo.activate_premium(user_id, days=365*99)
         
         if success:
             response = (
-                "?? <b>Š®¤ ¯à¨­ïâ!</b>\n\n"
-                "€ªâ¨¢¨à®¢ ­ ¢à¥¬¥­­ë© ¤®áâã¯ ª ¯à¥¬¨ã¬ äã­ªæ¨ï¬ ­  <b>99 «¥â</b>.\n"
-                "® ¨áâ¥ç¥­¨¨ áà®ª  ¤¥©áâ¢¨ï ­¥ § ¡ã¤ìâ¥ ¯à®¤«¨âì ¯®¤¯¨áªã. ??"
+                "?? <b>Код принят!</b>\n\n"
+                "Активирован временный доступ к премиум функциям на <b>99 лет</b>.\n"
+                "По истечении срока действия не забудьте продлить подписку. ??"
             )
             await message.answer(response, parse_mode="HTML")
             
-            # ‹®£¨àã¥¬  ªâ¨¢ æ¨î ¯à¥¬¨ã¬ 
+            # Логируем активацию премиума
             await metrics.track_event(user_id, "premium_activated", {
                 "method": "promo_code",
                 "days": 365*99
             })
         else:
-            await message.answer("? Žè¨¡ª   ªâ¨¢ æ¨¨ ¯à¥¬¨ã¬ ")
+            await message.answer("? Ошибка активации премиума")
     else:
-        await message.answer("? ¥¢¥à­ë© ª®¤.")
+        await message.answer("? Неверный код.")
 
-# --- ŠŽŒ€„€ /STATS ---
+# --- КОМАНДА /STATS ---
 async def cmd_stats(message: Message):
-    """®ª §ë¢ ¥â áâ â¨áâ¨ªã ¨á¯®«ì§®¢ ­¨ï"""
+    """Показывает статистику использования"""
     user_id = message.from_user.id
     
-    # ®«ãç ¥¬ ¤ ­­ë¥ ¯®«ì§®¢ â¥«ï
+    # Получаем данные пользователя
     user_data = await users_repo.get_user(user_id)
     lang = user_data.get('language_code', 'ru') if user_data else 'ru'
     
-    # ®«ãç ¥¬ áâ â¨áâ¨ªã ¨á¯®«ì§®¢ ­¨ï
+    # Получаем статистику использования
     usage_stats = await users_repo.get_usage_stats(user_id)
     
     if not usage_stats:
-        await message.answer("‘â â¨áâ¨ª  ­¥¤®áâã¯­ ")
+        await message.answer("Статистика недоступна")
         return
     
-    # ”®à¬¨àã¥¬ á®®¡é¥­¨¥
-    status = "?? …Œˆ“Œ" if usage_stats['is_premium'] else "?? …‘‹€’Ž"
+    # Формируем сообщение
+    status = "?? ПРЕМИУМ" if usage_stats['is_premium'] else "?? БЕСПЛАТНО"
     
     if usage_stats['premium_until']:
         premium_until = usage_stats['premium_until'].strftime("%d.%m.%Y")
-        status += f" (¤® {premium_until})"
+        status += f" (до {premium_until})"
     
     stats_text = (
-        f"?? <b>‚ è  áâ â¨áâ¨ª </b>\n\n"
+        f"?? <b>Ваша статистика</b>\n\n"
         f"{status}\n\n"
-        f"?? <b>’¥ªáâ®¢ë¥ § ¯à®áë:</b>\n"
-        f"   ˆá¯®«ì§®¢ ­®: {usage_stats['text_requests_used']}/{usage_stats['text_requests_limit']}\n"
-        f"   Žáâ «®áì: {usage_stats['remaining_text']}\n\n"
-        f"?? <b>ƒ®«®á®¢ë¥ § ¯à®áë:</b>\n"
-        f"   ˆá¯®«ì§®¢ ­®: {usage_stats['voice_requests_used']}/{usage_stats['voice_requests_limit']}\n"
-        f"   Žáâ «®áì: {usage_stats['remaining_voice']}\n\n"
-        f"?? <b>‚á¥£® § ¯à®á®¢:</b> {usage_stats['total_requests']}\n"
-        f"?? <b>‘¡à®á «¨¬¨â®¢:</b> {usage_stats['last_reset_date'].strftime('%d.%m.%Y')}"
+        f"?? <b>Текстовые запросы:</b>\n"
+        f"   Использовано: {usage_stats['text_requests_used']}/{usage_stats['text_requests_limit']}\n"
+        f"   Осталось: {usage_stats['remaining_text']}\n\n"
+        f"?? <b>Голосовые запросы:</b>\n"
+        f"   Использовано: {usage_stats['voice_requests_used']}/{usage_stats['voice_requests_limit']}\n"
+        f"   Осталось: {usage_stats['remaining_voice']}\n\n"
+        f"?? <b>Всего запросов:</b> {usage_stats['total_requests']}\n"
+        f"?? <b>Сброс лимитов:</b> {usage_stats['last_reset_date'].strftime('%d.%m.%Y')}"
     )
     
-    # ‘®§¤ ñ¬ ª« ¢¨ âãàã
+    # Создаём клавиатуру
     builder = InlineKeyboardBuilder()
     
     if not usage_stats['is_premium']:
         builder.row(
             InlineKeyboardButton(
-                text="?? Šã¯¨âì ¯à¥¬¨ã¬",
+                text="?? Купить премиум",
                 callback_data="buy_premium"
             )
         )
@@ -273,29 +273,29 @@ async def cmd_stats(message: Message):
     
     await message.answer(stats_text, reply_markup=builder.as_markup(), parse_mode="HTML")
 
-# --- ŠŽŒ€„€ /ADMIN ---
+# --- КОМАНДА /ADMIN ---
 async def cmd_admin(message: Message):
-    """€¤¬¨­-ª®¬ ­¤ë (â®«ìª® ¤«ï ADMIN_IDS)"""
+    """Админ-команды (только для ADMIN_IDS)"""
     user_id = message.from_user.id
     
-    # à®¢¥àï¥¬ ¯à ¢ 
+    # Проверяем права
     if user_id not in ADMIN_IDS:
-        await message.answer("? „®áâã¯ § ¯à¥éñ­")
+        await message.answer("? Доступ запрещён")
         return
     
-    #  àá¨¬  à£ã¬¥­âë
+    # Парсим аргументы
     args = message.text.split()
     
     if len(args) < 2:
-        # ®ª §ë¢ ¥¬ á¯¨á®ª ª®¬ ­¤
+        # Показываем список команд
         help_text = (
-            "?? <b>€¤¬¨­-¯ ­¥«ì</b>\n\n"
-            "<b>Š®¬ ­¤ë:</b>\n"
-            "/admin stats - ®¡é ï áâ â¨áâ¨ª \n"
-            "/admin premium [user_id] - ¢ë¤ âì ¯à¥¬¨ã¬\n"
-            "/admin users [N] - á¯¨á®ª ¯®«ì§®¢ â¥«¥©\n"
-            "/admin reset [user_id] - á¡à®á¨âì «¨¬¨âë\n"
-            "/admin broadcast - à ááë«ª \n"
+            "?? <b>Админ-панель</b>\n\n"
+            "<b>Команды:</b>\n"
+            "/admin stats - общая статистика\n"
+            "/admin premium [user_id] - выдать премиум\n"
+            "/admin users [N] - список пользователей\n"
+            "/admin reset [user_id] - сбросить лимиты\n"
+            "/admin broadcast - рассылка\n"
         )
         await message.answer(help_text, parse_mode="HTML")
         return
@@ -303,20 +303,20 @@ async def cmd_admin(message: Message):
     command = args[1].lower()
     
     if command == "stats":
-        # Ž¡é ï áâ â¨áâ¨ª 
+        # Общая статистика
         total_users = await users_repo.count_users()
         expired = await users_repo.check_premium_expiry()
         
         stats = (
-            f"?? <b>Ž¡é ï áâ â¨áâ¨ª </b>\n\n"
-            f"?? ‚á¥£® ¯®«ì§®¢ â¥«¥©: {total_users}\n"
-            f"?? „¥ ªâ¨¢¨à®¢ ­® ¯à¥¬¨ã¬®¢: {expired}\n"
-            # ‡¤¥áì ¬®¦­® ¤®¡ ¢¨âì áâ â¨áâ¨ªã ¨§ metrics
+            f"?? <b>Общая статистика</b>\n\n"
+            f"?? Всего пользователей: {total_users}\n"
+            f"?? Деактивировано премиумов: {expired}\n"
+            # Здесь можно добавить статистику из metrics
         )
         await message.answer(stats, parse_mode="HTML")
     
     elif command == "premium" and len(args) >= 3:
-        # ‚ë¤ ç  ¯à¥¬¨ã¬ 
+        # Выдача премиума
         try:
             target_user_id = int(args[2])
             days = int(args[3]) if len(args) >= 4 else 30
@@ -324,23 +324,23 @@ async def cmd_admin(message: Message):
             success = await users_repo.activate_premium(target_user_id, days)
             
             if success:
-                await message.answer(f"? à¥¬¨ã¬ ¢ë¤ ­ ¯®«ì§®¢ â¥«î {target_user_id} ­  {days} ¤­¥©")
+                await message.answer(f"? Премиум выдан пользователю {target_user_id} на {days} дней")
             else:
-                await message.answer(f"? Žè¨¡ª  ¢ë¤ ç¨ ¯à¥¬¨ã¬ ")
+                await message.answer(f"? Ошибка выдачи премиума")
         except ValueError:
-            await message.answer("? ¥¢¥à­ë© ä®à¬ â ID ¯®«ì§®¢ â¥«ï")
+            await message.answer("? Неверный формат ID пользователя")
     
     elif command == "users":
-        # ‘¯¨á®ª ¯®«ì§®¢ â¥«¥©
+        # Список пользователей
         limit = int(args[2]) if len(args) >= 3 else 10
         
         users = await users_repo.get_all_users(limit)
         
         if not users:
-            await message.answer("¥â ¯®«ì§®¢ â¥«¥©")
+            await message.answer("Нет пользователей")
             return
         
-        users_text = "?? <b>®á«¥¤­¨¥ ¯®«ì§®¢ â¥«¨:</b>\n\n"
+        users_text = "?? <b>Последние пользователи:</b>\n\n"
         for i, user in enumerate(users, 1):
             premium = "??" if user['is_premium'] else "??"
             users_text += f"{i}. {user['first_name']} ({user['user_id']}) {premium}\n"
@@ -348,11 +348,11 @@ async def cmd_admin(message: Message):
         await message.answer(users_text, parse_mode="HTML")
     
     elif command == "reset" and len(args) >= 3:
-        # ‘¡à®á «¨¬¨â®¢ ¯®«ì§®¢ â¥«ï
+        # Сброс лимитов пользователя
         try:
             target_user_id = int(args[2])
             
-            # Ž¡­ã«ï¥¬ áç¥âç¨ª¨
+            # Обнуляем счетчики
             async with db.connection() as conn:
                 await conn.execute(
                     """
@@ -365,14 +365,14 @@ async def cmd_admin(message: Message):
                     target_user_id
                 )
             
-            await message.answer(f"? ‹¨¬¨âë ¯®«ì§®¢ â¥«ï {target_user_id} á¡à®è¥­ë")
+            await message.answer(f"? Лимиты пользователя {target_user_id} сброшены")
         except ValueError:
-            await message.answer("? ¥¢¥à­ë© ä®à¬ â ID ¯®«ì§®¢ â¥«ï")
+            await message.answer("? Неверный формат ID пользователя")
     
     elif command == "broadcast":
-        #  ááë«ª  (ã¯à®éñ­­ ï ¢¥àá¨ï)
+        # Рассылка (упрощённая версия)
         if len(args) < 3:
-            await message.answer("ˆá¯®«ì§®¢ ­¨¥: /admin broadcast [á®®¡é¥­¨¥]")
+            await message.answer("Использование: /admin broadcast [сообщение]")
             return
         
         broadcast_text = " ".join(args[2:])
@@ -385,29 +385,29 @@ async def cmd_admin(message: Message):
             try:
                 await message.bot.send_message(
                     chat_id=user['user_id'],
-                    text=f"?? <b>Ž¡êï¢«¥­¨¥ ®â  ¤¬¨­¨áâà â®à :</b>\n\n{broadcast_text}",
+                    text=f"?? <b>Объявление от администратора:</b>\n\n{broadcast_text}",
                     parse_mode="HTML"
                 )
                 success_count += 1
             except Exception as e:
-                logger.error(f"Žè¨¡ª  ®â¯à ¢ª¨ à ááë«ª¨ ¯®«ì§®¢ â¥«î {user['user_id']}: {e}")
+                logger.error(f"Ошибка отправки рассылки пользователю {user['user_id']}: {e}")
                 fail_count += 1
         
         await message.answer(
-            f"?  ááë«ª  § ¢¥àè¥­ :\n"
-            f"? “á¯¥è­®: {success_count}\n"
-            f"? Žè¨¡®ª: {fail_count}"
+            f"? Рассылка завершена:\n"
+            f"? Успешно: {success_count}\n"
+            f"? Ошибок: {fail_count}"
         )
 
-# --- ŠŽ‹‹Šˆ ---
+# --- КОЛЛБЭКИ ---
 async def handle_change_language(callback: CallbackQuery):
     user_id = callback.from_user.id
     
-    # ®«ãç ¥¬ ¤ ­­ë¥ ¯®«ì§®¢ â¥«ï
+    # Получаем данные пользователя
     user_data = await users_repo.get_user(user_id)
     current_lang = user_data.get('language_code', 'ru') if user_data else 'ru'
     
-    # ‘®§¤ ñ¬ ª« ¢¨ âãàã ¢ë¡®à  ï§ëª 
+    # Создаём клавиатуру выбора языка
     builder = InlineKeyboardBuilder()
     
     for lang_code in SUPPORTED_LANGUAGES:
@@ -435,14 +435,14 @@ async def handle_set_language(callback: CallbackQuery):
     user_id = callback.from_user.id
     lang_code = callback.data.split("_")[2]  # set_lang_ru -> ru
     
-    # Ž¡­®¢«ï¥¬ ï§ëª ¯®«ì§®¢ â¥«ï
+    # Обновляем язык пользователя
     await users_repo.update_language(user_id, lang_code)
     
-    # ®«ãç ¥¬ ¨¬ï ¯®«ì§®¢ â¥«ï ¤«ï ¯à¨¢¥âáâ¢¨ï
+    # Получаем имя пользователя для приветствия
     user_data = await users_repo.get_user(user_id)
     first_name = user_data.get('first_name', 'User') if user_data else 'User'
     
-    # Žâ¯à ¢«ï¥¬ ¯®¤â¢¥à¦¤¥­¨¥
+    # Отправляем подтверждение
     welcome_text = get_text(lang_code, "welcome", name=first_name)
     start_manual = get_text(lang_code, "start_manual")
     
@@ -471,18 +471,18 @@ async def handle_set_language(callback: CallbackQuery):
         parse_mode="Markdown"
     )
     
-    # ‹®£¨àã¥¬ á¬¥­ã ï§ëª 
+    # Логируем смену языка
     await metrics.track_event(user_id, "language_changed", {"language": lang_code})
     await callback.answer(get_text(lang_code, "lang_changed"))
 
 async def handle_show_favorites(callback: CallbackQuery):
     user_id = callback.from_user.id
     
-    # ®«ãç ¥¬ ¤ ­­ë¥ ¯®«ì§®¢ â¥«ï
+    # Получаем данные пользователя
     user_data = await users_repo.get_user(user_id)
     lang = user_data.get('language_code', 'ru') if user_data else 'ru'
     
-    # ®«ãç ¥¬ ¯¥à¢ãî áâà ­¨æã ¨§¡à ­­®£®
+    # Получаем первую страницу избранного
     favorites, total_pages = await favorites_repo.get_favorites_page(user_id, page=1)
     
     if not favorites:
@@ -490,14 +490,14 @@ async def handle_show_favorites(callback: CallbackQuery):
         await callback.answer()
         return
     
-    # ”®à¬ â¨àã¥¬ á¯¨á®ª
+    # Форматируем список
     recipes_text = ""
     for i, fav in enumerate(favorites, 1):
         date_str = fav['created_at'].strftime("%d.%m.%Y")
         recipes_text += get_text(lang, "favorites_recipe_item", 
                                num=i, dish=fav['dish_name'], date=date_str)
     
-    # ‘®§¤ ñ¬ ª« ¢¨ âãàã
+    # Создаём клавиатуру
     builder = InlineKeyboardBuilder()
     
     if total_pages > 1:
@@ -583,74 +583,74 @@ async def handle_main_menu(callback: CallbackQuery):
     await callback.answer()
 
 async def handle_noop(callback: CallbackQuery):
-    """ãáâ®© ®¡à ¡®âç¨ª ¤«ï ª­®¯®ª-§ £«ãè¥ª"""
+    """Пустой обработчик для кнопок-заглушек"""
     await callback.answer()
 
 async def handle_buy_premium(callback: CallbackQuery):
-    """Ž¡à ¡®âç¨ª ª­®¯ª¨ ¯®ªã¯ª¨ ¯à¥¬¨ã¬ """
+    """Обработчик кнопки покупки премиума"""
     user_id = callback.from_user.id
     
-    # ®«ãç ¥¬ ¤ ­­ë¥ ¯®«ì§®¢ â¥«ï
+    # Получаем данные пользователя
     user_data = await users_repo.get_user(user_id)
     lang = user_data.get('language_code', 'ru') if user_data else 'ru'
     
-    # ‘®§¤ ñ¬ ª« ¢¨ âãàã á ¢ à¨ ­â ¬¨ ¯®¤¯¨áª¨
+    # Создаём клавиатуру с вариантами подписки
     builder = InlineKeyboardBuilder()
     
-    # Š­®¯ª¨ ¤«ï ¯®ªã¯ª¨ ç¥à¥§ Telegram Stars
+    # Кнопки для покупки через Telegram Stars
     builder.row(
         InlineKeyboardButton(
-            text="1 ¬¥áïæ - 100 §¢ñ§¤ ?",
+            text="1 месяц - 100 звёзд ?",
             callback_data="premium_1_month"
         )
     )
     builder.row(
         InlineKeyboardButton(
-            text="3 ¬¥áïæ  - 250 §¢ñ§¤ ? (íª®­®¬¨ï 17%)",
+            text="3 месяца - 250 звёзд ? (экономия 17%)",
             callback_data="premium_3_months"
         )
     )
     builder.row(
         InlineKeyboardButton(
-            text="1 £®¤ - 800 §¢ñ§¤ ? (íª®­®¬¨ï 33%)",
+            text="1 год - 800 звёзд ? (экономия 33%)",
             callback_data="premium_1_year"
         )
     )
     builder.row(
         InlineKeyboardButton(
-            text="?? ‚¥à­ãâìáï",
+            text="?? Вернуться",
             callback_data="main_menu"
         )
     )
     
     text = (
-        "?? <b>à¥¬¨ã¬ ¯®¤¯¨áª </b>\n\n"
-        "? <b>—â® ¢å®¤¨â:</b>\n"
-        " 100 â¥ªáâ®¢ëå § ¯à®á®¢ ¢ ¤¥­ì\n"
-        " 50 £®«®á®¢ëå § ¯à®á®¢ ¢ ¤¥­ì\n"
-        " à¨®à¨â¥â­ ï ®¡à ¡®âª \n"
-        " „®áâã¯ ª ­®¢ë¬ äã­ªæ¨ï¬ ¯¥à¢ë¬\n"
-        " ®¤¤¥à¦ª  à §à ¡®âç¨ª  ??\n\n"
-        "?? <b>‹¨¬¨âë ®¡­®¢«ïîâáï ª ¦¤ë© ¤¥­ì ¢ 00:00</b>"
+        "?? <b>Премиум подписка</b>\n\n"
+        "? <b>Что входит:</b>\n"
+        " 100 текстовых запросов в день\n"
+        " 50 голосовых запросов в день\n"
+        " Приоритетная обработка\n"
+        " Доступ к новым функциям первым\n"
+        " Поддержка разработчика ??\n\n"
+        "?? <b>Лимиты обновляются каждый день в 00:00</b>"
     )
     
     await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="HTML")
     await callback.answer()
 
-# --- Ž€Ž’—ˆŠˆ ‚›Ž€ Ž„ˆ‘Šˆ ---
+# --- ОБРАБОТЧИКИ ВЫБОРА ПОДПИСКИ ---
 async def handle_premium_1_month(callback: CallbackQuery):
-    await callback.answer("?? â  äã­ªæ¨ï áª®à® ¡ã¤¥â ¤®áâã¯­ !")
-    # ‡¤¥áì ¡ã¤¥â ¨­â¥£à æ¨ï á Telegram Payments
+    await callback.answer("?? Эта функция скоро будет доступна!")
+    # Здесь будет интеграция с Telegram Payments
 
 async def handle_premium_3_months(callback: CallbackQuery):
-    await callback.answer("?? â  äã­ªæ¨ï áª®à® ¡ã¤¥â ¤®áâã¯­ !")
+    await callback.answer("?? Эта функция скоро будет доступна!")
 
 async def handle_premium_1_year(callback: CallbackQuery):
-    await callback.answer("?? â  äã­ªæ¨ï áª®à® ¡ã¤¥â ¤®áâã¯­ !")
+    await callback.answer("?? Эта функция скоро будет доступна!")
 
-# --- …ƒˆ‘’€–ˆŸ Ž€Ž’—ˆŠŽ‚ ---
+# --- РЕГИСТРАЦИЯ ОБРАБОТЧИКОВ ---
 def register_common_handlers(dp: Dispatcher):
-    # Š®¬ ­¤ë
+    # Команды
     dp.message.register(cmd_start, Command("start"))
     dp.message.register(cmd_favorites, Command("favorites"))
     dp.message.register(cmd_lang, Command("lang"))
@@ -659,7 +659,7 @@ def register_common_handlers(dp: Dispatcher):
     dp.message.register(cmd_stats, Command("stats"))
     dp.message.register(cmd_admin, Command("admin"))
     
-    # Š®««¡íª¨
+    # Коллбэки
     dp.callback_query.register(handle_change_language, F.data == "change_language")
     dp.callback_query.register(handle_set_language, F.data.startswith("set_lang_"))
     dp.callback_query.register(handle_show_favorites, F.data == "show_favorites")
