@@ -8,13 +8,13 @@ from config import DATABASE_URL
 logger = logging.getLogger(__name__)
 
 class Database:
-    """« αα ¤«ο γ―ΰ Ά«¥­¨ο ―®¤ª«ξη¥­¨¥¬ ª Supabase"""
+    """Ε Β«Β Γ΅Γ΅ Β¤Β«Γ― Γ£Β―Γ Β ΒΆΒ«Β¥Β­Β¨Γ― Β―Β®Β¤ΒªΒ«Γ®Γ§Β¥Β­Β¨Β¥Β¬ Βª Supabase"""
     
     _pool: Optional[asyncpg.Pool] = None
     
     @classmethod
     async def connect(cls):
-        """‘®§¤ ρβ ―γ« ―®¤ª«ξη¥­¨© ª ΅ §¥ ¤ ­­λε"""
+        """β€Β®Β§Β¤Β Γ±ΓΆ Β―Γ£Β« Β―Β®Β¤ΒªΒ«Γ®Γ§Β¥Β­Β¨Β© Βª Β΅Β Β§Β¥ Β¤Β Β­Β­Γ«Γ¥"""
         if cls._pool is None:
             try:
                 cls._pool = await asyncpg.create_pool(
@@ -23,50 +23,50 @@ class Database:
                     max_size=10,
                     command_timeout=60
                 )
-                logger.info("? ®¤ª«ξη¥­¨¥ ª Supabase γαβ ­®Ά«¥­®")
+                logger.info("? ΒΒ®Β¤ΒªΒ«Γ®Γ§Β¥Β­Β¨Β¥ Βª Supabase Γ£Γ΅ΓΆΒ Β­Β®ΒΆΒ«Β¥Β­Β®")
             except Exception as e:
-                logger.error(f"? θ¨΅ª  ―®¤ª«ξη¥­¨ο ª Supabase: {e}")
+                logger.error(f"? Ε½Γ¨Β¨Β΅ΒªΒ  Β―Β®Β¤ΒªΒ«Γ®Γ§Β¥Β­Β¨Γ― Βª Supabase: {e}")
                 raise
     
     @classmethod
     async def close(cls):
-        """‡ ªΰλΆ ¥β ―γ« ―®¤ª«ξη¥­¨©"""
+        """β€΅Β ΒªΓ Γ«ΒΆΒ Β¥ΓΆ Β―Γ£Β« Β―Β®Β¤ΒªΒ«Γ®Γ§Β¥Β­Β¨Β©"""
         if cls._pool:
             await cls._pool.close()
             cls._pool = None
-            logger.info("? ®¤ª«ξη¥­¨¥ ª Supabase § ªΰλβ®")
+            logger.info("? ΒΒ®Β¤ΒªΒ«Γ®Γ§Β¥Β­Β¨Β¥ Βª Supabase Β§Β ΒªΓ Γ«ΓΆΒ®")
     
     @classmethod
     @asynccontextmanager
     async def connection(cls):
-        """®­β¥ªαβ­λ© ¬¥­¥¤¦¥ΰ ¤«ο ―®«γη¥­¨ο α®¥¤¨­¥­¨ο"""
+        """Ε Β®Β­ΓΆΒ¥ΒªΓ΅ΓΆΒ­Γ«Β© Β¬Β¥Β­Β¥Β¤Β¦Β¥Γ  Β¤Β«Γ― Β―Β®Β«Γ£Γ§Β¥Β­Β¨Γ― Γ΅Β®Β¥Β¤Β¨Β­Β¥Β­Β¨Γ―"""
         await cls.connect()
         async with cls._pool.acquire() as conn:
             yield conn
     
     @classmethod
     async def execute(cls, query: str, *args):
-        """‚λ―®«­ο¥β SQL § ―ΰ®α"""
+        """β€Γ«Β―Β®Β«Β­Γ―Β¥ΓΆ SQL Β§Β Β―Γ Β®Γ΅"""
         async with cls.connection() as conn:
             return await conn.execute(query, *args)
     
     @classmethod
     async def fetch(cls, query: str, *args):
-        """‚λ―®«­ο¥β § ―ΰ®α ¨ Ά®§Άΰ ι ¥β Άα¥ αβΰ®ª¨"""
+        """β€Γ«Β―Β®Β«Β­Γ―Β¥ΓΆ Β§Β Β―Γ Β®Γ΅ Β¨ ΒΆΒ®Β§ΒΆΓ Β Γ©Β Β¥ΓΆ ΒΆΓ΅Β¥ Γ΅ΓΆΓ Β®ΒªΒ¨"""
         async with cls.connection() as conn:
             return await conn.fetch(query, *args)
     
     @classmethod
     async def fetchrow(cls, query: str, *args):
-        """‚λ―®«­ο¥β § ―ΰ®α ¨ Ά®§Άΰ ι ¥β ®¤­γ αβΰ®ªγ"""
+        """β€Γ«Β―Β®Β«Β­Γ―Β¥ΓΆ Β§Β Β―Γ Β®Γ΅ Β¨ ΒΆΒ®Β§ΒΆΓ Β Γ©Β Β¥ΓΆ Β®Β¤Β­Γ£ Γ΅ΓΆΓ Β®ΒªΓ£"""
         async with cls.connection() as conn:
             return await conn.fetchrow(query, *args)
     
     @classmethod
     async def fetchval(cls, query: str, *args):
-        """‚λ―®«­ο¥β § ―ΰ®α ¨ Ά®§Άΰ ι ¥β ®¤­® §­ η¥­¨¥"""
+        """β€Γ«Β―Β®Β«Β­Γ―Β¥ΓΆ Β§Β Β―Γ Β®Γ΅ Β¨ ΒΆΒ®Β§ΒΆΓ Β Γ©Β Β¥ΓΆ Β®Β¤Β­Β® Β§Β­Β Γ§Β¥Β­Β¨Β¥"""
         async with cls.connection() as conn:
             return await conn.fetchval(query, *args)
 
-# ƒ«®΅ «μ­λ© νª§¥¬―«οΰ ¤«ο ¨¬―®ΰβ 
+# Ζ’Β«Β®Β΅Β Β«Γ¬Β­Γ«Β© Γ­ΒªΒ§Β¥Β¬Β―Β«Γ―Γ  Β¤Β«Γ― Β¨Β¬Β―Β®Γ ΓΆΒ 
 db = Database()
