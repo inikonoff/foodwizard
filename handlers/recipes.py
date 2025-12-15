@@ -13,82 +13,82 @@ from state_manager import state_manager
 logger = logging.getLogger(__name__)
 
 async def handle_text_message(message: Message):
-    """Ž¡à ¡ âë¢ ¥â â¥ªáâ®¢ë¥ á®®¡é¥­¨ï á ¯à®¤ãªâ ¬¨"""
+    """Обрабатывает текстовые сообщения с продуктами"""
     user_id = message.from_user.id
     text = message.text.strip()
     
-    # à®¢¥àï¥¬ «¨¬¨âë
+    # Проверяем лимиты
     allowed, used, limit = await users_repo.check_and_increment_request(user_id, "text")
     
     if not allowed:
-        # ®«ãç ¥¬ ï§ëª ¤«ï á®®¡é¥­¨ï ®¡ ®è¨¡ª¥
+        # Получаем язык для сообщения об ошибке
         user_data = await users_repo.get_user(user_id)
         lang = user_data.get('language_code', 'ru') if user_data else 'ru'
         
         await message.answer(
-            f"? <b>‹¨¬¨â ¨áç¥à¯ ­!</b>\n\n"
-            f"‚ë ¨á¯®«ì§®¢ «¨ {used} ¨§ {limit} â¥ªáâ®¢ëå § ¯à®á®¢ á¥£®¤­ï.\n"
-            f"‹¨¬¨âë ®¡­®¢«ïîâáï ª ¦¤ë© ¤¥­ì ¢ 00:00.\n\n"
-            f"?? <b>•®â¨â¥ ¡®«ìè¥?</b> ˆá¯®«ì§ã©â¥ ª®¬ ­¤ã /stats",
+            f"? <b>Лимит исчерпан!</b>\n\n"
+            f"Вы использовали {used} из {limit} текстовых запросов сегодня.\n"
+            f"Лимиты обновляются каждый день в 00:00.\n\n"
+            f"?? <b>Хотите больше?</b> Используйте команду /stats",
             parse_mode="HTML"
         )
         return
     
-    # ®«ãç ¥¬ ï§ëª ¯®«ì§®¢ â¥«ï
+    # Получаем язык пользователя
     user_data = await users_repo.get_user(user_id)
     lang = user_data.get('language_code', 'ru') if user_data else 'ru'
     
-    # à®¢¥àï¥¬, ï¢«ï¥âáï «¨ íâ® ¯àï¬ë¬ § ¯à®á®¬ à¥æ¥¯â 
-    direct_keywords = ["à¥æ¥¯â ", "recipe ", "à¥æ¥¯â ¤«ï ", "recipe for ", "¤ © à¥æ¥¯â "]
+    # Проверяем, является ли это прямым запросом рецепта
+    direct_keywords = ["рецепт ", "recipe ", "рецепт для ", "recipe for ", "дай рецепт "]
     if any(text.lower().startswith(keyword) for keyword in direct_keywords):
         await handle_direct_recipe_request(message, text, lang)
         return
     
-    # à®¢¥àï¥¬ ¯ áå «ª¨
-    if text.lower() in ["á¯ á¨¡®", "thanks", "danke", "merci", "grazie", "gracias"]:
+    # Проверяем пасхалки
+    if text.lower() in ["спасибо", "thanks", "danke", "merci", "grazie", "gracias"]:
         await message.answer(get_text(lang, "thanks"))
         return
     
-    # à®¢¥àï¥¬ ¤«¨­ã á®®¡é¥­¨ï
+    # Проверяем длину сообщения
     if len(text) > 1000:
         await message.answer(get_text(lang, "error_too_long"))
         return
     
-    # ®«ãç ¥¬ â¥ªãé¨¥ ¯à®¤ãªâë
+    # Получаем текущие продукты
     current_products = state_manager.get_products(user_id)
     
-    # …á«¨ ¯à®¤ãªâ®¢ ¥éñ ­¥â, ¯à®¢¥àï¥¬ ¢ «¨¤­®áâì
+    # Если продуктов ещё нет, проверяем валидность
     if not current_products:
         is_valid = await groq_service.validate_ingredients(text, lang)
         if not is_valid:
             await message.answer(get_text(lang, "error_no_products"))
             return
         
-        # ‘®åà ­ï¥¬ ¯à®¤ãªâë
+        # Сохраняем продукты
         state_manager.set_products(user_id, text)
         await message.answer(get_text(lang, "products_accepted", products=text))
         
-        # €­ «¨§¨àã¥¬ ª â¥£®à¨¨
+        # Анализируем категории
         await analyze_and_show_categories(message, user_id, text, lang)
     else:
-        # „®¡ ¢«ï¥¬ ª áãé¥áâ¢ãîé¨¬ ¯à®¤ãªâ ¬
+        # Добавляем к существующим продуктам
         state_manager.append_products(user_id, text)
         all_products = state_manager.get_products(user_id)
         await message.answer(get_text(lang, "products_added", products=text))
         
-        # ®ª §ë¢ ¥¬ ª â¥£®à¨¨ á ãçñâ®¬ ­®¢ëå ¯à®¤ãªâ®¢
+        # Показываем категории с учётом новых продуктов
         await analyze_and_show_categories(message, user_id, all_products, lang)
     
-    # Ž¡­®¢«ï¥¬  ªâ¨¢­®áâì ¯®«ì§®¢ â¥«ï
+    # Обновляем активность пользователя
     await users_repo.update_activity(user_id)
 
 async def handle_direct_recipe_request(message: Message, text: str, lang: str):
-    """Ž¡à ¡ âë¢ ¥â ¯àï¬®© § ¯à®á à¥æ¥¯â  (­ ¯à¨¬¥à, "à¥æ¥¯â ¯¨ææë")"""
+    """Обрабатывает прямой запрос рецепта (например, "рецепт пиццы")"""
     user_id = message.from_user.id
     
-    # ˆ§¢«¥ª ¥¬ ­ §¢ ­¨¥ ¡«î¤ 
-    # “¤ «ï¥¬ ª«îç¥¢ë¥ á«®¢  ¨ «¨è­¨¥ ¯à®¡¥«ë
-    keywords = ["à¥æ¥¯â", "recipe", "à¥æ¥¯â ¤«ï", "recipe for", "¤ © à¥æ¥¯â"]
+    # Извлекаем название блюда
+    # Удаляем ключевые слова и лишние пробелы
+    keywords = ["рецепт", "recipe", "рецепт для", "recipe for", "дай рецепт"]
     dish_name = text.lower()
     for keyword in keywords:
         dish_name = dish_name.replace(keyword, "").strip()
@@ -97,11 +97,11 @@ async def handle_direct_recipe_request(message: Message, text: str, lang: str):
         await message.answer(get_text(lang, "error_no_products"))
         return
     
-    # ®ª §ë¢ ¥¬ á®®¡é¥­¨¥ ® ®¡à ¡®âª¥
+    # Показываем сообщение о обработке
     wait_msg = await message.answer(get_text(lang, "processing"))
     
     try:
-        # ƒ¥­¥à¨àã¥¬ à¥æ¥¯â
+        # Генерируем рецепт
         recipe = await groq_service.generate_freestyle_recipe(dish_name, lang)
         
         await wait_msg.delete()
@@ -110,13 +110,13 @@ async def handle_direct_recipe_request(message: Message, text: str, lang: str):
             await message.answer(get_text(lang, "error_generation"))
             return
         
-        # à®¢¥àï¥¬, ¥áâì «¨ ã¦¥ ¢ ¨§¡à ­­®¬
+        # Проверяем, есть ли уже в избранном
         is_favorite = await favorites_repo.is_favorite(user_id, dish_name)
         
-        # ‘®§¤ ñ¬ ª« ¢¨ âãàã á ª­®¯ª ¬¨
+        # Создаём клавиатуру с кнопками
         builder = InlineKeyboardBuilder()
         
-        # Š­®¯ª  ¨§¡à ­­®£®
+        # Кнопка избранного
         if is_favorite:
             builder.row(
                 InlineKeyboardButton(
@@ -132,7 +132,7 @@ async def handle_direct_recipe_request(message: Message, text: str, lang: str):
                 )
             )
         
-        # Š­®¯ª  ¤àã£®£® ¢ à¨ ­â 
+        # Кнопка другого варианта
         builder.row(
             InlineKeyboardButton(
                 text=get_text(lang, "btn_another"),
@@ -140,10 +140,10 @@ async def handle_direct_recipe_request(message: Message, text: str, lang: str):
             )
         )
         
-        # Žâ¯à ¢«ï¥¬ à¥æ¥¯â
+        # Отправляем рецепт
         await message.answer(recipe, reply_markup=builder.as_markup(), parse_mode="Markdown")
         
-        # ‹®£¨àã¥¬ £¥­¥à æ¨î à¥æ¥¯â 
+        # Логируем генерацию рецепта
         await metrics.track_recipe_generated(
             user_id=user_id,
             dish_name=dish_name,
@@ -154,16 +154,16 @@ async def handle_direct_recipe_request(message: Message, text: str, lang: str):
         )
         
     except Exception as e:
-        logger.error(f"Žè¨¡ª  £¥­¥à æ¨¨ à¥æ¥¯â : {e}")
+        logger.error(f"Ошибка генерации рецепта: {e}")
         await wait_msg.delete()
         await message.answer(get_text(lang, "error_generation"))
 
 async def analyze_and_show_categories(message: Message, user_id: int, products: str, lang: str):
-    """€­ «¨§¨àã¥â ¯à®¤ãªâë ¨ ¯®ª §ë¢ ¥â ª â¥£®à¨¨"""
+    """Анализирует продукты и показывает категории"""
     wait_msg = await message.answer(get_text(lang, "processing"))
     
     try:
-        # €­ «¨§¨àã¥¬ ª â¥£®à¨¨
+        # Анализируем категории
         categories = await groq_service.analyze_products(products, lang)
         
         await wait_msg.delete()
@@ -172,10 +172,10 @@ async def analyze_and_show_categories(message: Message, user_id: int, products: 
             await message.answer(get_text(lang, "error_generation"))
             return
         
-        # ‘®åà ­ï¥¬ ª â¥£®à¨¨ ¢ á®áâ®ï­¨¨
+        # Сохраняем категории в состоянии
         state_manager.set_categories(user_id, categories)
         
-        # ‘®§¤ ñ¬ ª« ¢¨ âãàã á ª â¥£®à¨ï¬¨
+        # Создаём клавиатуру с категориями
         builder = InlineKeyboardBuilder()
         
         for category in categories:
@@ -186,7 +186,7 @@ async def analyze_and_show_categories(message: Message, user_id: int, products: 
                 )
             )
         
-        # Š­®¯ª  á¡à®á 
+        # Кнопка сброса
         builder.row(
             InlineKeyboardButton(
                 text=get_text(lang, "btn_restart"),
@@ -201,30 +201,30 @@ async def analyze_and_show_categories(message: Message, user_id: int, products: 
         )
         
     except Exception as e:
-        logger.error(f"Žè¨¡ª   ­ «¨§  ª â¥£®à¨©: {e}")
+        logger.error(f"Ошибка анализа категорий: {e}")
         await wait_msg.delete()
         await message.answer(get_text(lang, "error_generation"))
 
 async def handle_category_selection(callback: CallbackQuery):
-    """Ž¡à ¡ âë¢ ¥â ¢ë¡®à ª â¥£®à¨¨"""
+    """Обрабатывает выбор категории"""
     user_id = callback.from_user.id
     category = callback.data.split('_')[1]  # cat_soup -> soup
     
-    # ®«ãç ¥¬ ï§ëª ¯®«ì§®¢ â¥«ï
+    # Получаем язык пользователя
     user_data = await users_repo.get_user(user_id)
     lang = user_data.get('language_code', 'ru') if user_data else 'ru'
     
-    # ®«ãç ¥¬ ¯à®¤ãªâë
+    # Получаем продукты
     products = state_manager.get_products(user_id)
     
     if not products:
-        await callback.answer("‘­ ç «  ®â¯à ¢ìâ¥ ¯à®¤ãªâë")
+        await callback.answer("Сначала отправьте продукты")
         return
     
     wait_msg = await callback.message.answer(get_text(lang, "processing"))
     
     try:
-        # ƒ¥­¥à¨àã¥¬ á¯¨á®ª ¡«î¤
+        # Генерируем список блюд
         dishes = await groq_service.generate_dish_list(products, category, lang)
         
         await wait_msg.delete()
@@ -234,15 +234,15 @@ async def handle_category_selection(callback: CallbackQuery):
             await callback.answer()
             return
         
-        # ‘®åà ­ï¥¬ ¡«î¤  ¢ á®áâ®ï­¨¨
+        # Сохраняем блюда в состоянии
         state_manager.set_generated_dishes(user_id, dishes)
         
-        # ‘®§¤ ñ¬ ª« ¢¨ âãàã á ¡«î¤ ¬¨
+        # Создаём клавиатуру с блюдами
         builder = InlineKeyboardBuilder()
         
         for i, dish in enumerate(dishes):
-            dish_name = dish.get('name', f'«î¤® {i+1}')
-            # Ž¡à¥§ ¥¬ ¤«¨­­ë¥ ­ §¢ ­¨ï
+            dish_name = dish.get('name', f'Блюдо {i+1}')
+            # Обрезаем длинные названия
             if len(dish_name) > 35:
                 dish_name = dish_name[:32] + "..."
             
@@ -253,7 +253,7 @@ async def handle_category_selection(callback: CallbackQuery):
                 )
             )
         
-        # Š­®¯ª¨ ­ ¢¨£ æ¨¨
+        # Кнопки навигации
         builder.row(
             InlineKeyboardButton(
                 text=get_text(lang, "btn_back"),
@@ -274,35 +274,35 @@ async def handle_category_selection(callback: CallbackQuery):
         await callback.answer()
         
     except Exception as e:
-        logger.error(f"Žè¨¡ª  £¥­¥à æ¨¨ á¯¨áª  ¡«î¤: {e}")
+        logger.error(f"Ошибка генерации списка блюд: {e}")
         await wait_msg.delete()
-        await callback.answer("? Žè¨¡ª  £¥­¥à æ¨¨")
+        await callback.answer("? Ошибка генерации")
 
 async def handle_dish_selection(callback: CallbackQuery):
-    """Ž¡à ¡ âë¢ ¥â ¢ë¡®à ¡«î¤ """
+    """Обрабатывает выбор блюда"""
     user_id = callback.from_user.id
     dish_index = int(callback.data.split('_')[1])  # dish_0 -> 0
     
-    # ®«ãç ¥¬ ï§ëª ¯®«ì§®¢ â¥«ï
+    # Получаем язык пользователя
     user_data = await users_repo.get_user(user_id)
     lang = user_data.get('language_code', 'ru') if user_data else 'ru'
     
-    # ®«ãç ¥¬ ¡«î¤®
+    # Получаем блюдо
     dishes = state_manager.get_generated_dishes(user_id)
     if not dishes or dish_index >= len(dishes):
-        await callback.answer("«î¤® ­¥ ­ ©¤¥­®")
+        await callback.answer("Блюдо не найдено")
         return
     
     dish = dishes[dish_index]
     dish_name = dish.get('name')
     
-    # ®«ãç ¥¬ ¯à®¤ãªâë
+    # Получаем продукты
     products = state_manager.get_products(user_id) or ""
     
     wait_msg = await callback.message.answer(get_text(lang, "processing"))
     
     try:
-        # ƒ¥­¥à¨àã¥¬ à¥æ¥¯â
+        # Генерируем рецепт
         recipe = await groq_service.generate_recipe(dish_name, products, lang)
         
         await wait_msg.delete()
@@ -312,16 +312,16 @@ async def handle_dish_selection(callback: CallbackQuery):
             await callback.answer()
             return
         
-        # ‘®åà ­ï¥¬ â¥ªãé¥¥ ¡«î¤®
+        # Сохраняем текущее блюдо
         state_manager.set_current_dish(user_id, dish_name)
         
-        # à®¢¥àï¥¬, ¥áâì «¨ ã¦¥ ¢ ¨§¡à ­­®¬
+        # Проверяем, есть ли уже в избранном
         is_favorite = await favorites_repo.is_favorite(user_id, dish_name)
         
-        # ‘®§¤ ñ¬ ª« ¢¨ âãàã
+        # Создаём клавиатуру
         builder = InlineKeyboardBuilder()
         
-        # Š­®¯ª  ¨§¡à ­­®£®
+        # Кнопка избранного
         if is_favorite:
             builder.row(
                 InlineKeyboardButton(
@@ -337,7 +337,7 @@ async def handle_dish_selection(callback: CallbackQuery):
                 )
             )
         
-        # Š­®¯ª¨ ­ ¢¨£ æ¨¨
+        # Кнопки навигации
         builder.row(
             InlineKeyboardButton(
                 text=get_text(lang, "btn_another"),
@@ -352,7 +352,7 @@ async def handle_dish_selection(callback: CallbackQuery):
         await callback.message.answer(recipe, reply_markup=builder.as_markup(), parse_mode="Markdown")
         await callback.answer()
         
-        # ‹®£¨àã¥¬ £¥­¥à æ¨î à¥æ¥¯â 
+        # Логируем генерацию рецепта
         await metrics.track_recipe_generated(
             user_id=user_id,
             dish_name=dish_name,
@@ -363,26 +363,26 @@ async def handle_dish_selection(callback: CallbackQuery):
         )
         
     except Exception as e:
-        logger.error(f"Žè¨¡ª  £¥­¥à æ¨¨ à¥æ¥¯â : {e}")
+        logger.error(f"Ошибка генерации рецепта: {e}")
         await wait_msg.delete()
-        await callback.answer("? Žè¨¡ª ")
+        await callback.answer("? Ошибка")
 
 async def handle_back_to_categories(callback: CallbackQuery):
-    """‚®§¢à é ¥â ª ¢ë¡®àã ª â¥£®à¨©"""
+    """Возвращает к выбору категорий"""
     user_id = callback.from_user.id
     
-    # ®«ãç ¥¬ ï§ëª ¯®«ì§®¢ â¥«ï
+    # Получаем язык пользователя
     user_data = await users_repo.get_user(user_id)
     lang = user_data.get('language_code', 'ru') if user_data else 'ru'
     
-    # ®«ãç ¥¬ ª â¥£®à¨¨
+    # Получаем категории
     categories = state_manager.get_categories(user_id)
     
     if not categories:
-        await callback.answer("¥â á®åà ­ñ­­ëå ª â¥£®à¨©")
+        await callback.answer("Нет сохранённых категорий")
         return
     
-    # ‘®§¤ ñ¬ ª« ¢¨ âãàã á ª â¥£®à¨ï¬¨
+    # Создаём клавиатуру с категориями
     builder = InlineKeyboardBuilder()
     
     for category in categories:
@@ -393,7 +393,7 @@ async def handle_back_to_categories(callback: CallbackQuery):
             )
         )
     
-    # Š­®¯ª  á¡à®á 
+    # Кнопка сброса
     builder.row(
         InlineKeyboardButton(
             text=get_text(lang, "btn_restart"),
@@ -409,14 +409,14 @@ async def handle_back_to_categories(callback: CallbackQuery):
     await callback.answer()
 
 async def handle_restart(callback: CallbackQuery):
-    """‘¡à áë¢ ¥â á¥áá¨î"""
+    """Сбрасывает сессию"""
     user_id = callback.from_user.id
     
-    # ®«ãç ¥¬ ï§ëª ¯®«ì§®¢ â¥«ï
+    # Получаем язык пользователя
     user_data = await users_repo.get_user(user_id)
     lang = user_data.get('language_code', 'ru') if user_data else 'ru'
     
-    # Žç¨é ¥¬ á¥áá¨î
+    # Очищаем сессию
     state_manager.clear_session(user_id)
     
     await callback.message.edit_text(
@@ -426,50 +426,50 @@ async def handle_restart(callback: CallbackQuery):
     await callback.answer()
 
 async def handle_repeat_recipe(callback: CallbackQuery):
-    """ƒ¥­¥à¨àã¥â ¤àã£®© ¢ à¨ ­â à¥æ¥¯â """
+    """Генерирует другой вариант рецепта"""
     user_id = callback.from_user.id
     
-    # à®¢¥àï¥¬ «¨¬¨âë
+    # Проверяем лимиты
     allowed, used, limit = await users_repo.check_and_increment_request(user_id, "text")
     
     if not allowed:
-        # ®«ãç ¥¬ ï§ëª ¤«ï á®®¡é¥­¨ï ®¡ ®è¨¡ª¥
+        # Получаем язык для сообщения об ошибке
         user_data = await users_repo.get_user(user_id)
         lang = user_data.get('language_code', 'ru') if user_data else 'ru'
         
         await callback.answer(
-            f"? ‹¨¬¨â ¨áç¥à¯ ­! {used}/{limit}",
+            f"? Лимит исчерпан! {used}/{limit}",
             show_alert=True
         )
         return
     
-    # ®«ãç ¥¬ ï§ëª ¯®«ì§®¢ â¥«ï
+    # Получаем язык пользователя
     user_data = await users_repo.get_user(user_id)
     lang = user_data.get('language_code', 'ru') if user_data else 'ru'
     
-    # ˆ§¢«¥ª ¥¬ ­ §¢ ­¨¥ ¡«î¤  ¨«¨ ¨­¤¥ªá
+    # Извлекаем название блюда или индекс
     data_parts = callback.data.split('_')
     
     if len(data_parts) >= 3 and data_parts[1] == "recipe":
-        # àï¬®© à¥æ¥¯â (repeat_recipe_pizza)
+        # Прямой рецепт (repeat_recipe_pizza)
         dish_name = '_'.join(data_parts[2:])
         products = ""
     elif len(data_parts) >= 3 and data_parts[1] == "dish":
-        # ¥æ¥¯â ¨§ á¯¨áª  (repeat_dish_0)
+        # Рецепт из списка (repeat_dish_0)
         dish_index = int(data_parts[2])
         dishes = state_manager.get_generated_dishes(user_id)
         if not dishes or dish_index >= len(dishes):
-            await callback.answer("«î¤® ­¥ ­ ©¤¥­®")
+            await callback.answer("Блюдо не найдено")
             return
         dish_name = dishes[dish_index].get('name')
         products = state_manager.get_products(user_id) or ""
     else:
-        # ’¥ªãé¥¥ ¡«î¤®
+        # Текущее блюдо
         dish_name = state_manager.get_current_dish(user_id)
         products = state_manager.get_products(user_id) or ""
     
     if not dish_name:
-        await callback.answer("«î¤® ­¥ ¢ë¡à ­®")
+        await callback.answer("Блюдо не выбрано")
         return
     
     wait_msg = await callback.message.answer(get_text(lang, "processing"))
@@ -487,13 +487,13 @@ async def handle_repeat_recipe(callback: CallbackQuery):
             await callback.answer()
             return
         
-        # à®¢¥àï¥¬, ¥áâì «¨ ã¦¥ ¢ ¨§¡à ­­®¬
+        # Проверяем, есть ли уже в избранном
         is_favorite = await favorites_repo.is_favorite(user_id, dish_name)
         
-        # ‘®§¤ ñ¬ ª« ¢¨ âãàã
+        # Создаём клавиатуру
         builder = InlineKeyboardBuilder()
         
-        # Š­®¯ª  ¨§¡à ­­®£®
+        # Кнопка избранного
         if is_favorite:
             builder.row(
                 InlineKeyboardButton(
@@ -509,11 +509,11 @@ async def handle_repeat_recipe(callback: CallbackQuery):
                 )
             )
         
-        # Š­®¯ª¨ ­ ¢¨£ æ¨¨
+        # Кнопки навигации
         builder.row(
             InlineKeyboardButton(
                 text=get_text(lang, "btn_another"),
-                callback_data=callback.data  # ®¢â®à¨âì â®â ¦¥ § ¯à®á
+                callback_data=callback.data  # Повторить тот же запрос
             ),
             InlineKeyboardButton(
                 text=get_text(lang, "btn_back"),
@@ -521,21 +521,21 @@ async def handle_repeat_recipe(callback: CallbackQuery):
             )
         )
         
-        # Žâ¯à ¢«ï¥¬ ­®¢ë© à¥æ¥¯â
+        # Отправляем новый рецепт
         await callback.message.answer(recipe, reply_markup=builder.as_markup(), parse_mode="Markdown")
         await callback.answer()
         
     except Exception as e:
-        logger.error(f"Žè¨¡ª  ¯®¢â®à­®© £¥­¥à æ¨¨ à¥æ¥¯â : {e}")
+        logger.error(f"Ошибка повторной генерации рецепта: {e}")
         await wait_msg.delete()
-        await callback.answer("? Žè¨¡ª ")
+        await callback.answer("? Ошибка")
 
 def register_recipe_handlers(dp: Dispatcher):
-    """¥£¨áâà¨àã¥â ®¡à ¡®âç¨ª¨ à¥æ¥¯â®¢"""
-    # ’¥ªáâ®¢ë¥ á®®¡é¥­¨ï
+    """Регистрирует обработчики рецептов"""
+    # Текстовые сообщения
     dp.message.register(handle_text_message, F.text)
     
-    # Š®««¡íª¨
+    # Коллбэки
     dp.callback_query.register(handle_category_selection, F.data.startswith("cat_"))
     dp.callback_query.register(handle_dish_selection, F.data.startswith("dish_"))
     dp.callback_query.register(handle_back_to_categories, F.data == "back_to_categories")
