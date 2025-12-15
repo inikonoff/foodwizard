@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 class FavoritesRepository:
     @staticmethod
     async def add_favorite(favorite: FavoriteRecipe) -> bool:
-        """„®¡ ¢«ï¥â à¥æ¥¯â ¢ ¨§¡à ­­®¥"""
+        """Добавляет рецепт в избранное"""
         async with db.connection() as conn:
             query = """
             INSERT INTO favorites (user_id, dish_name, recipe_text, category, ingredients, language, created_at)
@@ -36,12 +36,12 @@ class FavoritesRepository:
                 )
                 return row is not None
             except Exception as e:
-                logger.error(f"Žè¨¡ª  ¯à¨ ¤®¡ ¢«¥­¨¨ ¢ ¨§¡à ­­®¥: {e}")
+                logger.error(f"Ошибка при добавлении в избранное: {e}")
                 return False
     
     @staticmethod
     async def remove_favorite(user_id: int, dish_name: str) -> bool:
-        """“¤ «ï¥â à¥æ¥¯â ¨§ ¨§¡à ­­®£®"""
+        """Удаляет рецепт из избранного"""
         async with db.connection() as conn:
             query = "DELETE FROM favorites WHERE user_id = $1 AND dish_name = $2"
             result = await conn.execute(query, user_id, dish_name)
@@ -49,20 +49,20 @@ class FavoritesRepository:
     
     @staticmethod
     async def get_favorites_page(user_id: int, page: int = 1) -> Tuple[List[Dict[str, Any]], int]:
-        """®«ãç ¥â áâà ­¨æã ¨§¡à ­­ëå à¥æ¥¯â®¢ á ¯ £¨­ æ¨¥©"""
+        """Получает страницу избранных рецептов с пагинацией"""
         async with db.connection() as conn:
-            # ‘­ ç «  ¯®«ãç ¥¬ ®¡é¥¥ ª®«¨ç¥áâ¢®
+            # Сначала получаем общее количество
             count_query = "SELECT COUNT(*) FROM favorites WHERE user_id = $1"
             total_count = await conn.fetchval(count_query, user_id)
             
             if total_count == 0:
                 return [], 0
             
-            #  ááç¨âë¢ ¥¬ ¯ £¨­ æ¨î
+            # Рассчитываем пагинацию
             offset = (page - 1) * FAVORITES_PER_PAGE
             total_pages = (total_count + FAVORITES_PER_PAGE - 1) // FAVORITES_PER_PAGE
             
-            # ®«ãç ¥¬ à¥æ¥¯âë ¤«ï â¥ªãé¥© áâà ­¨æë
+            # Получаем рецепты для текущей страницы
             data_query = """
             SELECT id, dish_name, recipe_text, category, ingredients, language, created_at
             FROM favorites 
@@ -89,7 +89,7 @@ class FavoritesRepository:
     
     @staticmethod
     async def get_favorite(user_id: int, dish_name: str) -> Optional[Dict[str, Any]]:
-        """®«ãç ¥â ª®­ªà¥â­ë© à¥æ¥¯â ¨§ ¨§¡à ­­®£®"""
+        """Получает конкретный рецепт из избранного"""
         async with db.connection() as conn:
             query = """
             SELECT id, dish_name, recipe_text, category, ingredients, language, created_at
@@ -102,14 +102,14 @@ class FavoritesRepository:
     
     @staticmethod
     async def count_favorites(user_id: int) -> int:
-        """‘ç¨â ¥â ª®«¨ç¥áâ¢® ¨§¡à ­­ëå à¥æ¥¯â®¢ ã ¯®«ì§®¢ â¥«ï"""
+        """Считает количество избранных рецептов у пользователя"""
         async with db.connection() as conn:
             query = "SELECT COUNT(*) FROM favorites WHERE user_id = $1"
             return await conn.fetchval(query, user_id)
     
     @staticmethod
     async def is_favorite(user_id: int, dish_name: str) -> bool:
-        """à®¢¥àï¥â, ¥áâì «¨ à¥æ¥¯â ¢ ¨§¡à ­­®¬"""
+        """Проверяет, есть ли рецепт в избранном"""
         async with db.connection() as conn:
             query = "SELECT 1 FROM favorites WHERE user_id = $1 AND dish_name = $2 LIMIT 1"
             row = await conn.fetchrow(query, user_id, dish_name)
@@ -117,7 +117,7 @@ class FavoritesRepository:
     
     @staticmethod
     async def get_all_favorites(user_id: int) -> List[Dict[str, Any]]:
-        """®«ãç ¥â ¢á¥ ¨§¡à ­­ë¥ à¥æ¥¯âë ¯®«ì§®¢ â¥«ï (¡¥§ ¯ £¨­ æ¨¨)"""
+        """Получает все избранные рецепты пользователя (без пагинации)"""
         async with db.connection() as conn:
             query = """
             SELECT id, dish_name, recipe_text, category, ingredients, language, created_at
@@ -131,11 +131,11 @@ class FavoritesRepository:
     
     @staticmethod
     async def clear_favorites(user_id: int) -> bool:
-        """Žç¨é ¥â ¢á¥ ¨§¡à ­­®¥ ¯®«ì§®¢ â¥«ï"""
+        """Очищает все избранное пользователя"""
         async with db.connection() as conn:
             query = "DELETE FROM favorites WHERE user_id = $1"
             result = await conn.execute(query, user_id)
             return "DELETE" in result
 
-# ‘®§¤ ñ¬ íª§¥¬¯«ïà ¤«ï ã¤®¡­®£® ¨¬¯®àâ 
+# Создаём экземпляр для удобного импорта
 favorites_repo = FavoritesRepository()
