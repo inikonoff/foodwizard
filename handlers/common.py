@@ -14,27 +14,27 @@ from config import SUPPORTED_LANGUAGES, ADMIN_IDS, SECRET_PROMO_CODE
 
 logger = logging.getLogger(__name__)
 
-# --- КОМАНДА /START ---
+# --- ┼а┼╜┼ТтВм┬НтАЮтВм /START ---
 async def cmd_start(message: Message):
     user_id = message.from_user.id
     first_name = message.from_user.first_name or "User"
     username = message.from_user.username
     
-    # Получаем или создаём пользователя
+    # ┬П┬о┬л├г├з┬а┬е┬м ┬и┬л┬и ├б┬о┬з┬д┬а├▒┬м ┬п┬о┬л├м┬з┬о┬в┬а├в┬е┬л├п
     user_data = await users_repo.get_or_create(
         user_id=user_id,
         first_name=first_name,
         username=username
     )
     
-    # Определяем язык пользователя
+    # ┼╜┬п├а┬е┬д┬е┬л├п┬е┬м ├п┬з├л┬к ┬п┬о┬л├м┬з┬о┬в┬а├в┬е┬л├п
     lang = user_data.get('language_code', 'ru') if user_data else 'ru'
     
-    # Отправляем приветственное сообщение
+    # ┼╜├в┬п├а┬а┬в┬л├п┬е┬м ┬п├а┬и┬в┬е├в├б├в┬в┬е┬н┬н┬о┬е ├б┬о┬о┬б├й┬е┬н┬и┬е
     welcome_text = get_text(lang, "welcome", name=first_name)
     start_manual = get_text(lang, "start_manual")
     
-    # Создаём клавиатуру с основными командами
+    # тАШ┬о┬з┬д┬а├▒┬м ┬к┬л┬а┬в┬и┬а├в├г├а├г ├б ┬о├б┬н┬о┬в┬н├л┬м┬и ┬к┬о┬м┬а┬н┬д┬а┬м┬и
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(
@@ -56,35 +56,35 @@ async def cmd_start(message: Message):
     full_text = f"{welcome_text}\n\n{start_manual}"
     await message.answer(full_text, reply_markup=builder.as_markup(), parse_mode="Markdown")
     
-    # Логируем событие
+    # тА╣┬о┬г┬и├а├г┬е┬м ├б┬о┬б├л├в┬и┬е
     await metrics.track_event(user_id, "start_command", {"language": lang})
 
-# --- КОМАНДА /FAVORITES ---
+# --- ┼а┼╜┼ТтВм┬НтАЮтВм /FAVORITES ---
 async def cmd_favorites(message: Message):
     user_id = message.from_user.id
     
-    # Получаем данные пользователя
+    # ┬П┬о┬л├г├з┬а┬е┬м ┬д┬а┬н┬н├л┬е ┬п┬о┬л├м┬з┬о┬в┬а├в┬е┬л├п
     user_data = await users_repo.get_user(user_id)
     lang = user_data.get('language_code', 'ru') if user_data else 'ru'
     
-    # Получаем первую страницу избранного
+    # ┬П┬о┬л├г├з┬а┬е┬м ┬п┬е├а┬в├г├о ├б├в├а┬а┬н┬и├ж├г ┬и┬з┬б├а┬а┬н┬н┬о┬г┬о
     favorites, total_pages = await favorites_repo.get_favorites_page(user_id, page=1)
     
     if not favorites:
         await message.answer(get_text(lang, "favorites_empty"))
         return
     
-    # Форматируем список рецептов
+    # тАЭ┬о├а┬м┬а├в┬и├а├г┬е┬м ├б┬п┬и├б┬о┬к ├а┬е├ж┬е┬п├в┬о┬в
     recipes_text = ""
     for i, fav in enumerate(favorites, 1):
         date_str = fav['created_at'].strftime("%d.%m.%Y")
         recipes_text += get_text(lang, "favorites_recipe_item", 
                                num=i, dish=fav['dish_name'], date=date_str)
     
-    # Создаём клавиатуру с пагинацией
+    # тАШ┬о┬з┬д┬а├▒┬м ┬к┬л┬а┬в┬и┬а├в├г├а├г ├б ┬п┬а┬г┬и┬н┬а├ж┬и┬е┬й
     builder = InlineKeyboardBuilder()
     
-    # Кнопки пагинации
+    # ┼а┬н┬о┬п┬к┬и ┬п┬а┬г┬и┬н┬а├ж┬и┬и
     if total_pages > 1:
         builder.row(
             InlineKeyboardButton(
@@ -101,7 +101,7 @@ async def cmd_favorites(message: Message):
             )
         )
     
-    # Кнопка возврата
+    # ┼а┬н┬о┬п┬к┬а ┬в┬о┬з┬в├а┬а├в┬а
     builder.row(
         InlineKeyboardButton(
             text=get_text(lang, "btn_back"),
@@ -109,25 +109,25 @@ async def cmd_favorites(message: Message):
         )
     )
     
-    # Отправляем сообщение
+    # ┼╜├в┬п├а┬а┬в┬л├п┬е┬м ├б┬о┬о┬б├й┬е┬н┬и┬е
     text = get_text(lang, "favorites_list", page=1, total_pages=total_pages, recipes=recipes_text)
     await message.answer(text, reply_markup=builder.as_markup(), parse_mode="Markdown")
     
-    # Логируем событие
+    # тА╣┬о┬г┬и├а├г┬е┬м ├б┬о┬б├л├в┬и┬е
     await metrics.track_event(user_id, "favorites_viewed", {"page": 1, "total": len(favorites)})
 
-# --- КОМАНДА /LANG ---
+# --- ┼а┼╜┼ТтВм┬НтАЮтВм /LANG ---
 async def cmd_lang(message: Message):
     user_id = message.from_user.id
     
-    # Получаем данные пользователя
+    # ┬П┬о┬л├г├з┬а┬е┬м ┬д┬а┬н┬н├л┬е ┬п┬о┬л├м┬з┬о┬в┬а├в┬е┬л├п
     user_data = await users_repo.get_user(user_id)
     current_lang = user_data.get('language_code', 'ru') if user_data else 'ru'
     
-    # Создаём клавиатуру выбора языка
+    # тАШ┬о┬з┬д┬а├▒┬м ┬к┬л┬а┬в┬и┬а├в├г├а├г ┬в├л┬б┬о├а┬а ├п┬з├л┬к┬а
     builder = InlineKeyboardBuilder()
     
-    # Добавляем кнопки для всех поддерживаемых языков
+    # тАЮ┬о┬б┬а┬в┬л├п┬е┬м ┬к┬н┬о┬п┬к┬и ┬д┬л├п ┬в├б┬е├е ┬п┬о┬д┬д┬е├а┬ж┬и┬в┬а┬е┬м├л├е ├п┬з├л┬к┬о┬в
     for lang_code in SUPPORTED_LANGUAGES:
         builder.row(
             InlineKeyboardButton(
@@ -136,7 +136,7 @@ async def cmd_lang(message: Message):
             )
         )
     
-    # Добавляем кнопку отмены
+    # тАЮ┬о┬б┬а┬в┬л├п┬е┬м ┬к┬н┬о┬п┬к├г ┬о├в┬м┬е┬н├л
     builder.row(
         InlineKeyboardButton(
             text=get_text(current_lang, "btn_back"),
@@ -150,17 +150,17 @@ async def cmd_lang(message: Message):
         parse_mode="Markdown"
     )
 
-# --- КОМАНДА /HELP ---
+# --- ┼а┼╜┼ТтВм┬НтАЮтВм /HELP ---
 async def cmd_help(message: Message):
     user_id = message.from_user.id
     
-    # Получаем данные пользователя
+    # ┬П┬о┬л├г├з┬а┬е┬м ┬д┬а┬н┬н├л┬е ┬п┬о┬л├м┬з┬о┬в┬а├в┬е┬л├п
     user_data = await users_repo.get_user(user_id)
     lang = user_data.get('language_code', 'ru') if user_data else 'ru'
     
     help_text = f"{get_text(lang, 'help_title')}\n{get_text(lang, 'help_text')}"
     
-    # Создаём клавиатуру
+    # тАШ┬о┬з┬д┬а├▒┬м ┬к┬л┬а┬в┬и┬а├в├г├а├г
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(
@@ -171,23 +171,23 @@ async def cmd_help(message: Message):
     
     await message.answer(help_text, reply_markup=builder.as_markup(), parse_mode="Markdown")
     
-    # Логируем событие
+    # тА╣┬о┬г┬и├а├г┬е┬м ├б┬о┬б├л├в┬и┬е
     await metrics.track_event(user_id, "help_viewed", {"language": lang})
 
-# --- КОМАНДА /CODE ---
+# --- ┼а┼╜┼ТтВм┬НтАЮтВм /CODE ---
 async def cmd_code(message: Message):
-    """Активация премиума по промокоду"""
+    """тВм┬к├в┬и┬в┬а├ж┬и├п ┬п├а┬е┬м┬и├г┬м┬а ┬п┬о ┬п├а┬о┬м┬о┬к┬о┬д├г"""
     user_id = message.from_user.id
     
-    # Получаем данные пользователя
+    # ┬П┬о┬л├г├з┬а┬е┬м ┬д┬а┬н┬н├л┬е ┬п┬о┬л├м┬з┬о┬в┬а├в┬е┬л├п
     user_data = await users_repo.get_user(user_id)
     lang = user_data.get('language_code', 'ru') if user_data else 'ru'
     
-    # Проверяем аргументы
+    # ┬П├а┬о┬в┬е├а├п┬е┬м ┬а├а┬г├г┬м┬е┬н├в├л
     args = message.text.split()
     if len(args) < 2:
         await message.answer(
-            "Введите код. Пример:\n"
+            "тАЪ┬в┬е┬д┬и├в┬е ┬к┬о┬д. ┬П├а┬и┬м┬е├а:\n"
             f"<code>/code {SECRET_PROMO_CODE}</code>",
             parse_mode="HTML"
         )
@@ -196,70 +196,70 @@ async def cmd_code(message: Message):
     code = args[1].strip()
     
     if code == SECRET_PROMO_CODE:
-        # Активируем премиум на 99 лет (шутка)
+        # тВм┬к├в┬и┬в┬и├а├г┬е┬м ┬п├а┬е┬м┬и├г┬м ┬н┬а 99 ┬л┬е├в (├и├г├в┬к┬а)
         success = await users_repo.activate_premium(user_id, days=365*99)
         
         if success:
             response = (
-                "?? <b>Код принят!</b>\n\n"
-                "Активирован временный доступ к премиум функциям на <b>99 лет</b>.\n"
-                "По истечении срока действия не забудьте продлить подписку. ??"
+                "?? <b>┼а┬о┬д ┬п├а┬и┬н├п├в!</b>\n\n"
+                "тВм┬к├в┬и┬в┬и├а┬о┬в┬а┬н ┬в├а┬е┬м┬е┬н┬н├л┬й ┬д┬о├б├в├г┬п ┬к ┬п├а┬е┬м┬и├г┬м ├д├г┬н┬к├ж┬и├п┬м ┬н┬а <b>99 ┬л┬е├в</b>.\n"
+                "┬П┬о ┬и├б├в┬е├з┬е┬н┬и┬и ├б├а┬о┬к┬а ┬д┬е┬й├б├в┬в┬и├п ┬н┬е ┬з┬а┬б├г┬д├м├в┬е ┬п├а┬о┬д┬л┬и├в├м ┬п┬о┬д┬п┬и├б┬к├г. ??"
             )
             await message.answer(response, parse_mode="HTML")
             
-            # Логируем активацию премиума
+            # тА╣┬о┬г┬и├а├г┬е┬м ┬а┬к├в┬и┬в┬а├ж┬и├о ┬п├а┬е┬м┬и├г┬м┬а
             await metrics.track_event(user_id, "premium_activated", {
                 "method": "promo_code",
                 "days": 365*99
             })
         else:
-            await message.answer("? Ошибка активации премиума")
+            await message.answer("? ┼╜├и┬и┬б┬к┬а ┬а┬к├в┬и┬в┬а├ж┬и┬и ┬п├а┬е┬м┬и├г┬м┬а")
     else:
-        await message.answer("? Неверный код.")
+        await message.answer("? ┬Н┬е┬в┬е├а┬н├л┬й ┬к┬о┬д.")
 
-# --- КОМАНДА /STATS ---
+# --- ┼а┼╜┼ТтВм┬НтАЮтВм /STATS ---
 async def cmd_stats(message: Message):
-    """Показывает статистику использования"""
+    """┬П┬о┬к┬а┬з├л┬в┬а┬е├в ├б├в┬а├в┬и├б├в┬и┬к├г ┬и├б┬п┬о┬л├м┬з┬о┬в┬а┬н┬и├п"""
     user_id = message.from_user.id
     
-    # Получаем данные пользователя
+    # ┬П┬о┬л├г├з┬а┬е┬м ┬д┬а┬н┬н├л┬е ┬п┬о┬л├м┬з┬о┬в┬а├в┬е┬л├п
     user_data = await users_repo.get_user(user_id)
     lang = user_data.get('language_code', 'ru') if user_data else 'ru'
     
-    # Получаем статистику использования
+    # ┬П┬о┬л├г├з┬а┬е┬м ├б├в┬а├в┬и├б├в┬и┬к├г ┬и├б┬п┬о┬л├м┬з┬о┬в┬а┬н┬и├п
     usage_stats = await users_repo.get_usage_stats(user_id)
     
     if not usage_stats:
-        await message.answer("Статистика недоступна")
+        await message.answer("тАШ├в┬а├в┬и├б├в┬и┬к┬а ┬н┬е┬д┬о├б├в├г┬п┬н┬а")
         return
     
-    # Формируем сообщение
-    status = "?? ПРЕМИУМ" if usage_stats['is_premium'] else "?? БЕСПЛАТНО"
+    # тАЭ┬о├а┬м┬и├а├г┬е┬м ├б┬о┬о┬б├й┬е┬н┬и┬е
+    status = "?? ┬П┬РтАж┼Т╦ЖтАЬ┼Т" if usage_stats['is_premium'] else "?? ┬БтАжтАШ┬ПтА╣тВмтАЩ┬Н┼╜"
     
     if usage_stats['premium_until']:
         premium_until = usage_stats['premium_until'].strftime("%d.%m.%Y")
-        status += f" (до {premium_until})"
+        status += f" (┬д┬о {premium_until})"
     
     stats_text = (
-        f"?? <b>Ваша статистика</b>\n\n"
+        f"?? <b>тАЪ┬а├и┬а ├б├в┬а├в┬и├б├в┬и┬к┬а</b>\n\n"
         f"{status}\n\n"
-        f"?? <b>Текстовые запросы:</b>\n"
-        f"   Использовано: {usage_stats['text_requests_used']}/{usage_stats['text_requests_limit']}\n"
-        f"   Осталось: {usage_stats['remaining_text']}\n\n"
-        f"?? <b>Голосовые запросы:</b>\n"
-        f"   Использовано: {usage_stats['voice_requests_used']}/{usage_stats['voice_requests_limit']}\n"
-        f"   Осталось: {usage_stats['remaining_voice']}\n\n"
-        f"?? <b>Всего запросов:</b> {usage_stats['total_requests']}\n"
-        f"?? <b>Сброс лимитов:</b> {usage_stats['last_reset_date'].strftime('%d.%m.%Y')}"
+        f"?? <b>тАЩ┬е┬к├б├в┬о┬в├л┬е ┬з┬а┬п├а┬о├б├л:</b>\n"
+        f"   ╦Ж├б┬п┬о┬л├м┬з┬о┬в┬а┬н┬о: {usage_stats['text_requests_used']}/{usage_stats['text_requests_limit']}\n"
+        f"   ┼╜├б├в┬а┬л┬о├б├м: {usage_stats['remaining_text']}\n\n"
+        f"?? <b>╞Т┬о┬л┬о├б┬о┬в├л┬е ┬з┬а┬п├а┬о├б├л:</b>\n"
+        f"   ╦Ж├б┬п┬о┬л├м┬з┬о┬в┬а┬н┬о: {usage_stats['voice_requests_used']}/{usage_stats['voice_requests_limit']}\n"
+        f"   ┼╜├б├в┬а┬л┬о├б├м: {usage_stats['remaining_voice']}\n\n"
+        f"?? <b>тАЪ├б┬е┬г┬о ┬з┬а┬п├а┬о├б┬о┬в:</b> {usage_stats['total_requests']}\n"
+        f"?? <b>тАШ┬б├а┬о├б ┬л┬и┬м┬и├в┬о┬в:</b> {usage_stats['last_reset_date'].strftime('%d.%m.%Y')}"
     )
     
-    # Создаём клавиатуру
+    # тАШ┬о┬з┬д┬а├▒┬м ┬к┬л┬а┬в┬и┬а├в├г├а├г
     builder = InlineKeyboardBuilder()
     
     if not usage_stats['is_premium']:
         builder.row(
             InlineKeyboardButton(
-                text="?? Купить премиум",
+                text="?? ┼а├г┬п┬и├в├м ┬п├а┬е┬м┬и├г┬м",
                 callback_data="buy_premium"
             )
         )
@@ -273,29 +273,29 @@ async def cmd_stats(message: Message):
     
     await message.answer(stats_text, reply_markup=builder.as_markup(), parse_mode="HTML")
 
-# --- КОМАНДА /ADMIN ---
+# --- ┼а┼╜┼ТтВм┬НтАЮтВм /ADMIN ---
 async def cmd_admin(message: Message):
-    """Админ-команды (только для ADMIN_IDS)"""
+    """тВм┬д┬м┬и┬н-┬к┬о┬м┬а┬н┬д├л (├в┬о┬л├м┬к┬о ┬д┬л├п ADMIN_IDS)"""
     user_id = message.from_user.id
     
-    # Проверяем права
+    # ┬П├а┬о┬в┬е├а├п┬е┬м ┬п├а┬а┬в┬а
     if user_id not in ADMIN_IDS:
-        await message.answer("? Доступ запрещён")
+        await message.answer("? тАЮ┬о├б├в├г┬п ┬з┬а┬п├а┬е├й├▒┬н")
         return
     
-    # Парсим аргументы
+    # ┬П┬а├а├б┬и┬м ┬а├а┬г├г┬м┬е┬н├в├л
     args = message.text.split()
     
     if len(args) < 2:
-        # Показываем список команд
+        # ┬П┬о┬к┬а┬з├л┬в┬а┬е┬м ├б┬п┬и├б┬о┬к ┬к┬о┬м┬а┬н┬д
         help_text = (
-            "?? <b>Админ-панель</b>\n\n"
-            "<b>Команды:</b>\n"
-            "/admin stats - общая статистика\n"
-            "/admin premium [user_id] - выдать премиум\n"
-            "/admin users [N] - список пользователей\n"
-            "/admin reset [user_id] - сбросить лимиты\n"
-            "/admin broadcast - рассылка\n"
+            "?? <b>тВм┬д┬м┬и┬н-┬п┬а┬н┬е┬л├м</b>\n\n"
+            "<b>┼а┬о┬м┬а┬н┬д├л:</b>\n"
+            "/admin stats - ┬о┬б├й┬а├п ├б├в┬а├в┬и├б├в┬и┬к┬а\n"
+            "/admin premium [user_id] - ┬в├л┬д┬а├в├м ┬п├а┬е┬м┬и├г┬м\n"
+            "/admin users [N] - ├б┬п┬и├б┬о┬к ┬п┬о┬л├м┬з┬о┬в┬а├в┬е┬л┬е┬й\n"
+            "/admin reset [user_id] - ├б┬б├а┬о├б┬и├в├м ┬л┬и┬м┬и├в├л\n"
+            "/admin broadcast - ├а┬а├б├б├л┬л┬к┬а\n"
         )
         await message.answer(help_text, parse_mode="HTML")
         return
@@ -303,20 +303,20 @@ async def cmd_admin(message: Message):
     command = args[1].lower()
     
     if command == "stats":
-        # Общая статистика
+        # ┼╜┬б├й┬а├п ├б├в┬а├в┬и├б├в┬и┬к┬а
         total_users = await users_repo.count_users()
         expired = await users_repo.check_premium_expiry()
         
         stats = (
-            f"?? <b>Общая статистика</b>\n\n"
-            f"?? Всего пользователей: {total_users}\n"
-            f"?? Деактивировано премиумов: {expired}\n"
-            # Здесь можно добавить статистику из metrics
+            f"?? <b>┼╜┬б├й┬а├п ├б├в┬а├в┬и├б├в┬и┬к┬а</b>\n\n"
+            f"?? тАЪ├б┬е┬г┬о ┬п┬о┬л├м┬з┬о┬в┬а├в┬е┬л┬е┬й: {total_users}\n"
+            f"?? тАЮ┬е┬а┬к├в┬и┬в┬и├а┬о┬в┬а┬н┬о ┬п├а┬е┬м┬и├г┬м┬о┬в: {expired}\n"
+            # тАб┬д┬е├б├м ┬м┬о┬ж┬н┬о ┬д┬о┬б┬а┬в┬и├в├м ├б├в┬а├в┬и├б├в┬и┬к├г ┬и┬з metrics
         )
         await message.answer(stats, parse_mode="HTML")
     
     elif command == "premium" and len(args) >= 3:
-        # Выдача премиума
+        # тАЪ├л┬д┬а├з┬а ┬п├а┬е┬м┬и├г┬м┬а
         try:
             target_user_id = int(args[2])
             days = int(args[3]) if len(args) >= 4 else 30
@@ -324,23 +324,23 @@ async def cmd_admin(message: Message):
             success = await users_repo.activate_premium(target_user_id, days)
             
             if success:
-                await message.answer(f"? Премиум выдан пользователю {target_user_id} на {days} дней")
+                await message.answer(f"? ┬П├а┬е┬м┬и├г┬м ┬в├л┬д┬а┬н ┬п┬о┬л├м┬з┬о┬в┬а├в┬е┬л├о {target_user_id} ┬н┬а {days} ┬д┬н┬е┬й")
             else:
-                await message.answer(f"? Ошибка выдачи премиума")
+                await message.answer(f"? ┼╜├и┬и┬б┬к┬а ┬в├л┬д┬а├з┬и ┬п├а┬е┬м┬и├г┬м┬а")
         except ValueError:
-            await message.answer("? Неверный формат ID пользователя")
+            await message.answer("? ┬Н┬е┬в┬е├а┬н├л┬й ├д┬о├а┬м┬а├в ID ┬п┬о┬л├м┬з┬о┬в┬а├в┬е┬л├п")
     
     elif command == "users":
-        # Список пользователей
+        # тАШ┬п┬и├б┬о┬к ┬п┬о┬л├м┬з┬о┬в┬а├в┬е┬л┬е┬й
         limit = int(args[2]) if len(args) >= 3 else 10
         
         users = await users_repo.get_all_users(limit)
         
         if not users:
-            await message.answer("Нет пользователей")
+            await message.answer("┬Н┬е├в ┬п┬о┬л├м┬з┬о┬в┬а├в┬е┬л┬е┬й")
             return
         
-        users_text = "?? <b>Последние пользователи:</b>\n\n"
+        users_text = "?? <b>┬П┬о├б┬л┬е┬д┬н┬и┬е ┬п┬о┬л├м┬з┬о┬в┬а├в┬е┬л┬и:</b>\n\n"
         for i, user in enumerate(users, 1):
             premium = "??" if user['is_premium'] else "??"
             users_text += f"{i}. {user['first_name']} ({user['user_id']}) {premium}\n"
@@ -348,11 +348,11 @@ async def cmd_admin(message: Message):
         await message.answer(users_text, parse_mode="HTML")
     
     elif command == "reset" and len(args) >= 3:
-        # Сброс лимитов пользователя
+        # тАШ┬б├а┬о├б ┬л┬и┬м┬и├в┬о┬в ┬п┬о┬л├м┬з┬о┬в┬а├в┬е┬л├п
         try:
             target_user_id = int(args[2])
             
-            # Обнуляем счетчики
+            # ┼╜┬б┬н├г┬л├п┬е┬м ├б├з┬е├в├з┬и┬к┬и
             async with db.connection() as conn:
                 await conn.execute(
                     """
@@ -365,14 +365,14 @@ async def cmd_admin(message: Message):
                     target_user_id
                 )
             
-            await message.answer(f"? Лимиты пользователя {target_user_id} сброшены")
+            await message.answer(f"? тА╣┬и┬м┬и├в├л ┬п┬о┬л├м┬з┬о┬в┬а├в┬е┬л├п {target_user_id} ├б┬б├а┬о├и┬е┬н├л")
         except ValueError:
-            await message.answer("? Неверный формат ID пользователя")
+            await message.answer("? ┬Н┬е┬в┬е├а┬н├л┬й ├д┬о├а┬м┬а├в ID ┬п┬о┬л├м┬з┬о┬в┬а├в┬е┬л├п")
     
     elif command == "broadcast":
-        # Рассылка (упрощённая версия)
+        # ┬Р┬а├б├б├л┬л┬к┬а (├г┬п├а┬о├й├▒┬н┬н┬а├п ┬в┬е├а├б┬и├п)
         if len(args) < 3:
-            await message.answer("Использование: /admin broadcast [сообщение]")
+            await message.answer("╦Ж├б┬п┬о┬л├м┬з┬о┬в┬а┬н┬и┬е: /admin broadcast [├б┬о┬о┬б├й┬е┬н┬и┬е]")
             return
         
         broadcast_text = " ".join(args[2:])
@@ -385,29 +385,29 @@ async def cmd_admin(message: Message):
             try:
                 await message.bot.send_message(
                     chat_id=user['user_id'],
-                    text=f"?? <b>Объявление от администратора:</b>\n\n{broadcast_text}",
+                    text=f"?? <b>┼╜┬б├к├п┬в┬л┬е┬н┬и┬е ┬о├в ┬а┬д┬м┬и┬н┬и├б├в├а┬а├в┬о├а┬а:</b>\n\n{broadcast_text}",
                     parse_mode="HTML"
                 )
                 success_count += 1
             except Exception as e:
-                logger.error(f"Ошибка отправки рассылки пользователю {user['user_id']}: {e}")
+                logger.error(f"┼╜├и┬и┬б┬к┬а ┬о├в┬п├а┬а┬в┬к┬и ├а┬а├б├б├л┬л┬к┬и ┬п┬о┬л├м┬з┬о┬в┬а├в┬е┬л├о {user['user_id']}: {e}")
                 fail_count += 1
         
         await message.answer(
-            f"? Рассылка завершена:\n"
-            f"? Успешно: {success_count}\n"
-            f"? Ошибок: {fail_count}"
+            f"? ┬Р┬а├б├б├л┬л┬к┬а ┬з┬а┬в┬е├а├и┬е┬н┬а:\n"
+            f"? тАЬ├б┬п┬е├и┬н┬о: {success_count}\n"
+            f"? ┼╜├и┬и┬б┬о┬к: {fail_count}"
         )
 
-# --- КОЛЛБЭКИ ---
+# --- ┼а┼╜тА╣тА╣┬Б┬Э┼а╦Ж ---
 async def handle_change_language(callback: CallbackQuery):
     user_id = callback.from_user.id
     
-    # Получаем данные пользователя
+    # ┬П┬о┬л├г├з┬а┬е┬м ┬д┬а┬н┬н├л┬е ┬п┬о┬л├м┬з┬о┬в┬а├в┬е┬л├п
     user_data = await users_repo.get_user(user_id)
     current_lang = user_data.get('language_code', 'ru') if user_data else 'ru'
     
-    # Создаём клавиатуру выбора языка
+    # тАШ┬о┬з┬д┬а├▒┬м ┬к┬л┬а┬в┬и┬а├в├г├а├г ┬в├л┬б┬о├а┬а ├п┬з├л┬к┬а
     builder = InlineKeyboardBuilder()
     
     for lang_code in SUPPORTED_LANGUAGES:
@@ -435,14 +435,14 @@ async def handle_set_language(callback: CallbackQuery):
     user_id = callback.from_user.id
     lang_code = callback.data.split("_")[2]  # set_lang_ru -> ru
     
-    # Обновляем язык пользователя
+    # ┼╜┬б┬н┬о┬в┬л├п┬е┬м ├п┬з├л┬к ┬п┬о┬л├м┬з┬о┬в┬а├в┬е┬л├п
     await users_repo.update_language(user_id, lang_code)
     
-    # Получаем имя пользователя для приветствия
+    # ┬П┬о┬л├г├з┬а┬е┬м ┬и┬м├п ┬п┬о┬л├м┬з┬о┬в┬а├в┬е┬л├п ┬д┬л├п ┬п├а┬и┬в┬е├в├б├в┬в┬и├п
     user_data = await users_repo.get_user(user_id)
     first_name = user_data.get('first_name', 'User') if user_data else 'User'
     
-    # Отправляем подтверждение
+    # ┼╜├в┬п├а┬а┬в┬л├п┬е┬м ┬п┬о┬д├в┬в┬е├а┬ж┬д┬е┬н┬и┬е
     welcome_text = get_text(lang_code, "welcome", name=first_name)
     start_manual = get_text(lang_code, "start_manual")
     
@@ -471,18 +471,18 @@ async def handle_set_language(callback: CallbackQuery):
         parse_mode="Markdown"
     )
     
-    # Логируем смену языка
+    # тА╣┬о┬г┬и├а├г┬е┬м ├б┬м┬е┬н├г ├п┬з├л┬к┬а
     await metrics.track_event(user_id, "language_changed", {"language": lang_code})
     await callback.answer(get_text(lang_code, "lang_changed"))
 
 async def handle_show_favorites(callback: CallbackQuery):
     user_id = callback.from_user.id
     
-    # Получаем данные пользователя
+    # ┬П┬о┬л├г├з┬а┬е┬м ┬д┬а┬н┬н├л┬е ┬п┬о┬л├м┬з┬о┬в┬а├в┬е┬л├п
     user_data = await users_repo.get_user(user_id)
     lang = user_data.get('language_code', 'ru') if user_data else 'ru'
     
-    # Получаем первую страницу избранного
+    # ┬П┬о┬л├г├з┬а┬е┬м ┬п┬е├а┬в├г├о ├б├в├а┬а┬н┬и├ж├г ┬и┬з┬б├а┬а┬н┬н┬о┬г┬о
     favorites, total_pages = await favorites_repo.get_favorites_page(user_id, page=1)
     
     if not favorites:
@@ -490,14 +490,14 @@ async def handle_show_favorites(callback: CallbackQuery):
         await callback.answer()
         return
     
-    # Форматируем список
+    # тАЭ┬о├а┬м┬а├в┬и├а├г┬е┬м ├б┬п┬и├б┬о┬к
     recipes_text = ""
     for i, fav in enumerate(favorites, 1):
         date_str = fav['created_at'].strftime("%d.%m.%Y")
         recipes_text += get_text(lang, "favorites_recipe_item", 
                                num=i, dish=fav['dish_name'], date=date_str)
     
-    # Создаём клавиатуру
+    # тАШ┬о┬з┬д┬а├▒┬м ┬к┬л┬а┬в┬и┬а├в├г├а├г
     builder = InlineKeyboardBuilder()
     
     if total_pages > 1:
@@ -583,74 +583,74 @@ async def handle_main_menu(callback: CallbackQuery):
     await callback.answer()
 
 async def handle_noop(callback: CallbackQuery):
-    """Пустой обработчик для кнопок-заглушек"""
+    """┬П├г├б├в┬о┬й ┬о┬б├а┬а┬б┬о├в├з┬и┬к ┬д┬л├п ┬к┬н┬о┬п┬о┬к-┬з┬а┬г┬л├г├и┬е┬к"""
     await callback.answer()
 
 async def handle_buy_premium(callback: CallbackQuery):
-    """Обработчик кнопки покупки премиума"""
+    """┼╜┬б├а┬а┬б┬о├в├з┬и┬к ┬к┬н┬о┬п┬к┬и ┬п┬о┬к├г┬п┬к┬и ┬п├а┬е┬м┬и├г┬м┬а"""
     user_id = callback.from_user.id
     
-    # Получаем данные пользователя
+    # ┬П┬о┬л├г├з┬а┬е┬м ┬д┬а┬н┬н├л┬е ┬п┬о┬л├м┬з┬о┬в┬а├в┬е┬л├п
     user_data = await users_repo.get_user(user_id)
     lang = user_data.get('language_code', 'ru') if user_data else 'ru'
     
-    # Создаём клавиатуру с вариантами подписки
+    # тАШ┬о┬з┬д┬а├▒┬м ┬к┬л┬а┬в┬и┬а├в├г├а├г ├б ┬в┬а├а┬и┬а┬н├в┬а┬м┬и ┬п┬о┬д┬п┬и├б┬к┬и
     builder = InlineKeyboardBuilder()
     
-    # Кнопки для покупки через Telegram Stars
+    # ┼а┬н┬о┬п┬к┬и ┬д┬л├п ┬п┬о┬к├г┬п┬к┬и ├з┬е├а┬е┬з Telegram Stars
     builder.row(
         InlineKeyboardButton(
-            text="1 месяц - 100 звёзд ?",
+            text="1 ┬м┬е├б├п├ж - 100 ┬з┬в├▒┬з┬д ?",
             callback_data="premium_1_month"
         )
     )
     builder.row(
         InlineKeyboardButton(
-            text="3 месяца - 250 звёзд ? (экономия 17%)",
+            text="3 ┬м┬е├б├п├ж┬а - 250 ┬з┬в├▒┬з┬д ? (├н┬к┬о┬н┬о┬м┬и├п 17%)",
             callback_data="premium_3_months"
         )
     )
     builder.row(
         InlineKeyboardButton(
-            text="1 год - 800 звёзд ? (экономия 33%)",
+            text="1 ┬г┬о┬д - 800 ┬з┬в├▒┬з┬д ? (├н┬к┬о┬н┬о┬м┬и├п 33%)",
             callback_data="premium_1_year"
         )
     )
     builder.row(
         InlineKeyboardButton(
-            text="?? Вернуться",
+            text="?? тАЪ┬е├а┬н├г├в├м├б├п",
             callback_data="main_menu"
         )
     )
     
     text = (
-        "?? <b>Премиум подписка</b>\n\n"
-        "? <b>Что входит:</b>\n"
-        " 100 текстовых запросов в день\n"
-        " 50 голосовых запросов в день\n"
-        " Приоритетная обработка\n"
-        " Доступ к новым функциям первым\n"
-        " Поддержка разработчика ??\n\n"
-        "?? <b>Лимиты обновляются каждый день в 00:00</b>"
+        "?? <b>┬П├а┬е┬м┬и├г┬м ┬п┬о┬д┬п┬и├б┬к┬а</b>\n\n"
+        "? <b>тАФ├в┬о ┬в├е┬о┬д┬и├в:</b>\n"
+        " 100 ├в┬е┬к├б├в┬о┬в├л├е ┬з┬а┬п├а┬о├б┬о┬в ┬в ┬д┬е┬н├м\n"
+        " 50 ┬г┬о┬л┬о├б┬о┬в├л├е ┬з┬а┬п├а┬о├б┬о┬в ┬в ┬д┬е┬н├м\n"
+        " ┬П├а┬и┬о├а┬и├в┬е├в┬н┬а├п ┬о┬б├а┬а┬б┬о├в┬к┬а\n"
+        " тАЮ┬о├б├в├г┬п ┬к ┬н┬о┬в├л┬м ├д├г┬н┬к├ж┬и├п┬м ┬п┬е├а┬в├л┬м\n"
+        " ┬П┬о┬д┬д┬е├а┬ж┬к┬а ├а┬а┬з├а┬а┬б┬о├в├з┬и┬к┬а ??\n\n"
+        "?? <b>тА╣┬и┬м┬и├в├л ┬о┬б┬н┬о┬в┬л├п├о├в├б├п ┬к┬а┬ж┬д├л┬й ┬д┬е┬н├м ┬в 00:00</b>"
     )
     
     await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="HTML")
     await callback.answer()
 
-# --- ОБРАБОТЧИКИ ВЫБОРА ПОДПИСКИ ---
+# --- ┼╜┬Б┬РтВм┬Б┼╜тАЩтАФ╦Ж┼а╦Ж тАЪтА║┬Б┼╜┬РтВм ┬П┼╜тАЮ┬П╦ЖтАШ┼а╦Ж ---
 async def handle_premium_1_month(callback: CallbackQuery):
-    await callback.answer("?? Эта функция скоро будет доступна!")
-    # Здесь будет интеграция с Telegram Payments
+    await callback.answer("?? ┬Э├в┬а ├д├г┬н┬к├ж┬и├п ├б┬к┬о├а┬о ┬б├г┬д┬е├в ┬д┬о├б├в├г┬п┬н┬а!")
+    # тАб┬д┬е├б├м ┬б├г┬д┬е├в ┬и┬н├в┬е┬г├а┬а├ж┬и├п ├б Telegram Payments
 
 async def handle_premium_3_months(callback: CallbackQuery):
-    await callback.answer("?? Эта функция скоро будет доступна!")
+    await callback.answer("?? ┬Э├в┬а ├д├г┬н┬к├ж┬и├п ├б┬к┬о├а┬о ┬б├г┬д┬е├в ┬д┬о├б├в├г┬п┬н┬а!")
 
 async def handle_premium_1_year(callback: CallbackQuery):
-    await callback.answer("?? Эта функция скоро будет доступна!")
+    await callback.answer("?? ┬Э├в┬а ├д├г┬н┬к├ж┬и├п ├б┬к┬о├а┬о ┬б├г┬д┬е├в ┬д┬о├б├в├г┬п┬н┬а!")
 
-# --- РЕГИСТРАЦИЯ ОБРАБОТЧИКОВ ---
+# --- ┬РтАж╞Т╦ЖтАШтАЩ┬РтВмтАУ╦Ж┼╕ ┼╜┬Б┬РтВм┬Б┼╜тАЩтАФ╦Ж┼а┼╜тАЪ ---
 def register_common_handlers(dp: Dispatcher):
-    # Команды
+    # ┼а┬о┬м┬а┬н┬д├л
     dp.message.register(cmd_start, Command("start"))
     dp.message.register(cmd_favorites, Command("favorites"))
     dp.message.register(cmd_lang, Command("lang"))
@@ -659,7 +659,7 @@ def register_common_handlers(dp: Dispatcher):
     dp.message.register(cmd_stats, Command("stats"))
     dp.message.register(cmd_admin, Command("admin"))
     
-    # Коллбэки
+    # ┼а┬о┬л┬л┬б├н┬к┬и
     dp.callback_query.register(handle_change_language, F.data == "change_language")
     dp.callback_query.register(handle_set_language, F.data.startswith("set_lang_"))
     dp.callback_query.register(handle_show_favorites, F.data == "show_favorites")
