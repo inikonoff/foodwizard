@@ -12,37 +12,37 @@ from locales.prompts import get_prompt
 
 logger = logging.getLogger(__name__)
 
-# Инициализация Groq клиента
+# ╨Ш╨╜╨╕╤Ж╨╕╨░╨╗╨╕╨╖╨░╤Ж╨╕╤П Groq ╨║╨╗╨╕╨╡╨╜╤В╨░
 client = AsyncGroq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 
 class GroqService:
     def __init__(self):
         if not client:
-            logger.warning("Groq API ключ не установлен. Некоторые функции будут недоступны.")
+            logger.warning("Groq API ╨║╨╗╤О╤З ╨╜╨╡ ╤Г╤Б╤В╨░╨╜╨╛╨▓╨╗╨╡╨╜. ╨Э╨╡╨║╨╛╤В╨╛╤А╤Л╨╡ ╤Д╤Г╨╜╨║╤Ж╨╕╨╕ ╨▒╤Г╨┤╤Г╤В ╨╜╨╡╨┤╨╛╤Б╤В╤Г╨┐╨╜╤Л.")
     
     async def _send_request(self, system_prompt: str, user_prompt: str, 
                            temperature: float = 0.5, cache_type: str = "general") -> str:
-        """Базовая функция отправки запроса с кэшированием"""
+        """╨С╨░╨╖╨╛╨▓╨░╤П ╤Д╤Г╨╜╨║╤Ж╨╕╤П ╨╛╤В╨┐╤А╨░╨▓╨║╨╕ ╨╖╨░╨┐╤А╨╛╤Б╨░ ╤Б ╨║╤Н╤И╨╕╤А╨╛╨▓╨░╨╜╨╕╨╡╨╝"""
         if not client:
-            return "Ошибка: API ключ не настроен."
+            return "╨Ю╤И╨╕╨▒╨║╨░: API ╨║╨╗╤О╤З ╨╜╨╡ ╨╜╨░╤Б╤В╤А╨╛╨╡╨╜."
         
         try:
-            # Генерируем ключ кэша
+            # ╨У╨╡╨╜╨╡╤А╨╕╤А╤Г╨╡╨╝ ╨║╨╗╤О╤З ╨║╤Н╤И╨░
             cache_key = f"{system_prompt[:100]}_{user_prompt[:200]}_{temperature}"
             
-            # Пытаемся получить из кэша
+            # ╨Я╤Л╤В╨░╨╡╨╝╤Б╤П ╨┐╨╛╨╗╤Г╤З╨╕╤В╤М ╨╕╨╖ ╨║╤Н╤И╨░
             cached_response = await groq_cache.get(
                 prompt=cache_key,
-                lang="en",  # Промпты на английском для кэша
+                lang="en",  # ╨Я╤А╨╛╨╝╨┐╤В╤Л ╨╜╨░ ╨░╨╜╨│╨╗╨╕╨╣╤Б╨║╨╛╨╝ ╨┤╨╗╤П ╨║╤Н╤И╨░
                 model=GROQ_MODEL,
                 cache_type=cache_type
             )
             
             if cached_response:
-                logger.info(f"Использую кэшированный ответ для {cache_type}")
+                logger.info(f"╨Ш╤Б╨┐╨╛╨╗╤М╨╖╤Г╤О ╨║╤Н╤И╨╕╤А╨╛╨▓╨░╨╜╨╜╤Л╨╣ ╨╛╤В╨▓╨╡╤В ╨┤╨╗╤П {cache_type}")
                 return cached_response
             
-            # Если нет в кэше, делаем запрос к Groq
+            # ╨Х╤Б╨╗╨╕ ╨╜╨╡╤В ╨▓ ╨║╤Н╤И╨╡, ╨┤╨╡╨╗╨░╨╡╨╝ ╨╖╨░╨┐╤А╨╛╤Б ╨║ Groq
             response = await client.chat.completions.create(
                 model=GROQ_MODEL,
                 messages=[
@@ -55,7 +55,7 @@ class GroqService:
             
             result = response.choices[0].message.content.strip()
             
-            # Сохраняем в кэш
+            # ╨б╨╛╤Е╤А╨░╨╜╤П╨╡╨╝ ╨▓ ╨║╤Н╤И
             await groq_cache.set(
                 prompt=cache_key,
                 lang="en",
@@ -68,11 +68,11 @@ class GroqService:
             return result
             
         except Exception as e:
-            logger.error(f"Ошибка Groq API: {e}")
+            logger.error(f"╨Ю╤И╨╕╨▒╨║╨░ Groq API: {e}")
             return ""
     
     async def analyze_products(self, products: str, lang: str = "ru") -> List[str]:
-        """Анализирует продукты и возвращает доступные категории"""
+        """╨Р╨╜╨░╨╗╨╕╨╖╨╕╤А╤Г╨╡╤В ╨┐╤А╨╛╨┤╤Г╨║╤В╤Л ╨╕ ╨▓╨╛╨╖╨▓╤А╨░╤Й╨░╨╡╤В ╨┤╨╛╤Б╤В╤Г╨┐╨╜╤Л╨╡ ╨║╨░╤В╨╡╨│╨╛╤А╨╕╨╕"""
         system_prompt = get_prompt(lang, "category_analysis")
         user_prompt = get_prompt(lang, "category_analysis_user").format(products=products)
         
@@ -84,20 +84,20 @@ class GroqService:
         )
         
         try:
-            # Очищаем JSON от возможных markdown
+            # ╨Ю╤З╨╕╤Й╨░╨╡╨╝ JSON ╨╛╤В ╨▓╨╛╨╖╨╝╨╛╨╢╨╜╤Л╤Е markdown
             clean_json = response.replace("```json", "").replace("```", "").strip()
             data = json.loads(clean_json)
             
             if isinstance(data, list):
                 return data
         except Exception as e:
-            logger.error(f"Ошибка парсинга категорий: {e}")
+            logger.error(f"╨Ю╤И╨╕╨▒╨║╨░ ╨┐╨░╤А╤Б╨╕╨╜╨│╨░ ╨║╨░╤В╨╡╨│╨╛╤А╨╕╨╣: {e}")
         
-        # Fallback категории
+        # Fallback ╨║╨░╤В╨╡╨│╨╛╤А╨╕╨╕
         return ["main", "salad"]
     
     async def generate_dish_list(self, products: str, category: str, lang: str = "ru") -> List[Dict[str, str]]:
-        """Генерирует список блюд для выбранной категории"""
+        """╨У╨╡╨╜╨╡╤А╨╕╤А╤Г╨╡╤В ╤Б╨┐╨╕╤Б╨╛╨║ ╨▒╨╗╤О╨┤ ╨┤╨╗╤П ╨▓╤Л╨▒╤А╨░╨╜╨╜╨╛╨╣ ╨║╨░╤В╨╡╨│╨╛╤А╨╕╨╕"""
         system_prompt = get_prompt(lang, "dish_generation")
         user_prompt = get_prompt(lang, "dish_generation_user").format(
             products=products,
@@ -118,12 +118,12 @@ class GroqService:
             if isinstance(data, list):
                 return data
         except Exception as e:
-            logger.error(f"Ошибка парсинга списка блюд: {e}")
+            logger.error(f"╨Ю╤И╨╕╨▒╨║╨░ ╨┐╨░╤А╤Б╨╕╨╜╨│╨░ ╤Б╨┐╨╕╤Б╨║╨░ ╨▒╨╗╤О╨┤: {e}")
         
         return []
     
     async def generate_recipe(self, dish_name: str, products: str, lang: str = "ru") -> str:
-        """Генерирует подробный рецепт"""
+        """╨У╨╡╨╜╨╡╤А╨╕╤А╤Г╨╡╤В ╨┐╨╛╨┤╤А╨╛╨▒╨╜╤Л╨╣ ╤А╨╡╤Ж╨╡╨┐╤В"""
         system_prompt = get_prompt(lang, "recipe_generation")
         user_prompt = get_prompt(lang, "recipe_generation_user").format(
             dish_name=dish_name,
@@ -137,7 +137,7 @@ class GroqService:
             cache_type="recipe"
         )
         
-        # Добавляем стандартное завершение
+        # ╨Ф╨╛╨▒╨░╨▓╨╗╤П╨╡╨╝ ╤Б╤В╨░╨╜╨┤╨░╤А╤В╨╜╨╛╨╡ ╨╖╨░╨▓╨╡╤А╤И╨╡╨╜╨╕╨╡
         if response:
             footer = get_prompt(lang, "recipe_footer")
             return f"{response}\n\n{footer}"
@@ -145,7 +145,7 @@ class GroqService:
         return get_prompt(lang, "recipe_error")
     
     async def generate_freestyle_recipe(self, dish_name: str, lang: str = "ru") -> str:
-        """Генерирует рецепт по названию блюда без учёта продуктов"""
+        """╨У╨╡╨╜╨╡╤А╨╕╤А╤Г╨╡╤В ╤А╨╡╤Ж╨╡╨┐╤В ╨┐╨╛ ╨╜╨░╨╖╨▓╨░╨╜╨╕╤О ╨▒╨╗╤О╨┤╨░ ╨▒╨╡╨╖ ╤Г╤З╤С╤В╨░ ╨┐╤А╨╛╨┤╤Г╨║╤В╨╛╨▓"""
         system_prompt = get_prompt(lang, "freestyle_recipe")
         user_prompt = get_prompt(lang, "freestyle_recipe_user").format(dish_name=dish_name)
         
@@ -163,7 +163,7 @@ class GroqService:
         return get_prompt(lang, "recipe_error")
     
     async def validate_ingredients(self, text: str, lang: str = "ru") -> bool:
-        """Проверяет, является ли текст списком продуктов"""
+        """╨Я╤А╨╛╨▓╨╡╤А╤П╨╡╤В, ╤П╨▓╨╗╤П╨╡╤В╤Б╤П ╨╗╨╕ ╤В╨╡╨║╤Б╤В ╤Б╨┐╨╕╤Б╨║╨╛╨╝ ╨┐╤А╨╛╨┤╤Г╨║╤В╨╛╨▓"""
         system_prompt = get_prompt(lang, "ingredient_validation")
         user_prompt = get_prompt(lang, "ingredient_validation_user").format(text=text)
         
@@ -186,7 +186,7 @@ class GroqService:
         return False
     
     async def determine_intent(self, user_message: str, context: str, lang: str = "ru") -> Dict:
-        """Определяет намерение пользователя"""
+        """╨Ю╨┐╤А╨╡╨┤╨╡╨╗╤П╨╡╤В ╨╜╨░╨╝╨╡╤А╨╡╨╜╨╕╨╡ ╨┐╨╛╨╗╤М╨╖╨╛╨▓╨░╤В╨╡╨╗╤П"""
         system_prompt = get_prompt(lang, "intent_detection")
         user_prompt = get_prompt(lang, "intent_detection_user").format(
             message=user_message,
@@ -207,9 +207,9 @@ class GroqService:
             if isinstance(data, dict):
                 return data
         except Exception as e:
-            logger.error(f"Ошибка парсинга интента: {e}")
+            logger.error(f"╨Ю╤И╨╕╨▒╨║╨░ ╨┐╨░╤А╤Б╨╕╨╜╨│╨░ ╨╕╨╜╤В╨╡╨╜╤В╨░: {e}")
         
         return {"intent": "unclear", "products": "", "dish_name": ""}
 
-# Создаём глобальный экземпляр
+# ╨б╨╛╨╖╨┤╨░╤С╨╝ ╨│╨╗╨╛╨▒╨░╨╗╤М╨╜╤Л╨╣ ╤Н╨║╨╖╨╡╨╝╨┐╨╗╤П╤А
 groq_service = GroqService()
