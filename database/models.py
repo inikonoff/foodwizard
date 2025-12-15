@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import Enum
 
 class UserLanguage(str, Enum):
-    """®¤¤¥à¦¨¢ ¥¬ë¥ ï§ëª¨"""
+    """Поддерживаемые языки"""
     RU = "ru"
     EN = "en"
     DE = "de"
@@ -13,7 +13,7 @@ class UserLanguage(str, Enum):
     ES = "es"
 
 class Category(str, Enum):
-    """Š â¥£®à¨¨ ¡«î¤"""
+    """Категории блюд"""
     SOUP = "soup"
     MAIN = "main"
     SALAD = "salad"
@@ -23,8 +23,8 @@ class Category(str, Enum):
     SNACK = "snack"
 
 class UserBase(BaseModel):
-    """ §®¢ ï ¬®¤¥«ì ¯®«ì§®¢ â¥«ï"""
-    user_id: int = Field(..., description="ID ¯®«ì§®¢ â¥«ï ¢ Telegram")
+    """Базовая модель пользователя"""
+    user_id: int = Field(..., description="ID пользователя в Telegram")
     first_name: str
     username: Optional[str] = None
     language_code: UserLanguage = UserLanguage.RU
@@ -33,48 +33,48 @@ class UserBase(BaseModel):
     last_active_at: datetime = Field(default_factory=datetime.now)
 
 class FavoriteRecipe(BaseModel):
-    """Œ®¤¥«ì ¨§¡à ­­®£® à¥æ¥¯â """
+    """Модель избранного рецепта"""
     id: Optional[int] = None
-    user_id: int = Field(..., description="ID ¯®«ì§®¢ â¥«ï")
-    dish_name: str = Field(..., description=" §¢ ­¨¥ ¡«î¤ ")
-    recipe_text: str = Field(..., description="’¥ªáâ à¥æ¥¯â ")
+    user_id: int = Field(..., description="ID пользователя")
+    dish_name: str = Field(..., description="Название блюда")
+    recipe_text: str = Field(..., description="Текст рецепта")
     category: Optional[Category] = None
     ingredients: Optional[str] = None
     language: UserLanguage = UserLanguage.RU
     created_at: datetime = Field(default_factory=datetime.now)
 
 class GroqCacheItem(BaseModel):
-    """Œ®¤¥«ì í«¥¬¥­â  ªíè  Groq"""
-    hash: str = Field(..., description="•¥è § ¯à®á ")
-    response: str = Field(..., description="Žâ¢¥â ®â Groq")
+    """Модель элемента кэша Groq"""
+    hash: str = Field(..., description="Хеш запроса")
+    response: str = Field(..., description="Ответ от Groq")
     language: UserLanguage
-    model: str = Field(..., description="Œ®¤¥«ì Groq")
+    model: str = Field(..., description="Модель Groq")
     tokens_used: Optional[int] = None
     created_at: datetime = Field(default_factory=datetime.now)
-    expires_at: datetime = Field(..., description="‚à¥¬ï ¨áâ¥ç¥­¨ï ªíè ")
+    expires_at: datetime = Field(..., description="Время истечения кэша")
 
 class MetricEvent(BaseModel):
-    """Œ®¤¥«ì á®¡ëâ¨ï ¤«ï ¬¥âà¨ª"""
+    """Модель события для метрик"""
     id: Optional[int] = None
     user_id: int
-    event_type: str = Field(..., description="’¨¯ á®¡ëâ¨ï")
+    event_type: str = Field(..., description="Тип события")
     details: Dict[str, Any] = Field(default_factory=dict)
     created_at: datetime = Field(default_factory=datetime.now)
 
 class Dish(BaseModel):
-    """Œ®¤¥«ì ¡«î¤ """
-    name: str = Field(..., description=" §¢ ­¨¥ ¡«î¤ ")
-    desc: str = Field(..., description="Ž¯¨á ­¨¥ ¡«î¤ ")
+    """Модель блюда"""
+    name: str = Field(..., description="Название блюда")
+    desc: str = Field(..., description="Описание блюда")
 
 class RecipeRequest(BaseModel):
-    """Œ®¤¥«ì § ¯à®á  ­  £¥­¥à æ¨î à¥æ¥¯â """
+    """Модель запроса на генерацию рецепта"""
     dish_name: str
     products: str
     language: UserLanguage = UserLanguage.RU
     category: Optional[Category] = None
 
 class IntentAnalysis(BaseModel):
-    """Œ®¤¥«ì  ­ «¨§  ­ ¬¥à¥­¨ï ¯®«ì§®¢ â¥«ï"""
-    intent: str = Field(..., description=" ¬¥à¥­¨¥: add_products, select_dish, unclear")
-    products: str = Field("", description="Ž¡­ àã¦¥­­ë¥ ¯à®¤ãªâë")
-    dish_name: str = Field("", description="Ž¡­ àã¦¥­­®¥ ­ §¢ ­¨¥ ¡«î¤ ")
+    """Модель анализа намерения пользователя"""
+    intent: str = Field(..., description="Намерение: add_products, select_dish, unclear")
+    products: str = Field("", description="Обнаруженные продукты")
+    dish_name: str = Field("", description="Обнаруженное название блюда")
