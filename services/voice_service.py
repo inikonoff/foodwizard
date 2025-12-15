@@ -7,11 +7,11 @@ from pydub import AudioSegment
 from config import TEMP_DIR
 
 logger = logging.getLogger(__name__)
-
+ 
 class VoiceService:
     def __init__(self):
         self.recognizer = sr.Recognizer()
-        # Настройка языков распознавания
+        # ╨Э╨░╤Б╤В╤А╨╛╨╣╨║╨░ ╤П╨╖╤Л╨║╨╛╨▓ ╤А╨░╤Б╨┐╨╛╨╖╨╜╨░╨▓╨░╨╜╨╕╤П
         self.language_map = {
             "ru": "ru-RU",
             "en": "en-US",
@@ -22,85 +22,85 @@ class VoiceService:
         }
     
     async def convert_ogg_to_wav(self, ogg_path: str) -> str:
-        """Конвертирует OGG в WAV"""
+        """╨Ъ╨╛╨╜╨▓╨╡╤А╤В╨╕╤А╤Г╨╡╤В OGG ╨▓ WAV"""
         wav_path = ogg_path.replace('.ogg', '.wav')
         
-        # Используем asyncio для блокирующей операции
+        # ╨Ш╤Б╨┐╨╛╨╗╤М╨╖╤Г╨╡╨╝ asyncio ╨┤╨╗╤П ╨▒╨╗╨╛╨║╨╕╤А╤Г╤О╤Й╨╡╨╣ ╨╛╨┐╨╡╤А╨░╤Ж╨╕╨╕
         await asyncio.to_thread(self._convert_audio, ogg_path, wav_path)
         
         return wav_path
     
     def _convert_audio(self, input_path: str, output_path: str):
-        """Синхронная конвертация аудио"""
+        """╨б╨╕╨╜╤Е╤А╨╛╨╜╨╜╨░╤П ╨║╨╛╨╜╨▓╨╡╤А╤В╨░╤Ж╨╕╤П ╨░╤Г╨┤╨╕╨╛"""
         try:
             audio = AudioSegment.from_ogg(input_path)
             audio.export(output_path, format="wav")
         except Exception as e:
-            logger.error(f"Ошибка конвертации аудио: {e}")
+            logger.error(f"╨Ю╤И╨╕╨▒╨║╨░ ╨║╨╛╨╜╨▓╨╡╤А╤В╨░╤Ж╨╕╨╕ ╨░╤Г╨┤╨╕╨╛: {e}")
             raise
     
     async def recognize_speech(self, wav_path: str, language: str = "ru") -> str:
-        """Распознает речь из WAV файла"""
-        # Получаем код языка для распознавания
+        """╨а╨░╤Б╨┐╨╛╨╖╨╜╨░╨╡╤В ╤А╨╡╤З╤М ╨╕╨╖ WAV ╤Д╨░╨╣╨╗╨░"""
+        # ╨Я╨╛╨╗╤Г╤З╨░╨╡╨╝ ╨║╨╛╨┤ ╤П╨╖╤Л╨║╨░ ╨┤╨╗╤П ╤А╨░╤Б╨┐╨╛╨╖╨╜╨░╨▓╨░╨╜╨╕╤П
         recognizer_lang = self.language_map.get(language, "ru-RU")
         
         try:
-            # Используем asyncio для блокирующего вызова
+            # ╨Ш╤Б╨┐╨╛╨╗╤М╨╖╤Г╨╡╨╝ asyncio ╨┤╨╗╤П ╨▒╨╗╨╛╨║╨╕╤А╤Г╤О╤Й╨╡╨│╨╛ ╨▓╤Л╨╖╨╛╨▓╨░
             text = await asyncio.to_thread(
                 self._recognize_speech_sync, wav_path, recognizer_lang
             )
             return text
         except Exception as e:
-            logger.error(f"Ошибка распознавания речи: {e}")
+            logger.error(f"╨Ю╤И╨╕╨▒╨║╨░ ╤А╨░╤Б╨┐╨╛╨╖╨╜╨░╨▓╨░╨╜╨╕╤П ╤А╨╡╤З╨╕: {e}")
             return ""
     
     def _recognize_speech_sync(self, wav_path: str, language: str) -> str:
-        """Синхронное распознавание речи"""
+        """╨б╨╕╨╜╤Е╤А╨╛╨╜╨╜╨╛╨╡ ╤А╨░╤Б╨┐╨╛╨╖╨╜╨░╨▓╨░╨╜╨╕╨╡ ╤А╨╡╤З╨╕"""
         try:
             with sr.AudioFile(wav_path) as source:
                 audio = self.recognizer.record(source)
                 return self.recognizer.recognize_google(audio, language=language)
         except sr.UnknownValueError:
-            logger.warning("Речь не распознана")
+            logger.warning("╨а╨╡╤З╤М ╨╜╨╡ ╤А╨░╤Б╨┐╨╛╨╖╨╜╨░╨╜╨░")
             return ""
         except sr.RequestError as e:
-            logger.error(f"Ошибка сервиса распознавания: {e}")
+            logger.error(f"╨Ю╤И╨╕╨▒╨║╨░ ╤Б╨╡╤А╨▓╨╕╤Б╨░ ╤А╨░╤Б╨┐╨╛╨╖╨╜╨░╨▓╨░╨╜╨╕╤П: {e}")
             return ""
         except Exception as e:
-            logger.error(f"Неизвестная ошибка распознавания: {e}")
+            logger.error(f"╨Э╨╡╨╕╨╖╨▓╨╡╤Б╤В╨╜╨░╤П ╨╛╤И╨╕╨▒╨║╨░ ╤А╨░╤Б╨┐╨╛╨╖╨╜╨░╨▓╨░╨╜╨╕╤П: {e}")
             return ""
     
     async def process_voice(self, voice_file_path: str, language: str = "ru") -> str:
-        """Основной метод обработки голосового сообщения"""
+        """╨Ю╤Б╨╜╨╛╨▓╨╜╨╛╨╣ ╨╝╨╡╤В╨╛╨┤ ╨╛╨▒╤А╨░╨▒╨╛╤В╨║╨╕ ╨│╨╛╨╗╨╛╤Б╨╛╨▓╨╛╨│╨╛ ╤Б╨╛╨╛╨▒╤Й╨╡╨╜╨╕╤П"""
         temp_files = []
         
         try:
-            # Создаем временный WAV файл
+            # ╨б╨╛╨╖╨┤╨░╨╡╨╝ ╨▓╤А╨╡╨╝╨╡╨╜╨╜╤Л╨╣ WAV ╤Д╨░╨╣╨╗
             with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as tmp_wav:
                 wav_path = tmp_wav.name
                 temp_files.append(wav_path)
             
-            # Конвертируем OGG в WAV
+            # ╨Ъ╨╛╨╜╨▓╨╡╤А╤В╨╕╤А╤Г╨╡╨╝ OGG ╨▓ WAV
             await self.convert_ogg_to_wav(voice_file_path)
             
-            # Распознаем речь
+            # ╨а╨░╤Б╨┐╨╛╨╖╨╜╨░╨╡╨╝ ╤А╨╡╤З╤М
             text = await self.recognize_speech(wav_path, language)
             
             return text.strip()
             
         except Exception as e:
-            logger.error(f"Ошибка обработки голоса: {e}")
+            logger.error(f"╨Ю╤И╨╕╨▒╨║╨░ ╨╛╨▒╤А╨░╨▒╨╛╤В╨║╨╕ ╨│╨╛╨╗╨╛╤Б╨░: {e}")
             return ""
         
         finally:
-            # Удаляем временные файлы
+            # ╨г╨┤╨░╨╗╤П╨╡╨╝ ╨▓╤А╨╡╨╝╨╡╨╜╨╜╤Л╨╡ ╤Д╨░╨╣╨╗╤Л
             for file_path in temp_files:
                 try:
                     if os.path.exists(file_path):
                         os.unlink(file_path)
                 except Exception as e:
-                    logger.warning(f"Не удалось удалить временный файл {file_path}: {e}")
+                    logger.warning(f"╨Э╨╡ ╤Г╨┤╨░╨╗╨╛╤Б╤М ╤Г╨┤╨░╨╗╨╕╤В╤М ╨▓╤А╨╡╨╝╨╡╨╜╨╜╤Л╨╣ ╤Д╨░╨╣╨╗ {file_path}: {e}")
     
     async def get_supported_languages(self) -> list:
-        """Возвращает список поддерживаемых языков"""
+        """╨Т╨╛╨╖╨▓╤А╨░╤Й╨░╨╡╤В ╤Б╨┐╨╕╤Б╨╛╨║ ╨┐╨╛╨┤╨┤╨╡╤А╨╢╨╕╨▓╨░╨╡╨╝╤Л╤Е ╤П╨╖╤Л╨║╨╛╨▓"""
         return list(self.language_map.keys())
