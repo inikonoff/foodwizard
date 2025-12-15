@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 class MetricsCollector:
     @staticmethod
     async def track_event(user_id: int, event_type: str, details: Optional[Dict[str, Any]] = None):
-        """‡ ¯¨áë¢ ¥â á®¡ëâ¨¥ ¢ ¬¥âà¨ª¨"""
+        """Записывает событие в метрики"""
         async with db.connection() as conn:
             query = """
             INSERT INTO metrics (user_id, event_type, details, created_at)
@@ -20,12 +20,12 @@ class MetricsCollector:
                 details_json = json.dumps(details) if details else '{}'
                 await conn.execute(query, user_id, event_type, details_json)
             except Exception as e:
-                logger.error(f"Žè¨¡ª  § ¯¨á¨ ¬¥âà¨ª¨: {e}")
+                logger.error(f"Ошибка записи метрики: {e}")
     
     @staticmethod
     async def track_recipe_generated(user_id: int, dish_name: str, lang: str, 
                                      category: str, ingredients_count: int, cache_hit: bool):
-        """‘¯¥æ¨ «ì­ë© ¬¥â®¤ ¤«ï ®âá«¥¦¨¢ ­¨ï £¥­¥à æ¨¨ à¥æ¥¯â """
+        """Специальный метод для отслеживания генерации рецепта"""
         await MetricsCollector.track_event(
             user_id,
             'recipe_generated',
@@ -40,7 +40,7 @@ class MetricsCollector:
     
     @staticmethod
     async def track_favorite_added(user_id: int, dish_name: str, lang: str):
-        """Žâá«¥¦¨¢ ¥â ¤®¡ ¢«¥­¨¥ ¢ ¨§¡à ­­®¥"""
+        """Отслеживает добавление в избранное"""
         await MetricsCollector.track_event(
             user_id,
             'favorite_added',
@@ -52,7 +52,7 @@ class MetricsCollector:
     
     @staticmethod
     async def track_voice_processed(user_id: int, success: bool, lang: str):
-        """Žâá«¥¦¨¢ ¥â ®¡à ¡®âªã £®«®á®¢®£® á®®¡é¥­¨ï"""
+        """Отслеживает обработку голосового сообщения"""
         await MetricsCollector.track_event(
             user_id,
             'voice_processed',
@@ -64,7 +64,7 @@ class MetricsCollector:
     
     @staticmethod
     async def get_daily_stats(date: Optional[datetime] = None) -> Dict[str, Any]:
-        """‚®§¢à é ¥â áâ â¨áâ¨ªã §  ¤¥­ì"""
+        """Возвращает статистику за день"""
         if date is None:
             date = datetime.now()
         
@@ -98,11 +98,11 @@ class MetricsCollector:
     
     @staticmethod
     async def get_language_stats(days: int = 7) -> Dict[str, Any]:
-        """‚®§¢à é ¥â áâ â¨áâ¨ªã ¯® ï§ëª ¬ §  ¯®á«¥¤­¨¥ N ¤­¥©"""
+        """Возвращает статистику по языкам за последние N дней"""
         start_date = datetime.now() - timedelta(days=days)
         
         async with db.connection() as conn:
-            # ‘â â¨áâ¨ª  ¯® ï§ëª ¬ ¤«ï à¥æ¥¯â®¢
+            # Статистика по языкам для рецептов
             lang_query = """
             SELECT 
                 details->>'language' as language,
@@ -122,7 +122,7 @@ class MetricsCollector:
                 if row['language']:
                     languages[row['language']] = row['count']
             
-            # ®¯ã«ïà­ë¥ ª â¥£®à¨¨
+            # Популярные категории
             category_query = """
             SELECT 
                 details->>'category' as category,
@@ -151,15 +151,15 @@ class MetricsCollector:
     
     @staticmethod
     async def cleanup_old_metrics(days_to_keep: int = 30) -> int:
-        """“¤ «ï¥â áâ àë¥ ¬¥âà¨ª¨, ®áâ ¢«ïï â®«ìª® §  ¯®á«¥¤­¨¥ N ¤­¥©"""
+        """Удаляет старые метрики, оставляя только за последние N дней"""
         cutoff_date = datetime.now() - timedelta(days=days_to_keep)
         
         async with db.connection() as conn:
             query = "DELETE FROM metrics WHERE created_at < $1 RETURNING id"
             rows = await conn.fetch(query, cutoff_date)
             
-            logger.info(f"“¤ «¥­® {len(rows)} áâ àëå § ¯¨á¥© ¬¥âà¨ª")
+            logger.info(f"Удалено {len(rows)} старых записей метрик")
             return len(rows)
 
-# ‘®§¤ ñ¬ íª§¥¬¯«ïà ¤«ï ã¤®¡­®£® ¨¬¯®àâ 
+# Создаём экземпляр для удобного импорта
 metrics = MetricsCollector()
