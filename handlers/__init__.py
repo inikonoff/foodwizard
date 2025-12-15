@@ -5,7 +5,7 @@ from .favorites import register_favorites_handlers
 from .voice import register_voice_handlers
 
 def register_all_handlers(dp: Dispatcher):
-    """Регистрирует все обработчики"""
+    """┬Р┬е┬г┬и├б├в├а┬и├а├г┬е├в ┬в├б┬е ┬о┬б├а┬а┬б┬о├в├з┬и┬к┬и"""
     register_common_handlers(dp)
     register_recipe_handlers(dp)
     register_favorites_handlers(dp)
