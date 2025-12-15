@@ -2,25 +2,25 @@ import os
 from dotenv import load_dotenv
 from typing import List
 
-# ‡ £ΰγ¦ ¥¬ ―¥ΰ¥¬¥­­λ¥ ®ªΰγ¦¥­¨ο
+# β€΅Β Β£Γ Γ£Β¦Β Β¥Β¬ Β―Β¥Γ Β¥Β¬Β¥Β­Β­Γ«Β¥ Β®ΒªΓ Γ£Β¦Β¥Β­Β¨Γ―
 load_dotenv()
 
-# ===== API ‹— =====
+# ===== API Ε β€ΉΕΎβ€”Λ† =====
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 if not TELEGRAM_TOKEN:
-    raise ValueError("TELEGRAM_TOKEN ­¥ γαβ ­®Ά«¥­ Ά ―¥ΰ¥¬¥­­λε ®ªΰγ¦¥­¨ο")
+    raise ValueError("TELEGRAM_TOKEN Β­Β¥ Γ£Γ΅ΓΆΒ Β­Β®ΒΆΒ«Β¥Β­ ΒΆ Β―Β¥Γ Β¥Β¬Β¥Β­Β­Γ«Γ¥ Β®ΒªΓ Γ£Β¦Β¥Β­Β¨Γ―")
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 if not GROQ_API_KEY:
-    raise ValueError("GROQ_API_KEY ­¥ γαβ ­®Ά«¥­ Ά ―¥ΰ¥¬¥­­λε ®ªΰγ¦¥­¨ο")
+    raise ValueError("GROQ_API_KEY Β­Β¥ Γ£Γ΅ΓΆΒ Β­Β®ΒΆΒ«Β¥Β­ ΒΆ Β―Β¥Γ Β¥Β¬Β¥Β­Β­Γ«Γ¥ Β®ΒªΓ Γ£Β¦Β¥Β­Β¨Γ―")
 
-# ===== €‡€ „€›• =====
+# ===== Ββ‚¬β€΅β‚¬ β€β‚¬ΒΒβ€Ίβ€Ά =====
 DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
-    raise ValueError("DATABASE_URL ­¥ γαβ ­®Ά«¥­ Ά ―¥ΰ¥¬¥­­λε ®ªΰγ¦¥­¨ο")
+    raise ValueError("DATABASE_URL Β­Β¥ Γ£Γ΅ΓΆΒ Β­Β®ΒΆΒ«Β¥Β­ ΒΆ Β―Β¥Γ Β¥Β¬Β¥Β­Β­Γ«Γ¥ Β®ΒªΓ Γ£Β¦Β¥Β­Β¨Γ―")
 
-# ===== €„‘’€’›  …‡€‘‘’ =====
-# ΰ¥®΅ΰ §γ¥¬ αβΰ®ªγ "123,456" Ά α―¨α®ª [123, 456]
+# ===== β‚¬β€Ε’Λ†ΒΛ†β€β€™Ββ‚¬β€™Ε½Ββ€Ί Λ† Ββ€¦β€΅Ε½Ββ‚¬β€ΒΕ½β€β€™Ε“ =====
+# ΒΓ Β¥Β®Β΅Γ Β Β§Γ£Β¥Β¬ Γ΅ΓΆΓ Β®ΒªΓ£ "123,456" ΒΆ Γ΅Β―Β¨Γ΅Β®Βª [123, 456]
 ADMIN_IDS: List[int] = []
 admin_str = os.getenv("ADMIN_IDS", "")
 if admin_str:
@@ -29,35 +29,35 @@ if admin_str:
         if admin_id.isdigit():
             ADMIN_IDS.append(int(admin_id))
 
-# ‘¥ªΰ¥β­λ© ª®¤ ¤«ο  ªβ¨Ά ζ¨¨ ―ΰ¥¬¨γ¬ 
+# β€Β¥ΒªΓ Β¥ΓΆΒ­Γ«Β© ΒªΒ®Β¤ Β¤Β«Γ― Β ΒªΓΆΒ¨ΒΆΒ Γ¦Β¨Β¨ Β―Γ Β¥Β¬Β¨Γ£Β¬Β 
 SECRET_PROMO_CODE = os.getenv("SECRET_PROMO_CODE", "FOOD2025")
 
-# ===== „…‹ GROQ =====
+# ===== Ε’Ε½β€β€¦β€ΉΕ“ GROQ =====
 GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 GROQ_MAX_TOKENS = int(os.getenv("GROQ_MAX_TOKENS", "2000"))
 
-# ===== €‘’‰ € =====
-# ‚ΰ¥¬ο ¦¨§­¨ ªνθ  Ά α¥ªγ­¤ ε
-CACHE_TTL_RECIPE = int(os.getenv("CACHE_TTL_RECIPE", "86400"))  # 24 η α 
-CACHE_TTL_ANALYSIS = int(os.getenv("CACHE_TTL_ANALYSIS", "7200"))  # 2 η α 
-CACHE_TTL_VALIDATION = int(os.getenv("CACHE_TTL_VALIDATION", "1800"))  # 30 ¬¨­γβ
+# ===== Ββ‚¬β€β€™ΒΕ½β€°Ε Λ† Ε ΒΛβ‚¬ =====
+# β€Γ Β¥Β¬Γ― Β¦Β¨Β§Β­Β¨ ΒªΓ­Γ¨Β  ΒΆ Γ΅Β¥ΒªΓ£Β­Β¤Β Γ¥
+CACHE_TTL_RECIPE = int(os.getenv("CACHE_TTL_RECIPE", "86400"))  # 24 Γ§Β Γ΅Β 
+CACHE_TTL_ANALYSIS = int(os.getenv("CACHE_TTL_ANALYSIS", "7200"))  # 2 Γ§Β Γ΅Β 
+CACHE_TTL_VALIDATION = int(os.getenv("CACHE_TTL_VALIDATION", "1800"))  # 30 Β¬Β¨Β­Γ£ΓΆ
 
-# ===== €‘’‰ ‹†… =====
-# ‚ΰ¥¬¥­­ ο ¤¨ΰ¥ªβ®ΰ¨ο
+# ===== Ββ‚¬β€β€™ΒΕ½β€°Ε Λ† ΒΒΛ†β€ΉΕ½β€ β€¦ΒΛ†ΕΈ =====
+# β€Γ Β¥Β¬Β¥Β­Β­Β Γ― Β¤Β¨Γ Β¥ΒªΓΆΒ®Γ Β¨Γ―
 TEMP_DIR = os.getenv("TEMP_DIR", "/tmp/chef_bot")
 os.makedirs(TEMP_DIR, exist_ok=True)
 
-#  ªα¨¬ «μ­®¥ ª®«¨η¥αβΆ® α®®΅ι¥­¨© Ά ¨αβ®ΰ¨¨
+# Ε’Β ΒªΓ΅Β¨Β¬Β Β«Γ¬Β­Β®Β¥ ΒªΒ®Β«Β¨Γ§Β¥Γ΅ΓΆΒΆΒ® Γ΅Β®Β®Β΅Γ©Β¥Β­Β¨Β© ΒΆ Β¨Γ΅ΓΆΒ®Γ Β¨Β¨
 MAX_HISTORY_MESSAGES = int(os.getenv("MAX_HISTORY_MESSAGES", "10"))
 
-# §΅ΰ ­­®¥ ­  αβΰ ­¨ζγ
+# Λ†Β§Β΅Γ Β Β­Β­Β®Β¥ Β­Β  Γ΅ΓΆΓ Β Β­Β¨Γ¦Γ£
 FAVORITES_PER_PAGE = int(os.getenv("FAVORITES_PER_PAGE", "5"))
 
-# ®¤¤¥ΰ¦¨Ά ¥¬λ¥ ο§λª¨ (Ά ―®ΰο¤ª¥ ―ΰ¨®ΰ¨β¥β )
+# ΒΒ®Β¤Β¤Β¥Γ Β¦Β¨ΒΆΒ Β¥Β¬Γ«Β¥ Γ―Β§Γ«ΒªΒ¨ (ΒΆ Β―Β®Γ Γ―Β¤ΒªΒ¥ Β―Γ Β¨Β®Γ Β¨ΓΆΒ¥ΓΆΒ )
 SUPPORTED_LANGUAGES = ["ru", "en", "de", "fr", "it", "es"]
 DEFAULT_LANGUAGE = os.getenv("DEFAULT_LANGUAGE", "ru")
 
-# ===== ƒ€—… „‹ ‹‡‚€’…‹…‰ =====
+# ===== Ε½Ζ’Ββ‚¬ΒΛ†β€”β€¦ΒΛ†ΕΈ β€β€ΉΕΈ ΒΕ½β€ΉΕ“β€΅Ε½β€β‚¬β€™β€¦β€Ήβ€¦β€° =====
 FREE_USER_LIMITS = {
     "daily_requests": int(os.getenv("FREE_DAILY_REQUESTS", "10")),
     "voice_per_day": int(os.getenv("FREE_VOICE_PER_DAY", "3")),
@@ -70,29 +70,29 @@ PREMIUM_USER_LIMITS = {
     "max_ingredients": int(os.getenv("PREMIUM_MAX_INGREDIENTS", "50"))
 }
 
-# ===== ‹ƒƒ‚€… =====
+# ===== β€ΉΕ½Ζ’Ζ’Λ†ΒΕ½β€β‚¬ΒΛ†β€¦ =====
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 LOG_FILE = os.getenv("LOG_FILE", "bot.log")
 
-# ===== ‚…€ ”ƒ“€– =====
+# ===== ΒΒΕ½β€β€¦ΒΕ β‚¬ Ε Ε½Ββ€Λ†Ζ’β€Ββ‚¬β€“Λ†Λ† =====
 def validate_config():
-    """ΰ®Ά¥ΰο¥β ª®ΰΰ¥ªβ­®αβμ ª®­δ¨£γΰ ζ¨¨"""
+    """ΒΓ Β®ΒΆΒ¥Γ Γ―Β¥ΓΆ ΒªΒ®Γ Γ Β¥ΒªΓΆΒ­Β®Γ΅ΓΆΓ¬ ΒªΒ®Β­Γ¤Β¨Β£Γ£Γ Β Γ¦Β¨Β¨"""
     errors = []
     
     if not TELEGRAM_TOKEN:
-        errors.append("TELEGRAM_TOKEN ­¥ γαβ ­®Ά«¥­")
+        errors.append("TELEGRAM_TOKEN Β­Β¥ Γ£Γ΅ΓΆΒ Β­Β®ΒΆΒ«Β¥Β­")
     
     if not GROQ_API_KEY:
-        errors.append("GROQ_API_KEY ­¥ γαβ ­®Ά«¥­")
+        errors.append("GROQ_API_KEY Β­Β¥ Γ£Γ΅ΓΆΒ Β­Β®ΒΆΒ«Β¥Β­")
     
     if not DATABASE_URL:
-        errors.append("DATABASE_URL ­¥ γαβ ­®Ά«¥­")
+        errors.append("DATABASE_URL Β­Β¥ Γ£Γ΅ΓΆΒ Β­Β®ΒΆΒ«Β¥Β­")
     
     if DEFAULT_LANGUAGE not in SUPPORTED_LANGUAGES:
-        errors.append(f"DEFAULT_LANGUAGE ¤®«¦¥­ ΅λβμ ®¤­¨¬ ¨§: {SUPPORTED_LANGUAGES}")
+        errors.append(f"DEFAULT_LANGUAGE Β¤Β®Β«Β¦Β¥Β­ Β΅Γ«ΓΆΓ¬ Β®Β¤Β­Β¨Β¬ Β¨Β§: {SUPPORTED_LANGUAGES}")
     
     if errors:
-        raise ValueError(f"θ¨΅ª¨ ª®­δ¨£γΰ ζ¨¨:\n" + "\n".join(errors))
+        raise ValueError(f"Ε½Γ¨Β¨Β΅ΒªΒ¨ ΒªΒ®Β­Γ¤Β¨Β£Γ£Γ Β Γ¦Β¨Β¨:\n" + "\n".join(errors))
 
-# ΰ®Ά¥ΰο¥¬ ª®­δ¨£γΰ ζ¨ξ ―ΰ¨ ¨¬―®ΰβ¥
+# ΒΓ Β®ΒΆΒ¥Γ Γ―Β¥Β¬ ΒªΒ®Β­Γ¤Β¨Β£Γ£Γ Β Γ¦Β¨Γ® Β―Γ Β¨ Β¨Β¬Β―Β®Γ ΓΆΒ¥
 validate_config()
