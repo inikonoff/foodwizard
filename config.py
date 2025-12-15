@@ -2,25 +2,25 @@ import os
 from dotenv import load_dotenv
 from typing import List
 
-# ‡ £àã¦ ¥¬ ¯¥à¥¬¥­­ë¥ ®ªàã¦¥­¨ï
+# Загружаем переменные окружения
 load_dotenv()
 
-# ===== API Š‹ž—ˆ =====
+# ===== API КЛЮЧИ =====
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 if not TELEGRAM_TOKEN:
-    raise ValueError("TELEGRAM_TOKEN ­¥ ãáâ ­®¢«¥­ ¢ ¯¥à¥¬¥­­ëå ®ªàã¦¥­¨ï")
+    raise ValueError("TELEGRAM_TOKEN не установлен в переменных окружения")
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 if not GROQ_API_KEY:
-    raise ValueError("GROQ_API_KEY ­¥ ãáâ ­®¢«¥­ ¢ ¯¥à¥¬¥­­ëå ®ªàã¦¥­¨ï")
+    raise ValueError("GROQ_API_KEY не установлен в переменных окружения")
 
-# ===== €‡€ „€›• =====
+# ===== БАЗА ДАННЫХ =====
 DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
-    raise ValueError("DATABASE_URL ­¥ ãáâ ­®¢«¥­ ¢ ¯¥à¥¬¥­­ëå ®ªàã¦¥­¨ï")
+    raise ValueError("DATABASE_URL не установлен в переменных окружения")
 
-# ===== €„Œˆˆ‘’€’Ž› ˆ …‡Ž€‘Ž‘’œ =====
-# à¥®¡à §ã¥¬ áâà®ªã "123,456" ¢ á¯¨á®ª [123, 456]
+# ===== АДМИНИСТРАТОРЫ И БЕЗОПАСНОСТЬ =====
+# Преобразуем строку "123,456" в список [123, 456]
 ADMIN_IDS: List[int] = []
 admin_str = os.getenv("ADMIN_IDS", "")
 if admin_str:
@@ -29,35 +29,35 @@ if admin_str:
         if admin_id.isdigit():
             ADMIN_IDS.append(int(admin_id))
 
-# ‘¥ªà¥â­ë© ª®¤ ¤«ï  ªâ¨¢ æ¨¨ ¯à¥¬¨ã¬ 
+# Секретный код для активации премиума
 SECRET_PROMO_CODE = os.getenv("SECRET_PROMO_CODE", "FOOD2025")
 
-# ===== ŒŽ„…‹œ GROQ =====
+# ===== МОДЕЛЬ GROQ =====
 GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 GROQ_MAX_TOKENS = int(os.getenv("GROQ_MAX_TOKENS", "2000"))
 
-# ===== €‘’Ž‰Šˆ Š˜€ =====
-# ‚à¥¬ï ¦¨§­¨ ªíè  ¢ á¥ªã­¤ å
-CACHE_TTL_RECIPE = int(os.getenv("CACHE_TTL_RECIPE", "86400"))  # 24 ç á 
-CACHE_TTL_ANALYSIS = int(os.getenv("CACHE_TTL_ANALYSIS", "7200"))  # 2 ç á 
-CACHE_TTL_VALIDATION = int(os.getenv("CACHE_TTL_VALIDATION", "1800"))  # 30 ¬¨­ãâ
+# ===== НАСТРОЙКИ КЭША =====
+# Время жизни кэша в секундах
+CACHE_TTL_RECIPE = int(os.getenv("CACHE_TTL_RECIPE", "86400"))  # 24 часа
+CACHE_TTL_ANALYSIS = int(os.getenv("CACHE_TTL_ANALYSIS", "7200"))  # 2 часа
+CACHE_TTL_VALIDATION = int(os.getenv("CACHE_TTL_VALIDATION", "1800"))  # 30 минут
 
-# ===== €‘’Ž‰Šˆ ˆ‹Ž†…ˆŸ =====
-# ‚à¥¬¥­­ ï ¤¨à¥ªâ®à¨ï
+# ===== НАСТРОЙКИ ПРИЛОЖЕНИЯ =====
+# Временная директория
 TEMP_DIR = os.getenv("TEMP_DIR", "/tmp/chef_bot")
 os.makedirs(TEMP_DIR, exist_ok=True)
 
-# Œ ªá¨¬ «ì­®¥ ª®«¨ç¥áâ¢® á®®¡é¥­¨© ¢ ¨áâ®à¨¨
+# Максимальное количество сообщений в истории
 MAX_HISTORY_MESSAGES = int(os.getenv("MAX_HISTORY_MESSAGES", "10"))
 
-# ˆ§¡à ­­®¥ ­  áâà ­¨æã
+# Избранное на страницу
 FAVORITES_PER_PAGE = int(os.getenv("FAVORITES_PER_PAGE", "5"))
 
-# ®¤¤¥à¦¨¢ ¥¬ë¥ ï§ëª¨ (¢ ¯®àï¤ª¥ ¯à¨®à¨â¥â )
+# Поддерживаемые языки (в порядке приоритета)
 SUPPORTED_LANGUAGES = ["ru", "en", "de", "fr", "it", "es"]
 DEFAULT_LANGUAGE = os.getenv("DEFAULT_LANGUAGE", "ru")
 
-# ===== Žƒ€ˆ—…ˆŸ „‹Ÿ Ž‹œ‡Ž‚€’…‹…‰ =====
+# ===== ОГРАНИЧЕНИЯ ДЛЯ ПОЛЬЗОВАТЕЛЕЙ =====
 FREE_USER_LIMITS = {
     "daily_requests": int(os.getenv("FREE_DAILY_REQUESTS", "10")),
     "voice_per_day": int(os.getenv("FREE_VOICE_PER_DAY", "3")),
@@ -70,29 +70,29 @@ PREMIUM_USER_LIMITS = {
     "max_ingredients": int(os.getenv("PREMIUM_MAX_INGREDIENTS", "50"))
 }
 
-# ===== ‹ŽƒƒˆŽ‚€ˆ… =====
+# ===== ЛОГГИРОВАНИЕ =====
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 LOG_FILE = os.getenv("LOG_FILE", "bot.log")
 
-# ===== Ž‚…Š€ ŠŽ”ˆƒ“€–ˆˆ =====
+# ===== ПРОВЕРКА КОНФИГУРАЦИИ =====
 def validate_config():
-    """à®¢¥àï¥â ª®àà¥ªâ­®áâì ª®­ä¨£ãà æ¨¨"""
+    """Проверяет корректность конфигурации"""
     errors = []
     
     if not TELEGRAM_TOKEN:
-        errors.append("TELEGRAM_TOKEN ­¥ ãáâ ­®¢«¥­")
+        errors.append("TELEGRAM_TOKEN не установлен")
     
     if not GROQ_API_KEY:
-        errors.append("GROQ_API_KEY ­¥ ãáâ ­®¢«¥­")
+        errors.append("GROQ_API_KEY не установлен")
     
     if not DATABASE_URL:
-        errors.append("DATABASE_URL ­¥ ãáâ ­®¢«¥­")
+        errors.append("DATABASE_URL не установлен")
     
     if DEFAULT_LANGUAGE not in SUPPORTED_LANGUAGES:
-        errors.append(f"DEFAULT_LANGUAGE ¤®«¦¥­ ¡ëâì ®¤­¨¬ ¨§: {SUPPORTED_LANGUAGES}")
+        errors.append(f"DEFAULT_LANGUAGE должен быть одним из: {SUPPORTED_LANGUAGES}")
     
     if errors:
-        raise ValueError(f"Žè¨¡ª¨ ª®­ä¨£ãà æ¨¨:\n" + "\n".join(errors))
+        raise ValueError(f"Ошибки конфигурации:\n" + "\n".join(errors))
 
-# à®¢¥àï¥¬ ª®­ä¨£ãà æ¨î ¯à¨ ¨¬¯®àâ¥
+# Проверяем конфигурацию при импорте
 validate_config()
