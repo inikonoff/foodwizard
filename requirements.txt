@@ -1,33 +1,19 @@
-# Основные зависимости
 aiogram==3.15.0
 groq>=0.9.0
-
-# База данных
-asyncpg==0.29.0
-psycopg2-binary==2.9.10
-
-# Обработка голоса
-SpeechRecognition==3.10.4
-pydub==0.25.1
-
-# HTTP клиент
 aiohttp==3.10.5
 
-# Конфигурация
+# База данных (убрал psycopg2, если не нужен для миграций)
+asyncpg==0.29.0
+
+# Убрал жесткий кап версии pydantic
+pydantic>=2.4.1
+
+# Остальное ок
+SpeechRecognition==3.10.4
+pydub==0.25.1
 python-dotenv==1.0.1
-
-# Валидация данных
-pydantic>=2.0,<2.4.1
-
-# Утилиты
 python-magic==0.4.27
 pillow==10.3.0
-
-# Логирование
 structlog==24.1.0
-
-# Дата и время
 python-dateutil==2.9.0.post0
-
-# Безопасность
 cryptography==42.0.5
