@@ -3,25 +3,25 @@ import json
 from typing import Dict, Any
 import importlib
 
-# Динамически загружаем все промпты
+# тАЮ┬и┬н┬а┬м┬и├з┬е├б┬к┬и ┬з┬а┬г├а├г┬ж┬а┬е┬м ┬в├б┬е ┬п├а┬о┬м┬п├в├л
 PROMPTS: Dict[str, Dict[str, str]] = {}
 
-# Языки, которые мы поддерживаем
+# ┼╕┬з├л┬к┬и, ┬к┬о├в┬о├а├л┬е ┬м├л ┬п┬о┬д┬д┬е├а┬ж┬и┬в┬а┬е┬м
 LANGUAGES = ["ru", "en", "de", "fr", "it", "es"]
 
-# Загружаем промпты для каждого языка
+# тАб┬а┬г├а├г┬ж┬а┬е┬м ┬п├а┬о┬м┬п├в├л ┬д┬л├п ┬к┬а┬ж┬д┬о┬г┬о ├п┬з├л┬к┬а
 for lang in LANGUAGES:
     try:
         module_name = f"locales.prompts.{lang}"
         module = importlib.import_module(module_name)
         PROMPTS[lang] = getattr(module, "PROMPTS", {})
     except ImportError:
-        print(f"?? Промпты для языка '{lang}' не найдены. Пропускаем.")
+        print(f"?? ┬П├а┬о┬м┬п├в├л ┬д┬л├п ├п┬з├л┬к┬а '{lang}' ┬н┬е ┬н┬а┬й┬д┬е┬н├л. ┬П├а┬о┬п├г├б┬к┬а┬е┬м.")
         PROMPTS[lang] = {}
 
 def get_prompt(lang: str, prompt_name: str, **kwargs) -> str:
-    """Получает промпт для указанного языка с подстановкой переменных"""
-    # Если язык не поддерживается, используем русский как fallback
+    """┬П┬о┬л├г├з┬а┬е├в ┬п├а┬о┬м┬п├в ┬д┬л├п ├г┬к┬а┬з┬а┬н┬н┬о┬г┬о ├п┬з├л┬к┬а ├б ┬п┬о┬д├б├в┬а┬н┬о┬в┬к┬о┬й ┬п┬е├а┬е┬м┬е┬н┬н├л├е"""
+    # тАж├б┬л┬и ├п┬з├л┬к ┬н┬е ┬п┬о┬д┬д┬е├а┬ж┬и┬в┬а┬е├в├б├п, ┬и├б┬п┬о┬л├м┬з├г┬е┬м ├а├г├б├б┬к┬и┬й ┬к┬а┬к fallback
     if lang not in PROMPTS:
         lang = "ru"
     
@@ -29,19 +29,19 @@ def get_prompt(lang: str, prompt_name: str, **kwargs) -> str:
     prompt = prompts_for_lang.get(prompt_name, "")
     
     if not prompt and lang != "ru":
-        # Fallback на русский, если промпт не найден
+        # Fallback ┬н┬а ├а├г├б├б┬к┬и┬й, ┬е├б┬л┬и ┬п├а┬о┬м┬п├в ┬н┬е ┬н┬а┬й┬д┬е┬н
         prompt = PROMPTS["ru"].get(prompt_name, "")
     
-    # Подставляем переменные, если они есть
+    # ┬П┬о┬д├б├в┬а┬в┬л├п┬е┬м ┬п┬е├а┬е┬м┬е┬н┬н├л┬е, ┬е├б┬л┬и ┬о┬н┬и ┬е├б├в├м
     if kwargs and prompt:
         try:
             return prompt.format(**kwargs)
         except KeyError as e:
-            print(f"?? Ошибка подстановки переменной {e} в промпте {prompt_name}")
+            print(f"?? ┼╜├и┬и┬б┬к┬а ┬п┬о┬д├б├в┬а┬н┬о┬в┬к┬и ┬п┬е├а┬е┬м┬е┬н┬н┬о┬й {e} ┬в ┬п├а┬о┬м┬п├в┬е {prompt_name}")
             return prompt
     
     return prompt
 
 def get_all_prompts(lang: str) -> Dict[str, str]:
-    """Возвращает все промпты для указанного языка"""
+    """тАЪ┬о┬з┬в├а┬а├й┬а┬е├в ┬в├б┬е ┬п├а┬о┬м┬п├в├л ┬д┬л├п ├г┬к┬а┬з┬а┬н┬н┬о┬г┬о ├п┬з├л┬к┬а"""
     return PROMPTS.get(lang, PROMPTS["ru"])
