@@ -4,13 +4,13 @@ import json
 
 class StateManager:
     def __init__(self):
-        # ‘¥áá¨¨ ¯®«ì§®¢ â¥«¥©
+        # Ğ¡ĞµÑÑĞ¸Ğ¸ Ğ¿Ğ¾Ğ»ÑŒĞ·Ğ¾Ğ²Ğ°Ñ‚ĞµĞ»ĞµĞ¹
         self.user_sessions: Dict[int, dict] = {}
-        # ‚à¥¬ï ¦¨§­¨ á¥áá¨¨ (ç áë)
+        # Ğ’Ñ€ĞµĞ¼Ñ Ğ¶Ğ¸Ğ·Ğ½Ğ¸ ÑĞµÑÑĞ¸Ğ¸ (Ñ‡Ğ°ÑÑ‹)
         self.session_ttl_hours = 24
     
     def _cleanup_old_sessions(self):
-        """ç¨é ¥â áâ àë¥ á¥áá¨¨"""
+        """ĞÑ‡Ğ¸Ñ‰Ğ°ĞµÑ‚ ÑÑ‚Ğ°Ñ€Ñ‹Ğµ ÑĞµÑÑĞ¸Ğ¸"""
         current_time = datetime.now()
         expired_users = []
         
@@ -23,7 +23,7 @@ class StateManager:
             del self.user_sessions[user_id]
     
     def _ensure_session(self, user_id: int) -> dict:
-        """‘®§¤ ¥â ¨«¨ ¢®§¢à é ¥â á¥áá¨î ¯®«ì§®¢ â¥«ï"""
+        """Ğ¡Ğ¾Ğ·Ğ´Ğ°ĞµÑ‚ Ğ¸Ğ»Ğ¸ Ğ²Ğ¾Ğ·Ğ²Ñ€Ğ°Ñ‰Ğ°ĞµÑ‚ ÑĞµÑÑĞ¸Ñ Ğ¿Ğ¾Ğ»ÑŒĞ·Ğ¾Ğ²Ğ°Ñ‚ĞµĞ»Ñ"""
         if user_id not in self.user_sessions:
             self.user_sessions[user_id] = {
                 'products': None,
@@ -38,7 +38,7 @@ class StateManager:
         
         return self.user_sessions[user_id]
     
-    # --- „“Š’› ---
+    # --- ĞŸĞ ĞĞ”Ğ£ĞšĞ¢Ğ« ---
     def set_products(self, user_id: int, products: str):
         session = self._ensure_session(user_id)
         session['products'] = products
@@ -54,7 +54,7 @@ class StateManager:
         else:
             self.set_products(user_id, new_products)
     
-    # --- Š€’…ƒˆˆ ---
+    # --- ĞšĞĞ¢Ğ•Ğ“ĞĞ Ğ˜Ğ˜ ---
     def set_categories(self, user_id: int, categories: List[str]):
         session = self._ensure_session(user_id)
         session['categories'] = categories
@@ -63,7 +63,7 @@ class StateManager:
         session = self.user_sessions.get(user_id)
         return session.get('categories', []) if session else []
     
-    # --- ‹„€ ---
+    # --- Ğ‘Ğ›Ğ®Ğ”Ğ ---
     def set_generated_dishes(self, user_id: int, dishes: List[dict]):
         session = self._ensure_session(user_id)
         session['generated_dishes'] = dishes
@@ -78,7 +78,7 @@ class StateManager:
             return dishes[index].get('name')
         return None
     
-    # --- ’…Š“™…… ‹„ ---
+    # --- Ğ¢Ğ•ĞšĞ£Ğ©Ğ•Ğ• Ğ‘Ğ›Ğ®Ğ”Ğ ---
     def set_current_dish(self, user_id: int, dish_name: str):
         session = self._ensure_session(user_id)
         session['current_dish'] = dish_name
@@ -87,7 +87,7 @@ class StateManager:
         session = self.user_sessions.get(user_id)
         return session.get('current_dish') if session else None
     
-    # --- ˆ‘’ˆŸ ‘™…ˆ‰ ---
+    # --- Ğ˜Ğ¡Ğ¢ĞĞ Ğ˜Ğ¯ Ğ¡ĞĞĞ‘Ğ©Ğ•ĞĞ˜Ğ™ ---
     def add_message_to_history(self, user_id: int, role: str, text: str, max_history: int = 10):
         session = self._ensure_session(user_id)
         
@@ -100,7 +100,7 @@ class StateManager:
             'timestamp': datetime.now().isoformat()
         })
         
-        # £à ­¨ç¨¢ ¥¬ à §¬¥à ¨áâ®à¨¨
+        # ĞĞ³Ñ€Ğ°Ğ½Ğ¸Ñ‡Ğ¸Ğ²Ğ°ĞµĞ¼ Ñ€Ğ°Ğ·Ğ¼ĞµÑ€ Ğ¸ÑÑ‚Ğ¾Ñ€Ğ¸Ğ¸
         if len(session['message_history']) > max_history:
             session['message_history'] = session['message_history'][-max_history:]
     
@@ -115,7 +115,7 @@ class StateManager:
                 return msg.get('text')
         return None
     
-    # --- —ˆ‘’Š€ ‘…‘‘ˆˆ ---
+    # --- ĞĞ§Ğ˜Ğ¡Ğ¢ĞšĞ Ğ¡Ğ•Ğ¡Ğ¡Ğ˜Ğ˜ ---
     def clear_session(self, user_id: int):
         if user_id in self.user_sessions:
             del self.user_sessions[user_id]
@@ -123,7 +123,7 @@ class StateManager:
     def clear_all_sessions(self):
         self.user_sessions.clear()
     
-    # --- ‘’€’ˆ‘’ˆŠ€ ---
+    # --- Ğ¡Ğ¢ĞĞ¢Ğ˜Ğ¡Ğ¢Ğ˜ĞšĞ ---
     def get_active_sessions_count(self) -> int:
         self._cleanup_old_sessions()
         return len(self.user_sessions)
@@ -141,5 +141,5 @@ class StateManager:
             }
         return None
 
-# ƒ«®¡ «ì­ë© íª§¥¬¯«ïà StateManager
+# Ğ“Ğ»Ğ¾Ğ±Ğ°Ğ»ÑŒĞ½Ñ‹Ğ¹ ÑĞºĞ·ĞµĞ¼Ğ¿Ğ»ÑÑ€ StateManager
 state_manager = StateManager()
