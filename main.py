@@ -18,7 +18,7 @@ from database.cache import groq_cache
 from handlers import register_all_handlers
 from locales.texts import get_text
 
-# Настройка логирования
+# ╨Э╨░╤Б╤В╤А╨╛╨╣╨║╨░ ╨╗╨╛╨│╨╕╤А╨╛╨▓╨░╨╜╨╕╤П
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -29,7 +29,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Инициализация бота и диспетчера
+# ╨Ш╨╜╨╕╤Ж╨╕╨░╨╗╨╕╨╖╨░╤Ж╨╕╤П ╨▒╨╛╤В╨░ ╨╕ ╨┤╨╕╤Б╨┐╨╡╤В╤З╨╡╤А╨░
 bot = Bot(
     token=TELEGRAM_TOKEN,
     default=DefaultBotProperties(parse_mode=ParseMode.HTML)
@@ -38,53 +38,53 @@ dp = Dispatcher()
 
 @asynccontextmanager
 async def lifespan():
-    """Управление жизненным циклом приложения"""
-    # Запуск
-    logger.info("?? Запуск бота...")
+    """╨г╨┐╤А╨░╨▓╨╗╨╡╨╜╨╕╨╡ ╨╢╨╕╨╖╨╜╨╡╨╜╨╜╤Л╨╝ ╤Ж╨╕╨║╨╗╨╛╨╝ ╨┐╤А╨╕╨╗╨╛╨╢╨╡╨╜╨╕╤П"""
+    # ╨Ч╨░╨┐╤Г╤Б╨║
+    logger.info("?? ╨Ч╨░╨┐╤Г╤Б╨║ ╨▒╨╛╤В╨░...")
     
-    # Подключаемся к базе данных
+    # ╨Я╨╛╨┤╨║╨╗╤О╤З╨░╨╡╨╝╤Б╤П ╨║ ╨▒╨░╨╖╨╡ ╨┤╨░╨╜╨╜╤Л╤Е
     await db.connect()
     
-    # Очищаем старый кэш при запуске
+    # ╨Ю╤З╨╕╤Й╨░╨╡╨╝ ╤Б╤В╨░╤А╤Л╨╣ ╨║╤Н╤И ╨┐╤А╨╕ ╨╖╨░╨┐╤Г╤Б╨║╨╡
     cleared = await groq_cache.clear_expired()
-    logger.info(f"?? Очищено {cleared} просроченных записей кэша")
+    logger.info(f"?? ╨Ю╤З╨╕╤Й╨╡╨╜╨╛ {cleared} ╨┐╤А╨╛╤Б╤А╨╛╤З╨╡╨╜╨╜╤Л╤Е ╨╖╨░╨┐╨╕╤Б╨╡╨╣ ╨║╤Н╤И╨░")
     
-    # Очищаем старые метрики
+    # ╨Ю╤З╨╕╤Й╨░╨╡╨╝ ╤Б╤В╨░╤А╤Л╨╡ ╨╝╨╡╤В╤А╨╕╨║╨╕
     cleared_metrics = await metrics.cleanup_old_metrics(days_to_keep=30)
-    logger.info(f"?? Очищено {cleared_metrics} старых метрик")
+    logger.info(f"?? ╨Ю╤З╨╕╤Й╨╡╨╜╨╛ {cleared_metrics} ╤Б╤В╨░╤А╤Л╤Е ╨╝╨╡╤В╤А╨╕╨║")
     
-    # Проверяем истечение премиума при запуске
+    # ╨Я╤А╨╛╨▓╨╡╤А╤П╨╡╨╝ ╨╕╤Б╤В╨╡╤З╨╡╨╜╨╕╨╡ ╨┐╤А╨╡╨╝╨╕╤Г╨╝╨░ ╨┐╤А╨╕ ╨╖╨░╨┐╤Г╤Б╨║╨╡
     expired = await users_repo.check_premium_expiry()
     if expired > 0:
-        logger.info(f"?? Деактивировано {expired} просроченных премиум-подписок")
+        logger.info(f"?? ╨Ф╨╡╨░╨║╤В╨╕╨▓╨╕╤А╨╛╨▓╨░╨╜╨╛ {expired} ╨┐╤А╨╛╤Б╤А╨╛╤З╨╡╨╜╨╜╤Л╤Е ╨┐╤А╨╡╨╝╨╕╤Г╨╝-╨┐╨╛╨┤╨┐╨╕╤Б╨╛╨║")
     
     yield
     
-    # Завершение работы
-    logger.info("?? Остановка бота...")
+    # ╨Ч╨░╨▓╨╡╤А╤И╨╡╨╜╨╕╨╡ ╤А╨░╨▒╨╛╤В╤Л
+    logger.info("?? ╨Ю╤Б╤В╨░╨╜╨╛╨▓╨║╨░ ╨▒╨╛╤В╨░...")
     await db.close()
 
 async def setup_bot_commands():
-    """Настраивает команды бота для разных языков"""
+    """╨Э╨░╤Б╤В╤А╨░╨╕╨▓╨░╨╡╤В ╨║╨╛╨╝╨░╨╜╨┤╤Л ╨▒╨╛╤В╨░ ╨┤╨╗╤П ╤А╨░╨╖╨╜╤Л╤Е ╤П╨╖╤Л╨║╨╛╨▓"""
     commands_by_language = {}
     
-    # Команды для каждого языка
+    # ╨Ъ╨╛╨╝╨░╨╜╨┤╤Л ╨┤╨╗╤П ╨║╨░╨╢╨┤╨╛╨│╨╛ ╤П╨╖╤Л╨║╨░
     for lang in SUPPORTED_LANGUAGES:
         commands_by_language[lang] = [
             BotCommand(command="/start", description=get_text(lang, "btn_restart")),
             BotCommand(command="/favorites", description=get_text(lang, "btn_favorites")),
             BotCommand(command="/lang", description=get_text(lang, "btn_change_lang")),
             BotCommand(command="/help", description=get_text(lang, "btn_help")),
-            BotCommand(command="/stats", description="?? Статистика"),
-            BotCommand(command="/code", description="?? Активировать премиум"),
+            BotCommand(command="/stats", description="?? ╨б╤В╨░╤В╨╕╤Б╤В╨╕╨║╨░"),
+            BotCommand(command="/code", description="?? ╨Р╨║╤В╨╕╨▓╨╕╤А╨╛╨▓╨░╤В╤М ╨┐╤А╨╡╨╝╨╕╤Г╨╝"),
         ]
     
-    # Добавляем команду /admin только на русском
+    # ╨Ф╨╛╨▒╨░╨▓╨╗╤П╨╡╨╝ ╨║╨╛╨╝╨░╨╜╨┤╤Г /admin ╤В╨╛╨╗╤М╨║╨╛ ╨╜╨░ ╤А╤Г╤Б╤Б╨║╨╛╨╝
     commands_by_language["ru"].append(
-        BotCommand(command="/admin", description="?? Админ-панель")
+        BotCommand(command="/admin", description="?? ╨Р╨┤╨╝╨╕╨╜-╨┐╨░╨╜╨╡╨╗╤М")
     )
     
-    # Устанавливаем команды для каждого языка
+    # ╨г╤Б╤В╨░╨╜╨░╨▓╨╗╨╕╨▓╨░╨╡╨╝ ╨║╨╛╨╝╨░╨╜╨┤╤Л ╨┤╨╗╤П ╨║╨░╨╢╨┤╨╛╨│╨╛ ╤П╨╖╤Л╨║╨░
     for lang, commands in commands_by_language.items():
         try:
             await bot.set_my_commands(
@@ -92,11 +92,11 @@ async def setup_bot_commands():
                 scope=BotCommandScopeDefault(),
                 language_code=lang
             )
-            logger.info(f"? Команды установлены для языка {lang}")
+            logger.info(f"? ╨Ъ╨╛╨╝╨░╨╜╨┤╤Л ╤Г╤Б╤В╨░╨╜╨╛╨▓╨╗╨╡╨╜╤Л ╨┤╨╗╤П ╤П╨╖╤Л╨║╨░ {lang}")
         except Exception as e:
-            logger.error(f"? Ошибка установки команд для языка {lang}: {e}")
+            logger.error(f"? ╨Ю╤И╨╕╨▒╨║╨░ ╤Г╤Б╤В╨░╨╜╨╛╨▓╨║╨╕ ╨║╨╛╨╝╨░╨╜╨┤ ╨┤╨╗╤П ╤П╨╖╤Л╨║╨░ {lang}: {e}")
     
-    # Устанавливаем команды по умолчанию
+    # ╨г╤Б╤В╨░╨╜╨░╨▓╨╗╨╕╨▓╨░╨╡╨╝ ╨║╨╛╨╝╨░╨╜╨┤╤Л ╨┐╨╛ ╤Г╨╝╨╛╨╗╤З╨░╨╜╨╕╤О
     default_commands = commands_by_language.get(DEFAULT_LANGUAGE, [])
     if default_commands:
         try:
@@ -104,89 +104,89 @@ async def setup_bot_commands():
                 commands=default_commands,
                 scope=BotCommandScopeDefault()
             )
-            logger.info(f"? Команды по умолчанию установлены")
+            logger.info(f"? ╨Ъ╨╛╨╝╨░╨╜╨┤╤Л ╨┐╨╛ ╤Г╨╝╨╛╨╗╤З╨░╨╜╨╕╤О ╤Г╤Б╤В╨░╨╜╨╛╨▓╨╗╨╡╨╜╤Л")
         except Exception as e:
-            logger.error(f"? Ошибка установки команд по умолчанию: {e}")
+            logger.error(f"? ╨Ю╤И╨╕╨▒╨║╨░ ╤Г╤Б╤В╨░╨╜╨╛╨▓╨║╨╕ ╨║╨╛╨╝╨░╨╜╨┤ ╨┐╨╛ ╤Г╨╝╨╛╨╗╤З╨░╨╜╨╕╤О: {e}")
 
 async def check_premium_expiry_periodically():
-    """Периодически проверяет истечение срока премиума"""
+    """╨Я╨╡╤А╨╕╨╛╨┤╨╕╤З╨╡╤Б╨║╨╕ ╨┐╤А╨╛╨▓╨╡╤А╤П╨╡╤В ╨╕╤Б╤В╨╡╤З╨╡╨╜╨╕╨╡ ╤Б╤А╨╛╨║╨░ ╨┐╤А╨╡╨╝╨╕╤Г╨╝╨░"""
     while True:
         try:
-            # Запускаем в 03:00 каждый день
+            # ╨Ч╨░╨┐╤Г╤Б╨║╨░╨╡╨╝ ╨▓ 03:00 ╨║╨░╨╢╨┤╤Л╨╣ ╨┤╨╡╨╜╤М
             tz = pytz.timezone('Europe/Moscow')
             now = datetime.now(tz)
             target_time = time(3, 0, 0)
             
-            # Ждём до 03:00
+            # ╨Ц╨┤╤С╨╝ ╨┤╨╛ 03:00
             if now.time() < target_time:
                 wait_seconds = (datetime.combine(now.date(), target_time) - now).seconds
             else:
-                # Уже после 03:00, ждём до завтра
+                # ╨г╨╢╨╡ ╨┐╨╛╤Б╨╗╨╡ 03:00, ╨╢╨┤╤С╨╝ ╨┤╨╛ ╨╖╨░╨▓╤В╤А╨░
                 tomorrow = now.date() + timedelta(days=1)
                 wait_seconds = (datetime.combine(tomorrow, target_time) - now).seconds
             
-            logger.info(f"? Следующая проверка премиума через {wait_seconds} секунд")
+            logger.info(f"? ╨б╨╗╨╡╨┤╤Г╤О╤Й╨░╤П ╨┐╤А╨╛╨▓╨╡╤А╨║╨░ ╨┐╤А╨╡╨╝╨╕╤Г╨╝╨░ ╤З╨╡╤А╨╡╨╖ {wait_seconds} ╤Б╨╡╨║╤Г╨╜╨┤")
             await asyncio.sleep(wait_seconds)
             
-            # Проверяем истечение премиума
+            # ╨Я╤А╨╛╨▓╨╡╤А╤П╨╡╨╝ ╨╕╤Б╤В╨╡╤З╨╡╨╜╨╕╨╡ ╨┐╤А╨╡╨╝╨╕╤Г╨╝╨░
             expired_count = await users_repo.check_premium_expiry()
             if expired_count > 0:
-                logger.info(f"?? Деактивировано {expired_count} просроченных премиум-подписок")
+                logger.info(f"?? ╨Ф╨╡╨░╨║╤В╨╕╨▓╨╕╤А╨╛╨▓╨░╨╜╨╛ {expired_count} ╨┐╤А╨╛╤Б╤А╨╛╤З╨╡╨╜╨╜╤Л╤Е ╨┐╤А╨╡╨╝╨╕╤Г╨╝-╨┐╨╛╨┤╨┐╨╕╤Б╨╛╨║")
             
         except Exception as e:
-            logger.error(f"Ошибка в задаче проверки премиума: {e}")
-            await asyncio.sleep(3600)  # Ждём час при ошибке
+            logger.error(f"╨Ю╤И╨╕╨▒╨║╨░ ╨▓ ╨╖╨░╨┤╨░╤З╨╡ ╨┐╤А╨╛╨▓╨╡╤А╨║╨╕ ╨┐╤А╨╡╨╝╨╕╤Г╨╝╨░: {e}")
+            await asyncio.sleep(3600)  # ╨Ц╨┤╤С╨╝ ╤З╨░╤Б ╨┐╤А╨╕ ╨╛╤И╨╕╨▒╨║╨╡
 
 async def cleanup_tasks_periodically():
-    """Периодически выполняет задачи очистки"""
+    """╨Я╨╡╤А╨╕╨╛╨┤╨╕╤З╨╡╤Б╨║╨╕ ╨▓╤Л╨┐╨╛╨╗╨╜╤П╨╡╤В ╨╖╨░╨┤╨░╤З╨╕ ╨╛╤З╨╕╤Б╤В╨║╨╕"""
     while True:
         try:
-            # Запускаем каждый час
+            # ╨Ч╨░╨┐╤Г╤Б╨║╨░╨╡╨╝ ╨║╨░╨╢╨┤╤Л╨╣ ╤З╨░╤Б
             await asyncio.sleep(3600)
             
-            # Очищаем старый кэш
+            # ╨Ю╤З╨╕╤Й╨░╨╡╨╝ ╤Б╤В╨░╤А╤Л╨╣ ╨║╤Н╤И
             cleared_cache = await groq_cache.clear_expired()
             if cleared_cache > 0:
-                logger.info(f"?? Очищено {cleared_cache} просроченных записей кэша")
+                logger.info(f"?? ╨Ю╤З╨╕╤Й╨╡╨╜╨╛ {cleared_cache} ╨┐╤А╨╛╤Б╤А╨╛╤З╨╡╨╜╨╜╤Л╤Е ╨╖╨░╨┐╨╕╤Б╨╡╨╣ ╨║╤Н╤И╨░")
             
-            # Очищаем старые метрики (раз в день)
+            # ╨Ю╤З╨╕╤Й╨░╨╡╨╝ ╤Б╤В╨░╤А╤Л╨╡ ╨╝╨╡╤В╤А╨╕╨║╨╕ (╤А╨░╨╖ ╨▓ ╨┤╨╡╨╜╤М)
             current_hour = datetime.now().hour
-            if current_hour == 4:  # В 04:00
+            if current_hour == 4:  # ╨Т 04:00
                 cleared_metrics = await metrics.cleanup_old_metrics(days_to_keep=30)
                 if cleared_metrics > 0:
-                    logger.info(f"?? Очищено {cleared_metrics} старых метрик")
+                    logger.info(f"?? ╨Ю╤З╨╕╤Й╨╡╨╜╨╛ {cleared_metrics} ╤Б╤В╨░╤А╤Л╤Е ╨╝╨╡╤В╤А╨╕╨║")
             
         except Exception as e:
-            logger.error(f"Ошибка в задачах очистки: {e}")
+            logger.error(f"╨Ю╤И╨╕╨▒╨║╨░ ╨▓ ╨╖╨░╨┤╨░╤З╨░╤Е ╨╛╤З╨╕╤Б╤В╨║╨╕: {e}")
             await asyncio.sleep(3600)
 
 async def main():
-    """Основная функция запуска бота"""
+    """╨Ю╤Б╨╜╨╛╨▓╨╜╨░╤П ╤Д╤Г╨╜╨║╤Ж╨╕╤П ╨╖╨░╨┐╤Г╤Б╨║╨░ ╨▒╨╛╤В╨░"""
     try:
-        # Используем контекстный менеджер для управления жизненным циклом
+        # ╨Ш╤Б╨┐╨╛╨╗╤М╨╖╤Г╨╡╨╝ ╨║╨╛╨╜╤В╨╡╨║╤Б╤В╨╜╤Л╨╣ ╨╝╨╡╨╜╨╡╨┤╨╢╨╡╤А ╨┤╨╗╤П ╤Г╨┐╤А╨░╨▓╨╗╨╡╨╜╨╕╤П ╨╢╨╕╨╖╨╜╨╡╨╜╨╜╤Л╨╝ ╤Ж╨╕╨║╨╗╨╛╨╝
         async with lifespan():
-            # Настраиваем команды бота
+            # ╨Э╨░╤Б╤В╤А╨░╨╕╨▓╨░╨╡╨╝ ╨║╨╛╨╝╨░╨╜╨┤╤Л ╨▒╨╛╤В╨░
             await setup_bot_commands()
             
-            # Регистрируем все обработчики
+            # ╨а╨╡╨│╨╕╤Б╤В╤А╨╕╤А╤Г╨╡╨╝ ╨▓╤Б╨╡ ╨╛╨▒╤А╨░╨▒╨╛╤В╤З╨╕╨║╨╕
             register_all_handlers(dp)
             
-            # Запускаем фоновые задачи
+            # ╨Ч╨░╨┐╤Г╤Б╨║╨░╨╡╨╝ ╤Д╨╛╨╜╨╛╨▓╤Л╨╡ ╨╖╨░╨┤╨░╤З╨╕
             asyncio.create_task(check_premium_expiry_periodically())
             asyncio.create_task(cleanup_tasks_periodically())
             
-            # Запускаем бота
-            logger.info("?? Бот запущен и готов к работе!")
+            # ╨Ч╨░╨┐╤Г╤Б╨║╨░╨╡╨╝ ╨▒╨╛╤В╨░
+            logger.info("?? ╨С╨╛╤В ╨╖╨░╨┐╤Г╤Й╨╡╨╜ ╨╕ ╨│╨╛╤В╨╛╨▓ ╨║ ╤А╨░╨▒╨╛╤В╨╡!")
             await dp.start_polling(bot)
             
     except KeyboardInterrupt:
-        logger.info("? Бот остановлен пользователем")
+        logger.info("? ╨С╨╛╤В ╨╛╤Б╤В╨░╨╜╨╛╨▓╨╗╨╡╨╜ ╨┐╨╛╨╗╤М╨╖╨╛╨▓╨░╤В╨╡╨╗╨╡╨╝")
     except Exception as e:
-        logger.error(f"?? Критическая ошибка: {e}")
+        logger.error(f"?? ╨Ъ╤А╨╕╤В╨╕╤З╨╡╤Б╨║╨░╤П ╨╛╤И╨╕╨▒╨║╨░: {e}")
         raise
 
 if __name__ == "__main__":
     try:
         asyncio.run(main())
     except (KeyboardInterrupt, SystemExit):
-        logger.info("Бот остановлен")
+        logger.info("╨С╨╛╤В ╨╛╤Б╤В╨░╨╜╨╛╨▓╨╗╨╡╨╜")
