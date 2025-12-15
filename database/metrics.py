@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 class MetricsCollector:
     @staticmethod
     async def track_event(user_id: int, event_type: str, details: Optional[Dict[str, Any]] = None):
-        """‡ ―¨αλΆ ¥β α®΅λβ¨¥ Ά ¬¥βΰ¨ª¨"""
+        """β€΅Β Β―Β¨Γ΅Γ«ΒΆΒ Β¥ΓΆ Γ΅Β®Β΅Γ«ΓΆΒ¨Β¥ ΒΆ Β¬Β¥ΓΆΓ Β¨ΒªΒ¨"""
         async with db.connection() as conn:
             query = """
             INSERT INTO metrics (user_id, event_type, details, created_at)
@@ -20,12 +20,12 @@ class MetricsCollector:
                 details_json = json.dumps(details) if details else '{}'
                 await conn.execute(query, user_id, event_type, details_json)
             except Exception as e:
-                logger.error(f"θ¨΅ª  § ―¨α¨ ¬¥βΰ¨ª¨: {e}")
+                logger.error(f"Ε½Γ¨Β¨Β΅ΒªΒ  Β§Β Β―Β¨Γ΅Β¨ Β¬Β¥ΓΆΓ Β¨ΒªΒ¨: {e}")
     
     @staticmethod
     async def track_recipe_generated(user_id: int, dish_name: str, lang: str, 
                                      category: str, ingredients_count: int, cache_hit: bool):
-        """‘―¥ζ¨ «μ­λ© ¬¥β®¤ ¤«ο ®βα«¥¦¨Ά ­¨ο £¥­¥ΰ ζ¨¨ ΰ¥ζ¥―β """
+        """β€Β―Β¥Γ¦Β¨Β Β«Γ¬Β­Γ«Β© Β¬Β¥ΓΆΒ®Β¤ Β¤Β«Γ― Β®ΓΆΓ΅Β«Β¥Β¦Β¨ΒΆΒ Β­Β¨Γ― Β£Β¥Β­Β¥Γ Β Γ¦Β¨Β¨ Γ Β¥Γ¦Β¥Β―ΓΆΒ """
         await MetricsCollector.track_event(
             user_id,
             'recipe_generated',
@@ -40,7 +40,7 @@ class MetricsCollector:
     
     @staticmethod
     async def track_favorite_added(user_id: int, dish_name: str, lang: str):
-        """βα«¥¦¨Ά ¥β ¤®΅ Ά«¥­¨¥ Ά ¨§΅ΰ ­­®¥"""
+        """Ε½ΓΆΓ΅Β«Β¥Β¦Β¨ΒΆΒ Β¥ΓΆ Β¤Β®Β΅Β ΒΆΒ«Β¥Β­Β¨Β¥ ΒΆ Β¨Β§Β΅Γ Β Β­Β­Β®Β¥"""
         await MetricsCollector.track_event(
             user_id,
             'favorite_added',
@@ -52,7 +52,7 @@ class MetricsCollector:
     
     @staticmethod
     async def track_voice_processed(user_id: int, success: bool, lang: str):
-        """βα«¥¦¨Ά ¥β ®΅ΰ ΅®βªγ £®«®α®Ά®£® α®®΅ι¥­¨ο"""
+        """Ε½ΓΆΓ΅Β«Β¥Β¦Β¨ΒΆΒ Β¥ΓΆ Β®Β΅Γ Β Β΅Β®ΓΆΒªΓ£ Β£Β®Β«Β®Γ΅Β®ΒΆΒ®Β£Β® Γ΅Β®Β®Β΅Γ©Β¥Β­Β¨Γ―"""
         await MetricsCollector.track_event(
             user_id,
             'voice_processed',
@@ -64,7 +64,7 @@ class MetricsCollector:
     
     @staticmethod
     async def get_daily_stats(date: Optional[datetime] = None) -> Dict[str, Any]:
-        """‚®§Άΰ ι ¥β αβ β¨αβ¨ªγ §  ¤¥­μ"""
+        """β€Β®Β§ΒΆΓ Β Γ©Β Β¥ΓΆ Γ΅ΓΆΒ ΓΆΒ¨Γ΅ΓΆΒ¨ΒªΓ£ Β§Β  Β¤Β¥Β­Γ¬"""
         if date is None:
             date = datetime.now()
         
@@ -98,11 +98,11 @@ class MetricsCollector:
     
     @staticmethod
     async def get_language_stats(days: int = 7) -> Dict[str, Any]:
-        """‚®§Άΰ ι ¥β αβ β¨αβ¨ªγ ―® ο§λª ¬ §  ―®α«¥¤­¨¥ N ¤­¥©"""
+        """β€Β®Β§ΒΆΓ Β Γ©Β Β¥ΓΆ Γ΅ΓΆΒ ΓΆΒ¨Γ΅ΓΆΒ¨ΒªΓ£ Β―Β® Γ―Β§Γ«ΒªΒ Β¬ Β§Β  Β―Β®Γ΅Β«Β¥Β¤Β­Β¨Β¥ N Β¤Β­Β¥Β©"""
         start_date = datetime.now() - timedelta(days=days)
         
         async with db.connection() as conn:
-            # ‘β β¨αβ¨ª  ―® ο§λª ¬ ¤«ο ΰ¥ζ¥―β®Ά
+            # β€ΓΆΒ ΓΆΒ¨Γ΅ΓΆΒ¨ΒªΒ  Β―Β® Γ―Β§Γ«ΒªΒ Β¬ Β¤Β«Γ― Γ Β¥Γ¦Β¥Β―ΓΆΒ®ΒΆ
             lang_query = """
             SELECT 
                 details->>'language' as language,
@@ -122,7 +122,7 @@ class MetricsCollector:
                 if row['language']:
                     languages[row['language']] = row['count']
             
-            # ®―γ«οΰ­λ¥ ª β¥£®ΰ¨¨
+            # ΒΒ®Β―Γ£Β«Γ―Γ Β­Γ«Β¥ ΒªΒ ΓΆΒ¥Β£Β®Γ Β¨Β¨
             category_query = """
             SELECT 
                 details->>'category' as category,
@@ -151,15 +151,15 @@ class MetricsCollector:
     
     @staticmethod
     async def cleanup_old_metrics(days_to_keep: int = 30) -> int:
-        """“¤ «ο¥β αβ ΰλ¥ ¬¥βΰ¨ª¨, ®αβ Ά«οο β®«μª® §  ―®α«¥¤­¨¥ N ¤­¥©"""
+        """β€Β¤Β Β«Γ―Β¥ΓΆ Γ΅ΓΆΒ Γ Γ«Β¥ Β¬Β¥ΓΆΓ Β¨ΒªΒ¨, Β®Γ΅ΓΆΒ ΒΆΒ«Γ―Γ― ΓΆΒ®Β«Γ¬ΒªΒ® Β§Β  Β―Β®Γ΅Β«Β¥Β¤Β­Β¨Β¥ N Β¤Β­Β¥Β©"""
         cutoff_date = datetime.now() - timedelta(days=days_to_keep)
         
         async with db.connection() as conn:
             query = "DELETE FROM metrics WHERE created_at < $1 RETURNING id"
             rows = await conn.fetch(query, cutoff_date)
             
-            logger.info(f"“¤ «¥­® {len(rows)} αβ ΰλε § ―¨α¥© ¬¥βΰ¨ª")
+            logger.info(f"β€Β¤Β Β«Β¥Β­Β® {len(rows)} Γ΅ΓΆΒ Γ Γ«Γ¥ Β§Β Β―Β¨Γ΅Β¥Β© Β¬Β¥ΓΆΓ Β¨Βª")
             return len(rows)
 
-# ‘®§¤ ρ¬ νª§¥¬―«οΰ ¤«ο γ¤®΅­®£® ¨¬―®ΰβ 
+# β€Β®Β§Β¤Β Γ±Β¬ Γ­ΒªΒ§Β¥Β¬Β―Β«Γ―Γ  Β¤Β«Γ― Γ£Β¤Β®Β΅Β­Β®Β£Β® Β¨Β¬Β―Β®Γ ΓΆΒ 
 metrics = MetricsCollector()
