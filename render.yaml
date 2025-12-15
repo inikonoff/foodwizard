@@ -2,7 +2,7 @@ services:
   - type: web
     name: chef-bot
     env: python
-    region: frankfurt  # ¨«¨ ¤àã£®© à¥£¨®­
+    region: frankfurt  # Ð¸Ð»Ð¸ Ð´Ñ€ÑƒÐ³Ð¾Ð¹ Ñ€ÐµÐ³Ð¸Ð¾Ð½
     buildCommand: pip install -r requirements.txt
     startCommand: python main.py
     envVars:
