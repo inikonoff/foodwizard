@@ -18,110 +18,110 @@ voice_service = VoiceService()
 async def handle_voice_message(message: Message):
     user_id = message.from_user.id
     
-    # Проверяем лимиты на голосовые сообщения
+    # ┬П├а┬о┬в┬е├а├п┬е┬м ┬л┬и┬м┬и├в├л ┬н┬а ┬г┬о┬л┬о├б┬о┬в├л┬е ├б┬о┬о┬б├й┬е┬н┬и├п
     allowed, used, limit = await users_repo.check_and_increment_request(user_id, "voice")
     
     if not allowed:
-        # Получаем язык для сообщения об ошибке
+        # ┬П┬о┬л├г├з┬а┬е┬м ├п┬з├л┬к ┬д┬л├п ├б┬о┬о┬б├й┬е┬н┬и├п ┬о┬б ┬о├и┬и┬б┬к┬е
         user_data = await users_repo.get_user(user_id)
         lang = user_data.get('language_code', 'ru') if user_data else 'ru'
         
         await message.answer(
-            f"? <b>Лимит исчерпан!</b>\n\n"
-            f"Вы использовали {used} из {limit} голосовых запросов сегодня.\n"
-            f"Лимиты обновляются каждый день в 00:00.\n\n"
-            f"?? <b>Хотите больше?</b> Используйте команду /stats",
+            f"? <b>тА╣┬и┬м┬и├в ┬и├б├з┬е├а┬п┬а┬н!</b>\n\n"
+            f"тАЪ├л ┬и├б┬п┬о┬л├м┬з┬о┬в┬а┬л┬и {used} ┬и┬з {limit} ┬г┬о┬л┬о├б┬о┬в├л├е ┬з┬а┬п├а┬о├б┬о┬в ├б┬е┬г┬о┬д┬н├п.\n"
+            f"тА╣┬и┬м┬и├в├л ┬о┬б┬н┬о┬в┬л├п├о├в├б├п ┬к┬а┬ж┬д├л┬й ┬д┬е┬н├м ┬в 00:00.\n\n"
+            f"?? <b>тАв┬о├в┬и├в┬е ┬б┬о┬л├м├и┬е?</b> ╦Ж├б┬п┬о┬л├м┬з├г┬й├в┬е ┬к┬о┬м┬а┬н┬д├г /stats",
             parse_mode="HTML"
         )
         return
     
-    # Получаем язык пользователя
+    # ┬П┬о┬л├г├з┬а┬е┬м ├п┬з├л┬к ┬п┬о┬л├м┬з┬о┬в┬а├в┬е┬л├п
     user_data = await users_repo.get_user(user_id)
     lang = user_data.get('language_code', 'ru') if user_data else 'ru'
     
     try:
-        # Скачиваем голосовое сообщение
+        # тАШ┬к┬а├з┬и┬в┬а┬е┬м ┬г┬о┬л┬о├б┬о┬в┬о┬е ├б┬о┬о┬б├й┬е┬н┬и┬е
         file_id = message.voice.file_id
         file = await message.bot.get_file(file_id)
         file_path = file.file_path
         
-        # Создаем временный файл
+        # тАШ┬о┬з┬д┬а┬е┬м ┬в├а┬е┬м┬е┬н┬н├л┬й ├д┬а┬й┬л
         temp_ogg_path = f"temp/voice_{user_id}_{file_id}.ogg"
         os.makedirs("temp", exist_ok=True)
         
-        # Скачиваем файл
+        # тАШ┬к┬а├з┬и┬в┬а┬е┬м ├д┬а┬й┬л
         await message.bot.download_file(file_path, temp_ogg_path)
         
-        # Конвертируем и распознаем
+        # ┼а┬о┬н┬в┬е├а├в┬и├а├г┬е┬м ┬и ├а┬а├б┬п┬о┬з┬н┬а┬е┬м
         text = await voice_service.process_voice(temp_ogg_path, lang)
         
-        # Удаляем временный файл
+        # тАЬ┬д┬а┬л├п┬е┬м ┬в├а┬е┬м┬е┬н┬н├л┬й ├д┬а┬й┬л
         os.remove(temp_ogg_path)
         
-        # Удаляем голосовое сообщение (опционально)
+        # тАЬ┬д┬а┬л├п┬е┬м ┬г┬о┬л┬о├б┬о┬в┬о┬е ├б┬о┬о┬б├й┬е┬н┬и┬е (┬о┬п├ж┬и┬о┬н┬а┬л├м┬н┬о)
         try:
             await message.delete()
         except:
             pass
         
-        # Если текст не распознан
+        # тАж├б┬л┬и ├в┬е┬к├б├в ┬н┬е ├а┬а├б┬п┬о┬з┬н┬а┬н
         if not text or len(text.strip()) < 2:
             await message.answer(get_text(lang, "error_voice"))
             return
         
-        # Логируем успешное распознавание
+        # тА╣┬о┬г┬и├а├г┬е┬м ├г├б┬п┬е├и┬н┬о┬е ├а┬а├б┬п┬о┬з┬н┬а┬в┬а┬н┬и┬е
         await metrics.track_voice_processed(user_id, True, lang)
         
-        # Обрабатываем текст как продукты
+        # ┼╜┬б├а┬а┬б┬а├в├л┬в┬а┬е┬м ├в┬е┬к├б├в ┬к┬а┬к ┬п├а┬о┬д├г┬к├в├л
         await process_voice_text(message, user_id, text, lang)
         
     except Exception as e:
-        logger.error(f"Ошибка обработки голосового сообщения: {e}")
+        logger.error(f"┼╜├и┬и┬б┬к┬а ┬о┬б├а┬а┬б┬о├в┬к┬и ┬г┬о┬л┬о├б┬о┬в┬о┬г┬о ├б┬о┬о┬б├й┬е┬н┬и├п: {e}")
         await message.answer(get_text(lang, "error_voice"))
         
-        # Логируем ошибку
+        # тА╣┬о┬г┬и├а├г┬е┬м ┬о├и┬и┬б┬к├г
         await metrics.track_voice_processed(user_id, False, lang)
 
 async def process_voice_text(message: Message, user_id: int, text: str, lang: str):
-    """Обрабатывает распознанный текст из голосового сообщения"""
-    # Обрезаем текст до 1000 символов
+    """┼╜┬б├а┬а┬б┬а├в├л┬в┬а┬е├в ├а┬а├б┬п┬о┬з┬н┬а┬н┬н├л┬й ├в┬е┬к├б├в ┬и┬з ┬г┬о┬л┬о├б┬о┬в┬о┬г┬о ├б┬о┬о┬б├й┬е┬н┬и├п"""
+    # ┼╜┬б├а┬е┬з┬а┬е┬м ├в┬е┬к├б├в ┬д┬о 1000 ├б┬и┬м┬в┬о┬л┬о┬в
     if len(text) > 1000:
         text = text[:1000]
     
-    # Получаем текущие продукты из состояния
+    # ┬П┬о┬л├г├з┬а┬е┬м ├в┬е┬к├г├й┬и┬е ┬п├а┬о┬д├г┬к├в├л ┬и┬з ├б┬о├б├в┬о├п┬н┬и├п
     current_products = state_manager.get_products(user_id)
     
-    # Если продуктов ещё нет, проверяем валидность
+    # тАж├б┬л┬и ┬п├а┬о┬д├г┬к├в┬о┬в ┬е├й├▒ ┬н┬е├в, ┬п├а┬о┬в┬е├а├п┬е┬м ┬в┬а┬л┬и┬д┬н┬о├б├в├м
     if not current_products:
         is_valid = await groq_service.validate_ingredients(text, lang)
         if not is_valid:
             await message.answer(get_text(lang, "error_no_products"))
             return
         
-        # Сохраняем продукты
+        # тАШ┬о├е├а┬а┬н├п┬е┬м ┬п├а┬о┬д├г┬к├в├л
         state_manager.set_products(user_id, text)
         await message.answer(get_text(lang, "products_accepted", products=text))
         
-        # Анализируем категории
+        # тВм┬н┬а┬л┬и┬з┬и├а├г┬е┬м ┬к┬а├в┬е┬г┬о├а┬и┬и
         await analyze_and_show_categories(message, user_id, text, lang)
     else:
-        # Добавляем к существующим продуктам
+        # тАЮ┬о┬б┬а┬в┬л├п┬е┬м ┬к ├б├г├й┬е├б├в┬в├г├о├й┬и┬м ┬п├а┬о┬д├г┬к├в┬а┬м
         state_manager.append_products(user_id, text)
         all_products = state_manager.get_products(user_id)
         await message.answer(get_text(lang, "products_added", products=text))
         
-        # Показываем категории с учётом новых продуктов
+        # ┬П┬о┬к┬а┬з├л┬в┬а┬е┬м ┬к┬а├в┬е┬г┬о├а┬и┬и ├б ├г├з├▒├в┬о┬м ┬н┬о┬в├л├е ┬п├а┬о┬д├г┬к├в┬о┬в
         await analyze_and_show_categories(message, user_id, all_products, lang)
     
-    # Обновляем активность пользователя
+    # ┼╜┬б┬н┬о┬в┬л├п┬е┬м ┬а┬к├в┬и┬в┬н┬о├б├в├м ┬п┬о┬л├м┬з┬о┬в┬а├в┬е┬л├п
     await users_repo.update_activity(user_id)
 
 async def analyze_and_show_categories(message: Message, user_id: int, products: str, lang: str):
-    """Анализирует продукты и показывает категории"""
+    """тВм┬н┬а┬л┬и┬з┬и├а├г┬е├в ┬п├а┬о┬д├г┬к├в├л ┬и ┬п┬о┬к┬а┬з├л┬в┬а┬е├в ┬к┬а├в┬е┬г┬о├а┬и┬и"""
     wait_msg = await message.answer(get_text(lang, "processing"))
     
     try:
-        # Анализируем категории
+        # тВм┬н┬а┬л┬и┬з┬и├а├г┬е┬м ┬к┬а├в┬е┬г┬о├а┬и┬и
         categories = await groq_service.analyze_products(products, lang)
         
         await wait_msg.delete()
@@ -130,10 +130,10 @@ async def analyze_and_show_categories(message: Message, user_id: int, products: 
             await message.answer(get_text(lang, "error_generation"))
             return
         
-        # Сохраняем категории в состоянии
+        # тАШ┬о├е├а┬а┬н├п┬е┬м ┬к┬а├в┬е┬г┬о├а┬и┬и ┬в ├б┬о├б├в┬о├п┬н┬и┬и
         state_manager.set_categories(user_id, categories)
         
-        # Создаём клавиатуру с категориями
+        # тАШ┬о┬з┬д┬а├▒┬м ┬к┬л┬а┬в┬и┬а├в├г├а├г ├б ┬к┬а├в┬е┬г┬о├а┬и├п┬м┬и
         builder = InlineKeyboardBuilder()
         for category in categories:
             builder.row(
@@ -143,7 +143,7 @@ async def analyze_and_show_categories(message: Message, user_id: int, products: 
                 )
             )
         
-        # Кнопка сброса
+        # ┼а┬н┬о┬п┬к┬а ├б┬б├а┬о├б┬а
         builder.row(
             types.InlineKeyboardButton(
                 text=get_text(lang, "btn_restart"),
@@ -158,7 +158,7 @@ async def analyze_and_show_categories(message: Message, user_id: int, products: 
         )
         
     except Exception as e:
-        logger.error(f"Ошибка анализа категорий: {e}")
+        logger.error(f"┼╜├и┬и┬б┬к┬а ┬а┬н┬а┬л┬и┬з┬а ┬к┬а├в┬е┬г┬о├а┬и┬й: {e}")
         await wait_msg.delete()
         await message.answer(get_text(lang, "error_generation"))
 
