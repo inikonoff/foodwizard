@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import Enum
 
 class UserLanguage(str, Enum):
-    """Поддерживаемые языки"""
+    """┬П┬о┬д┬д┬е├а┬ж┬и┬в┬а┬е┬м├л┬е ├п┬з├л┬к┬и"""
     RU = "ru"
     EN = "en"
     DE = "de"
@@ -13,7 +13,7 @@ class UserLanguage(str, Enum):
     ES = "es"
 
 class Category(str, Enum):
-    """Категории блюд"""
+    """┼а┬а├в┬е┬г┬о├а┬и┬и ┬б┬л├о┬д"""
     SOUP = "soup"
     MAIN = "main"
     SALAD = "salad"
@@ -23,8 +23,8 @@ class Category(str, Enum):
     SNACK = "snack"
 
 class UserBase(BaseModel):
-    """Базовая модель пользователя"""
-    user_id: int = Field(..., description="ID пользователя в Telegram")
+    """┬Б┬а┬з┬о┬в┬а├п ┬м┬о┬д┬е┬л├м ┬п┬о┬л├м┬з┬о┬в┬а├в┬е┬л├п"""
+    user_id: int = Field(..., description="ID ┬п┬о┬л├м┬з┬о┬в┬а├в┬е┬л├п ┬в Telegram")
     first_name: str
     username: Optional[str] = None
     language_code: UserLanguage = UserLanguage.RU
@@ -33,48 +33,48 @@ class UserBase(BaseModel):
     last_active_at: datetime = Field(default_factory=datetime.now)
 
 class FavoriteRecipe(BaseModel):
-    """Модель избранного рецепта"""
+    """┼Т┬о┬д┬е┬л├м ┬и┬з┬б├а┬а┬н┬н┬о┬г┬о ├а┬е├ж┬е┬п├в┬а"""
     id: Optional[int] = None
-    user_id: int = Field(..., description="ID пользователя")
-    dish_name: str = Field(..., description="Название блюда")
-    recipe_text: str = Field(..., description="Текст рецепта")
+    user_id: int = Field(..., description="ID ┬п┬о┬л├м┬з┬о┬в┬а├в┬е┬л├п")
+    dish_name: str = Field(..., description="┬Н┬а┬з┬в┬а┬н┬и┬е ┬б┬л├о┬д┬а")
+    recipe_text: str = Field(..., description="тАЩ┬е┬к├б├в ├а┬е├ж┬е┬п├в┬а")
     category: Optional[Category] = None
     ingredients: Optional[str] = None
     language: UserLanguage = UserLanguage.RU
     created_at: datetime = Field(default_factory=datetime.now)
 
 class GroqCacheItem(BaseModel):
-    """Модель элемента кэша Groq"""
-    hash: str = Field(..., description="Хеш запроса")
-    response: str = Field(..., description="Ответ от Groq")
+    """┼Т┬о┬д┬е┬л├м ├н┬л┬е┬м┬е┬н├в┬а ┬к├н├и┬а Groq"""
+    hash: str = Field(..., description="тАв┬е├и ┬з┬а┬п├а┬о├б┬а")
+    response: str = Field(..., description="┼╜├в┬в┬е├в ┬о├в Groq")
     language: UserLanguage
-    model: str = Field(..., description="Модель Groq")
+    model: str = Field(..., description="┼Т┬о┬д┬е┬л├м Groq")
     tokens_used: Optional[int] = None
     created_at: datetime = Field(default_factory=datetime.now)
-    expires_at: datetime = Field(..., description="Время истечения кэша")
+    expires_at: datetime = Field(..., description="тАЪ├а┬е┬м├п ┬и├б├в┬е├з┬е┬н┬и├п ┬к├н├и┬а")
 
 class MetricEvent(BaseModel):
-    """Модель события для метрик"""
+    """┼Т┬о┬д┬е┬л├м ├б┬о┬б├л├в┬и├п ┬д┬л├п ┬м┬е├в├а┬и┬к"""
     id: Optional[int] = None
     user_id: int
-    event_type: str = Field(..., description="Тип события")
+    event_type: str = Field(..., description="тАЩ┬и┬п ├б┬о┬б├л├в┬и├п")
     details: Dict[str, Any] = Field(default_factory=dict)
     created_at: datetime = Field(default_factory=datetime.now)
 
 class Dish(BaseModel):
-    """Модель блюда"""
-    name: str = Field(..., description="Название блюда")
-    desc: str = Field(..., description="Описание блюда")
+    """┼Т┬о┬д┬е┬л├м ┬б┬л├о┬д┬а"""
+    name: str = Field(..., description="┬Н┬а┬з┬в┬а┬н┬и┬е ┬б┬л├о┬д┬а")
+    desc: str = Field(..., description="┼╜┬п┬и├б┬а┬н┬и┬е ┬б┬л├о┬д┬а")
 
 class RecipeRequest(BaseModel):
-    """Модель запроса на генерацию рецепта"""
+    """┼Т┬о┬д┬е┬л├м ┬з┬а┬п├а┬о├б┬а ┬н┬а ┬г┬е┬н┬е├а┬а├ж┬и├о ├а┬е├ж┬е┬п├в┬а"""
     dish_name: str
     products: str
     language: UserLanguage = UserLanguage.RU
     category: Optional[Category] = None
 
 class IntentAnalysis(BaseModel):
-    """Модель анализа намерения пользователя"""
-    intent: str = Field(..., description="Намерение: add_products, select_dish, unclear")
-    products: str = Field("", description="Обнаруженные продукты")
-    dish_name: str = Field("", description="Обнаруженное название блюда")
+    """┼Т┬о┬д┬е┬л├м ┬а┬н┬а┬л┬и┬з┬а ┬н┬а┬м┬е├а┬е┬н┬и├п ┬п┬о┬л├м┬з┬о┬в┬а├в┬е┬л├п"""
+    intent: str = Field(..., description="┬Н┬а┬м┬е├а┬е┬н┬и┬е: add_products, select_dish, unclear")
+    products: str = Field("", description="┼╜┬б┬н┬а├а├г┬ж┬е┬н┬н├л┬е ┬п├а┬о┬д├г┬к├в├л")
+    dish_name: str = Field("", description="┼╜┬б┬н┬а├а├г┬ж┬е┬н┬н┬о┬е ┬н┬а┬з┬в┬а┬н┬и┬е ┬б┬л├о┬д┬а")
