@@ -11,13 +11,13 @@ logger = logging.getLogger(__name__)
 class GroqCache:
     @staticmethod
     def _generate_hash(prompt: str, lang: str, model: str) -> str:
-        """ƒ¥­¥ΰ¨ΰγ¥β γ­¨ª «μ­λ© ε¥θ ¤«ο § ―ΰ®α """
+        """Ζ’Β¥Β­Β¥Γ Β¨Γ Γ£Β¥ΓΆ Γ£Β­Β¨ΒªΒ Β«Γ¬Β­Γ«Β© Γ¥Β¥Γ¨ Β¤Β«Γ― Β§Β Β―Γ Β®Γ΅Β """
         data = f"{prompt}_{lang}_{model}"
         return hashlib.sha256(data.encode()).hexdigest()
     
     @staticmethod
     def _get_ttl(cache_type: str) -> int:
-        """‚®§Άΰ ι ¥β TTL Ά α¥ªγ­¤ ε Ά § Ά¨α¨¬®αβ¨ ®β β¨―  § ―ΰ®α """
+        """β€Β®Β§ΒΆΓ Β Γ©Β Β¥ΓΆ TTL ΒΆ Γ΅Β¥ΒªΓ£Β­Β¤Β Γ¥ ΒΆ Β§Β ΒΆΒ¨Γ΅Β¨Β¬Β®Γ΅ΓΆΒ¨ Β®ΓΆ ΓΆΒ¨Β―Β  Β§Β Β―Γ Β®Γ΅Β """
         ttl_map = {
             'recipe': CACHE_TTL_RECIPE,
             'analysis': CACHE_TTL_ANALYSIS,
@@ -27,7 +27,7 @@ class GroqCache:
     
     @staticmethod
     async def get(prompt: str, lang: str, model: str, cache_type: str = 'recipe') -> Optional[str]:
-        """®«γη ¥β ΰ¥§γ«μβ β ¨§ ªνθ , ¥α«¨ ®­ ¥αβμ ¨ ­¥ ¨αβρª"""
+        """ΒΒ®Β«Γ£Γ§Β Β¥ΓΆ Γ Β¥Β§Γ£Β«Γ¬ΓΆΒ ΓΆ Β¨Β§ ΒªΓ­Γ¨Β , Β¥Γ΅Β«Β¨ Β®Β­ Β¥Γ΅ΓΆΓ¬ Β¨ Β­Β¥ Β¨Γ΅ΓΆΓ±Βª"""
         async with db.connection() as conn:
             hash_key = GroqCache._generate_hash(prompt, lang, model)
             
@@ -40,16 +40,16 @@ class GroqCache:
             row = await conn.fetchrow(query, hash_key)
             
             if row:
-                logger.info(f"νθ ―®― ¤ ­¨¥ ¤«ο {hash_key[:8]}...")
+                logger.info(f"Ε Γ­Γ¨ Β―Β®Β―Β Β¤Β Β­Β¨Β¥ Β¤Β«Γ― {hash_key[:8]}...")
                 return row['response']
             else:
-                logger.info(f"νθ ―ΰ®¬ ε ¤«ο {hash_key[:8]}...")
+                logger.info(f"Ε Γ­Γ¨ Β―Γ Β®Β¬Β Γ¥ Β¤Β«Γ― {hash_key[:8]}...")
                 return None
     
     @staticmethod
     async def set(prompt: str, lang: str, model: str, response: str, 
                   cache_type: str = 'recipe', tokens_used: Optional[int] = None) -> bool:
-        """‘®εΰ ­ο¥β ΰ¥§γ«μβ β Ά ªνθ"""
+        """β€Β®Γ¥Γ Β Β­Γ―Β¥ΓΆ Γ Β¥Β§Γ£Β«Γ¬ΓΆΒ ΓΆ ΒΆ ΒªΓ­Γ¨"""
         async with db.connection() as conn:
             hash_key = GroqCache._generate_hash(prompt, lang, model)
             ttl_seconds = GroqCache._get_ttl(cache_type)
@@ -77,24 +77,24 @@ class GroqCache:
                     tokens_used,
                     expires_at
                 )
-                logger.info(f"νθ α®εΰ ­ρ­: {hash_key[:8]}... (TTL: {ttl_seconds} α¥ª)")
+                logger.info(f"Ε Γ­Γ¨ Γ΅Β®Γ¥Γ Β Β­Γ±Β­: {hash_key[:8]}... (TTL: {ttl_seconds} Γ΅Β¥Βª)")
                 return True
             except Exception as e:
-                logger.error(f"θ¨΅ª  α®εΰ ­¥­¨ο Ά ªνθ: {e}")
+                logger.error(f"Ε½Γ¨Β¨Β΅ΒªΒ  Γ΅Β®Γ¥Γ Β Β­Β¥Β­Β¨Γ― ΒΆ ΒªΓ­Γ¨: {e}")
                 return False
     
     @staticmethod
     async def clear_expired() -> int:
-        """η¨ι ¥β ―ΰ®αΰ®η¥­­λ¥ § ―¨α¨ ¨§ ªνθ  ¨ Ά®§Άΰ ι ¥β ª®«¨η¥αβΆ® γ¤ «ρ­­λε"""
+        """Ε½Γ§Β¨Γ©Β Β¥ΓΆ Β―Γ Β®Γ΅Γ Β®Γ§Β¥Β­Β­Γ«Β¥ Β§Β Β―Β¨Γ΅Β¨ Β¨Β§ ΒªΓ­Γ¨Β  Β¨ ΒΆΒ®Β§ΒΆΓ Β Γ©Β Β¥ΓΆ ΒªΒ®Β«Β¨Γ§Β¥Γ΅ΓΆΒΆΒ® Γ£Β¤Β Β«Γ±Β­Β­Γ«Γ¥"""
         async with db.connection() as conn:
             query = "DELETE FROM groq_cache WHERE expires_at <= NOW() RETURNING hash"
             rows = await conn.fetch(query)
-            logger.info(f"η¨ι¥­® {len(rows)} ―ΰ®αΰ®η¥­­λε § ―¨α¥© ªνθ ")
+            logger.info(f"Ε½Γ§Β¨Γ©Β¥Β­Β® {len(rows)} Β―Γ Β®Γ΅Γ Β®Γ§Β¥Β­Β­Γ«Γ¥ Β§Β Β―Β¨Γ΅Β¥Β© ΒªΓ­Γ¨Β ")
             return len(rows)
     
     @staticmethod
     async def get_stats() -> Dict[str, Any]:
-        """‚®§Άΰ ι ¥β αβ β¨αβ¨ªγ ªνθ """
+        """β€Β®Β§ΒΆΓ Β Γ©Β Β¥ΓΆ Γ΅ΓΆΒ ΓΆΒ¨Γ΅ΓΆΒ¨ΒªΓ£ ΒªΓ­Γ¨Β """
         async with db.connection() as conn:
             stats_query = """
             SELECT 
@@ -116,5 +116,5 @@ class GroqCache:
                 'total_tokens_saved': row['total_tokens'] or 0
             }
 
-# ‘®§¤ ρ¬ νª§¥¬―«οΰ ¤«ο γ¤®΅­®£® ¨¬―®ΰβ 
+# β€Β®Β§Β¤Β Γ±Β¬ Γ­ΒªΒ§Β¥Β¬Β―Β«Γ―Γ  Β¤Β«Γ― Γ£Β¤Β®Β΅Β­Β®Β£Β® Β¨Β¬Β―Β®Γ ΓΆΒ 
 groq_cache = GroqCache()
