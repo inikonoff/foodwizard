@@ -1,10 +1,10 @@
 import logging
 import hashlib
 import json
-from typing import Optional, Any
 from datetime import datetime, timedelta
 from . import db
 from config import CACHE_TTL_RECIPE, CACHE_TTL_ANALYSIS, CACHE_TTL_VALIDATION, CACHE_TTL_INTENT, CACHE_TTL_DISH_LIST
+from typing import Optional, Any, Dict
 
 logger = logging.getLogger(__name__)
 
