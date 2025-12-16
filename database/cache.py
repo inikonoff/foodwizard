@@ -56,10 +56,11 @@ class GroqCache:
         ttl = GroqCache._get_ttl(cache_type)
         
         # --- ИСПРАВЛЕНИЕ: ГАРАНТИРОВАННЫЙ UTC ---
-        # Мы явно берем текущее время в UTC и добавляем к нему таймбрейк.
-        # Результат гарантированно имеет timezone.utc
-        now_utc = datetime.datetime.now(datetime.timezone.utc)
-        expires_at = now_utc + datetime.timedelta(seconds=ttl)
+        # --- ОКОНЧАТЕЛЬНОЕ ИСПРАВЛЕНИЕ: Чистый aware datetime, готовый для Postgres ---
+        # Мы используем datetime.datetime.now(datetime.timezone.utc) 
+        # и затем добавляем TTL. Это гарантирует, что Postgres/asyncpg 
+        # не будет пытаться выполнять арифметику с "неправильными" типами.
+        expires_at = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(seconds=ttl)
         # ----------------------------------------
         
         hash_key = GroqCache._generate_hash(prompt, lang, model)
