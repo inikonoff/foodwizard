@@ -54,21 +54,19 @@ class GroqCache:
         
         ttl = GroqCache._get_ttl(cache_type)
         
-        # 1. Рассчитываем expires_at в UTC
+        # 1. Рассчитываем expires_at в UTC (aware time)
         expires_at_aware = datetime.now(timezone.utc) + timedelta(seconds=ttl)
-
-        # 2. --- ФИНАЛЬНОЕ ИСПРАВЛЕНИЕ Timezone ---
-        # Убираем информацию о часовом поясе, чтобы избежать конфликта asyncpg,
-        # так как ваша среда, похоже, ожидает Naive-дату для колонок с TimeZone.
-        expires_at_naive = expires_at_aware.replace(tzinfo=None)
-        
-        # 3. Аналогично для created_at
         created_at_aware = datetime.now(timezone.utc)
+        
+        # 2. --- ФИНАЛЬНОЕ ИСПРАВЛЕНИЕ: Преобразование в Naive ---
+        # Поскольку ваша колонка TIMESTAMP WITHOUT TIME ZONE, мы убираем информацию о часовом поясе.
+        expires_at_naive = expires_at_aware.replace(tzinfo=None)
         created_at_naive = created_at_aware.replace(tzinfo=None)
         
         hash_key = GroqCache._generate_hash(prompt, lang, model)
 
         async with db.connection() as conn:
+            # SQL-запрос, принимающий две Naive-даты
             query = """
             INSERT INTO groq_cache (hash, response, language, model, tokens_used, expires_at, created_at)
             VALUES ($1, $2, $3, $4, $5, $6, $7)
