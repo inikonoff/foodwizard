@@ -1,7 +1,7 @@
 import logging
 import hashlib
 import json
-from typing import Optional, Any
+from typing import Dict, List, Any, Optional, Union
 from datetime import datetime, timedelta
 from . import db
 from config import CACHE_TTL_RECIPE, CACHE_TTL_ANALYSIS, CACHE_TTL_VALIDATION
