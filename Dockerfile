@@ -1,30 +1,28 @@
 FROM python:3.10-slim
 
-# Устанавливаем системные зависимости
+# Установка системных зависимостей (ffmpeg для pydub, libmagic1 для python-magic)
 RUN apt-get update && apt-get install -y \
     ffmpeg \
+    libmagic1 \
     build-essential \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Создаем рабочую директорию
 WORKDIR /app
 
-# Копируем файлы зависимостей
+# Копирование и установка зависимостей Python
 COPY requirements.txt .
-
-# Устанавливаем Python зависимости
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Копируем весь код проекта
+# Копирование кода
 COPY . .
 
-# Создаем директории для временных файлов
+# Создание директорий
 RUN mkdir -p temp logs
 
-# Настраиваем переменные окружения
+# Настройка окружения
 ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1
 
-# Запускаем бота
+# Команда запуска
 CMD ["python", "main.py"]
