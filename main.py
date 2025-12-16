@@ -152,8 +152,8 @@ async def main():
 
     async with lifespan():
         # Регистрация хуков
-        dp.startup.register(lambda: on_startup(dp, bot))
-        dp.shutdown.register(lambda: on_shutdown(dp, bot))
+        dp.startup.register(on_startup)
+        dp.shutdown.register(on_shutdown)
 
         # 2. Запуск Polling
         logger.info("⏳ Запуск Polling...")
