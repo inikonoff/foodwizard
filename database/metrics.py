@@ -1,165 +1,68 @@
 import logging
-import json
-from typing import Dict, Any, Optional, List
-from datetime import datetime, timedelta, timezone
+from typing import Dict, Any
+from datetime import datetime, timedelta, timezone # <-- ДОБАВЛЕН ИМПОРТ timezone
+
 from . import db
 
 logger = logging.getLogger(__name__)
 
-class MetricsCollector:
+class MetricsRepository:
+    """Репозиторий для хранения и получения метрик использования"""
+
     @staticmethod
-    async def track_event(user_id: int, event_type: str, details: Optional[Dict[str, Any]] = None):
-        """Записывает событие в метрики"""
+    async def track_request(user_id: int, model_name: str, tokens_used: int, is_cache_hit: bool):
+        """Регистрирует каждый запрос"""
         async with db.connection() as conn:
             query = """
-            INSERT INTO metrics (user_id, event_type, details, created_at)
-            VALUES ($1, $2, $3, NOW())
+            INSERT INTO usage_metrics (user_id, model_name, tokens_used, is_cache_hit, timestamp)
+            VALUES ($1, $2, $3, $4, NOW())
             """
-            
             try:
-                details_json = json.dumps(details) if details else '{}'
-                await conn.execute(query, user_id, event_type, details_json)
+                await conn.execute(
+                    query, 
+                    user_id, 
+                    model_name, 
+                    tokens_used, 
+                    is_cache_hit
+                )
             except Exception as e:
-                logger.error(f"Ошибка записи метрики: {e}")
-    
+                logger.error(f"Ошибка при сохранении метрики для пользователя {user_id}: {e}")
+
     @staticmethod
-    async def track_recipe_generated(user_id: int, dish_name: str, lang: str, 
-                                     category: str, ingredients_count: int, cache_hit: bool):
-        """Специальный метод для отслеживания генерации рецепта"""
-        await MetricsCollector.track_event(
-            user_id,
-            'recipe_generated',
-            {
-                'dish_name': dish_name,
-                'language': lang,
-                'category': category,
-                'ingredients_count': ingredients_count,
-                'cache_hit': cache_hit
-            }
-        )
-    
-    @staticmethod
-    async def track_favorite_added(user_id: int, dish_name: str, lang: str):
-        """Отслеживает добавление в избранное"""
-        await MetricsCollector.track_event(
-            user_id,
-            'favorite_added',
-            {
-                'dish_name': dish_name,
-                'language': lang
-            }
-        )
-    
-    @staticmethod
-    async def track_voice_processed(user_id: int, success: bool, lang: str):
-        """Отслеживает обработку голосового сообщения"""
-        await MetricsCollector.track_event(
-            user_id,
-            'voice_processed',
-            {
-                'success': success,
-                'language': lang
-            }
-        )
-    
-    @staticmethod
-    async def get_daily_stats(date: Optional[datetime] = None) -> Dict[str, Any]:
-        """Возвращает статистику за день"""
-        if date is None:
-            date = datetime.now(timezone.utc)
-        
-        start_date = date.replace(hour=0, minute=0, second=0, microsecond=0)
-        end_date = start_date + timedelta(days=1)
-        
+    async def get_total_stats() -> Dict[str, Any]:
+        """Возвращает общую статистику использования"""
         async with db.connection() as conn:
-            stats_query = """
+            query = """
             SELECT 
-                COUNT(*) as total_events,
-                COUNT(DISTINCT user_id) as unique_users,
-                COUNT(CASE WHEN event_type = 'recipe_generated' THEN 1 END) as recipes_generated,
-                COUNT(CASE WHEN event_type = 'favorite_added' THEN 1 END) as favorites_added,
-                COUNT(CASE WHEN event_type = 'voice_processed' THEN 1 END) as voice_processed
-            FROM metrics
-            WHERE created_at >= $1 AND created_at < $2
+                COUNT(*) as total_requests,
+                SUM(tokens_used) as total_tokens,
+                SUM(CASE WHEN is_cache_hit = TRUE THEN 1 ELSE 0 END) as cache_hits,
+                COUNT(*) - SUM(CASE WHEN is_cache_hit = TRUE THEN 1 ELSE 0 END) as non_cache_requests
+            FROM usage_metrics
             """
-            
-            row = await conn.fetchrow(stats_query, start_date, end_date)
-            
-            if row:
-                return {
-                    'date': start_date.date().isoformat(),
-                    'total_events': row['total_events'] or 0,
-                    'unique_users': row['unique_users'] or 0,
-                    'recipes_generated': row['recipes_generated'] or 0,
-                    'favorites_added': row['favorites_added'] or 0,
-                    'voice_processed': row['voice_processed'] or 0
-                }
-            return {}
-    
-    @staticmethod
-    async def get_language_stats(days: int = 7) -> Dict[str, Any]:
-        """Возвращает статистику по языкам за последние N дней"""
-        start_date = datetime.now(timezone.utc) - timedelta(days=days)
-        
-        async with db.connection() as conn:
-            # Статистика по языкам для рецептов
-            lang_query = """
-            SELECT 
-                details->>'language' as language,
-                COUNT(*) as count
-            FROM metrics
-            WHERE event_type = 'recipe_generated' 
-                AND created_at >= $1
-                AND details->>'language' IS NOT NULL
-            GROUP BY details->>'language'
-            ORDER BY count DESC
-            """
-            
-            rows = await conn.fetch(lang_query, start_date)
-            
-            languages = {}
-            for row in rows:
-                if row['language']:
-                    languages[row['language']] = row['count']
-            
-            # Популярные категории
-            category_query = """
-            SELECT 
-                details->>'category' as category,
-                COUNT(*) as count
-            FROM metrics
-            WHERE event_type = 'recipe_generated' 
-                AND created_at >= $1
-                AND details->>'category' IS NOT NULL
-            GROUP BY details->>'category'
-            ORDER BY count DESC
-            LIMIT 10
-            """
-            
-            category_rows = await conn.fetch(category_query, start_date)
-            
-            categories = {}
-            for row in category_rows:
-                if row['category']:
-                    categories[row['category']] = row['count']
+            row = await conn.fetchrow(query)
             
             return {
-                'period_days': days,
-                'languages': languages,
-                'categories': categories
+                'total_requests': row['total_requests'] or 0,
+                'total_tokens': row['total_tokens'] or 0,
+                'cache_hits': row['cache_hits'] or 0,
+                'non_cache_requests': row['non_cache_requests'] or 0,
             }
-    
+
     @staticmethod
-    async def cleanup_old_metrics(days_to_keep: int = 30) -> int:
-        """Удаляет старые метрики, оставляя только за последние N дней"""
-        cutoff_date = datetime.now(timezone.utc) - timedelta(days=days_to_keep)
-        
+    async def cleanup_old_metrics(days_to_keep: int = 90) -> int:
+        """
+        Очищает метрики старше указанного количества дней.
+        КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Используем timezone.utc для создания "осведомленного" времени.
+        """
         async with db.connection() as conn:
-            query = "DELETE FROM metrics WHERE created_at < $1 RETURNING id"
+            # ИСПРАВЛЕНО: Добавлен timezone.utc
+            cutoff_date = datetime.now(timezone.utc) - timedelta(days=days_to_keep)
+
+            query = "DELETE FROM usage_metrics WHERE timestamp < $1 RETURNING user_id"
             rows = await conn.fetch(query, cutoff_date)
             
-            logger.info(f"Удалено {len(rows)} старых записей метрик")
+            logger.info(f"Очищено {len(rows)} старых записей метрик (старше {days_to_keep} дней)")
             return len(rows)
 
-# Создаём экземпляр для удобного импорта
-metrics = MetricsCollector()
+metrics = MetricsRepository()
