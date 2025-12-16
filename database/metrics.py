@@ -1,6 +1,6 @@
 import logging
 from typing import Dict, Any
-from datetime import datetime, timedelta, timezone # <-- ДОБАВЛЕН ИМПОРТ timezone
+from datetime import datetime, timedelta, timezone 
 
 from . import db
 
@@ -11,16 +11,24 @@ class MetricsRepository:
 
     @staticmethod
     async def track_event(user_id: int, event_name: str, metadata: Dict[str, Any] = None) -> None:
-        """Отслеживает не-LLM событие (например, старт, настройки)"""
-        # Предполагаем, что у вас есть таблица для событий или вы используете usage_metrics с фиктивными данными.
-        # Для простоты, можете пока закомментировать эту строку в handlers/common.py, 
-        # чтобы устранить ошибку и перейти к следующей.
-            logger.debug(f"Event tracked: {event_name} for user {user_id}")
-            pass # Временно заглушаем
-    
+        """
+        Отслеживает не-LLM событие (например, старт, настройки) путем записи в таблицу usage_metrics.
+        ИСПРАВЛЕНИЕ: Перенаправляем событие в track_request с нулевыми токенами.
+        """
+        model_name = f"command_{event_name}"
+        logger.debug(f"Event tracked: {event_name} for user {user_id}. Using model_name: {model_name}")
+        
+        # Переиспользуем track_request для записи события
+        await MetricsRepository.track_request(
+            user_id=user_id,
+            model_name=model_name,
+            tokens_used=0,
+            is_cache_hit=False # Событие не кэшируется
+        )
+
     @staticmethod
     async def track_request(user_id: int, model_name: str, tokens_used: int, is_cache_hit: bool):
-        """Регистрирует каждый запрос"""
+        """Регистрирует каждый запрос (включая команды, переданные через track_event)"""
         async with db.connection() as conn:
             query = """
             INSERT INTO usage_metrics (user_id, model_name, tokens_used, is_cache_hit, timestamp)
@@ -51,6 +59,7 @@ class MetricsRepository:
             """
             row = await conn.fetchrow(query)
             
+            # Обработка NULL-значений
             return {
                 'total_requests': row['total_requests'] or 0,
                 'total_tokens': row['total_tokens'] or 0,
@@ -62,10 +71,10 @@ class MetricsRepository:
     async def cleanup_old_metrics(days_to_keep: int = 90) -> int:
         """
         Очищает метрики старше указанного количества дней.
-        КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Используем timezone.utc для создания "осведомленного" времени.
+        Использует timezone.utc для создания "осведомленного" времени.
         """
         async with db.connection() as conn:
-            # ИСПРАВЛЕНО: Добавлен timezone.utc
+            # Используем timezone.utc
             cutoff_date = datetime.now(timezone.utc) - timedelta(days=days_to_keep)
 
             query = "DELETE FROM usage_metrics WHERE timestamp < $1 RETURNING user_id"
