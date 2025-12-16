@@ -15,22 +15,16 @@ logger = logging.getLogger(__name__)
 # Инициализация Groq клиента
 client = AsyncGroq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 
-# ВНИМАНИЕ: Если вы планируете отслеживать метрики,
-# _send_request должен принимать user_id, чтобы избежать использования 0.
-
 class GroqService:
     def __init__(self):
         if not client:
             logger.warning("Groq API ключ не установлен. Некоторые функции будут недоступны.")
     
     async def _send_request(self, system_prompt: str, user_prompt: str, 
-                            temperature: float = 0.5, cache_type: str = "general", lang: str = "ru", user_id: int = 0) -> str: # <-- user_id ДОБАВЛЕН
+                            temperature: float = 0.5, cache_type: str = "general", lang: str = "ru", user_id: int = 0) -> str:
         """Базовая функция отправки запроса с кэшированием"""
         if not client:
             return "Ошибка: API ключ не настроен."
-        
-        # ВНИМАНИЕ: Здесь user_id используется как 0, если не передан. 
-        # Это может быть проблемой для реальных метрик.
         
         try:
             # Генерируем ключ кэша
@@ -45,7 +39,7 @@ class GroqService:
             )
             
             if cached_response:
-                # ИСПРАВЛЕНИЕ 1: Добавляем await перед metrics.track_event для попадания в кэш
+                # ИСПРАВЛЕНО: Добавлен await и используется реальный user_id
                 await metrics.track_event(user_id, "groq_cache_hit", {"key": cache_key, "lang": lang})
                 return cached_response
 
@@ -65,14 +59,15 @@ class GroqService:
             
             # Сохраняем в кэше
             await groq_cache.set(
-                prompt=cache_key, # Используем хеш-ключ из _generate_hash
+                prompt=cache_key,
                 response=response_text,
                 lang=lang, 
                 model=GROQ_MODEL,
                 tokens_used=chat_completion.usage.total_tokens,
                 cache_type=cache_type
             )
-            # ИСПРАВЛЕНИЕ 2: Добавляем await перед metrics.track_event для прямого запроса
+            
+            # ИСПРАВЛЕНО: Добавлен await и используется реальный user_id
             await metrics.track_event(user_id, "groq_request", {"key": cache_key, "lang": lang}) 
             
             return response_text
@@ -96,7 +91,7 @@ class GroqService:
             temperature=0.7,
             cache_type="recipe",
             lang=lang,
-            user_id=user_id # <-- ПЕРЕДАЕМ user_id
+            user_id=user_id 
         )
         
         return response
@@ -112,7 +107,7 @@ class GroqService:
             temperature=0.1,
             cache_type="analysis",
             lang=lang,
-            user_id=user_id # <-- ПЕРЕДАЕМ user_id
+            user_id=user_id 
         )
         
         try:
@@ -139,7 +134,7 @@ class GroqService:
             temperature=0.5,
             cache_type="dish_list",
             lang=lang,
-            user_id=user_id # <-- ПЕРЕДАЕМ user_id
+            user_id=user_id 
         )
         
         try:
@@ -166,7 +161,7 @@ class GroqService:
             temperature=0.1,
             cache_type="validation",
             lang=lang,
-            user_id=user_id # <-- ПЕРЕДАЕМ user_id
+            user_id=user_id 
         )
         
         try:
@@ -194,7 +189,7 @@ class GroqService:
             temperature=0.1,
             cache_type="intent",
             lang=lang,
-            user_id=user_id # <-- ПЕРЕДАЕМ user_id
+            user_id=user_id 
         )
         
         try:
