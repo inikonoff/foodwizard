@@ -1,7 +1,7 @@
 import logging
 import hashlib
 import json
-from typing import Dict, List, Any, Optional, Union
+from typing import Optional, Any, Dict
 from datetime import datetime, timedelta
 from . import db
 from config import CACHE_TTL_RECIPE, CACHE_TTL_ANALYSIS, CACHE_TTL_VALIDATION
@@ -89,8 +89,10 @@ class GroqCache:
         async with db.connection() as conn:
             query = "DELETE FROM groq_cache WHERE expires_at <= NOW() RETURNING hash"
             rows = await conn.fetch(query)
-            logger.info(f"Очищено {len(rows)} просроченных записей кэша")
-            return len(rows)
+            count = len(rows)
+            if count > 0:
+                logger.info(f"🧹 Очищено {count} просроченных записей кэша")
+            return count
     
     @staticmethod
     async def get_stats() -> Dict[str, Any]:
