@@ -7,16 +7,20 @@ import importlib
 PROMPTS: Dict[str, Dict[str, str]] = {}
 
 # Языки, которые мы поддерживаем
-LANGUAGES = ["ru", "en", "de", "fr", "it", "es"]
+# Берем из config или явно задаем
+LANGUAGES = ["ru", "en", "de", "fr", "it", "es"] 
 
 # Загружаем промпты для каждого языка
 for lang in LANGUAGES:
     try:
-        module_name = f"locales.prompts.{lang}"
-        module = importlib.import_module(module_name)
+        # Для динамического импорта из подпапки 'locales.prompts'
+        # Пакет 'locales.prompts' должен быть доступен
+        module = importlib.import_module(f".{lang}", package="locales.prompts") 
         PROMPTS[lang] = getattr(module, "PROMPTS", {})
     except ImportError:
-        print(f"?? Промпты для языка '{lang}' не найдены. Пропускаем.")
+        # Если промпты для языка не найдены (например, locales/prompts/de.py нет)
+        # Это не критично, но нужно об этом знать
+        print(f"⚠️ Промпты для языка '{lang}' не найдены. Пропускаем.")
         PROMPTS[lang] = {}
 
 def get_prompt(lang: str, prompt_name: str, **kwargs) -> str:
@@ -26,10 +30,11 @@ def get_prompt(lang: str, prompt_name: str, **kwargs) -> str:
         lang = "ru"
     
     prompts_for_lang = PROMPTS.get(lang, PROMPTS["ru"])
+    # Сначала ищем промпт в выбранном языке
     prompt = prompts_for_lang.get(prompt_name, "")
     
     if not prompt and lang != "ru":
-        # Fallback на русский, если промпт не найден
+        # Fallback на русский, если промпт не найден в текущем языке
         prompt = PROMPTS["ru"].get(prompt_name, "")
     
     # Подставляем переменные, если они есть
@@ -37,11 +42,11 @@ def get_prompt(lang: str, prompt_name: str, **kwargs) -> str:
         try:
             return prompt.format(**kwargs)
         except KeyError as e:
-            print(f"?? Ошибка подстановки переменной {e} в промпте {prompt_name}")
-            return prompt
-    
+            # Ошибка, если в промпте есть {ключ}, но он не передан
+            print(f"❌ Ошибка форматирования промпта '{prompt_name}' для языка '{lang}'. Не передан ключ: {e}")
+            return prompt # Возвращаем неформатированный промпт
+        except IndexError:
+             # На всякий случай
+             return prompt
+             
     return prompt
-
-def get_all_prompts(lang: str) -> Dict[str, str]:
-    """Возвращает все промпты для указанного языка"""
-    return PROMPTS.get(lang, PROMPTS["ru"])
