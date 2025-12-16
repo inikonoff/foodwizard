@@ -58,7 +58,7 @@ class GroqCache:
         expires_at_aware = datetime.now(timezone.utc) + timedelta(seconds=ttl)
         created_at_aware = datetime.now(timezone.utc)
         
-        # 2. --- ФИНАЛЬНОЕ ИСПРАВЛЕНИЕ: Преобразование в Naive ---
+        # 2. ПРЕОБРАЗОВАНИЕ В NAIVE
         # Поскольку ваша колонка TIMESTAMP WITHOUT TIME ZONE, мы убираем информацию о часовом поясе.
         expires_at_naive = expires_at_aware.replace(tzinfo=None)
         created_at_naive = created_at_aware.replace(tzinfo=None)
@@ -84,8 +84,8 @@ class GroqCache:
                     lang, 
                     model, 
                     tokens_used, 
-                    expires_at_naive,  # Naive дата
-                    created_at_naive   # Naive дата
+                    expires_at_naive,
+                    created_at_naive 
                 )
                 logger.debug(f"Cache set for key: {hash_key}, type: {cache_type}")
                 return True
