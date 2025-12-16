@@ -5,6 +5,9 @@ from typing import List
 # Загружаем переменные окружения
 load_dotenv()
 
+# Для совместимости с гибридным main.py (даже если Webhook не используется)
+WEBHOOK_URL = os.environ.get("WEBHOOK_URL", "") # Можно оставить пустой строкой, если используете Polling
+
 # ===== API КЛЮЧИ =====
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 if not TELEGRAM_TOKEN:
