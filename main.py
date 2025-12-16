@@ -1,4 +1,4 @@
-import asyncio
+9import asyncio
 import os
 import logging
 import sys
@@ -46,8 +46,8 @@ except ValueError as e:
     logger.error(f"❌ Критическая ошибка конфигурации: {e}")
     sys.exit(1)
 
-bot = Bot(token=TELEGRAM_TOKEN, parse_mode='HTML')
-dp = Dispatcher()
+
+bot = Bot(token=TELEGRAM_TOKEN, default=DefaultBotPriperties(parse_ode='HTML'))
 
 # --- 🌐 ВЕБ-СЕРВЕР ДЛЯ RENDER (HEALTH CHECK) ---
 async def health_check(request: web.Request):
