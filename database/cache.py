@@ -1,7 +1,7 @@
 import logging
 import hashlib
 import json
-from datetime import datetime, timedelta, timezone 
+import datetime # <--- ЯВНЫЙ ИМПОРТ МОДУЛЯ (Главное исправление)
 from . import db
 from config import CACHE_TTL_RECIPE, CACHE_TTL_ANALYSIS, CACHE_TTL_VALIDATION, CACHE_TTL_INTENT, CACHE_TTL_DISH_LIST
 from typing import Optional, Any, Dict
@@ -13,9 +13,7 @@ class GroqCache:
     @staticmethod
     def _generate_hash(prompt: str, lang: str, model: str) -> str:
         """Генерирует уникальный SHA256 хэш на основе входных параметров."""
-        # Объединяем входные данные в одну строку
         data = f"{prompt.strip()}:{lang}:{model}"
-        # Возвращаем SHA256 хэш в шестнадцатеричном формате
         return hashlib.sha256(data.encode('utf-8')).hexdigest()
 
     @staticmethod
@@ -55,7 +53,13 @@ class GroqCache:
         """Сохраняет результат в кэше с TTL"""
 
         ttl = GroqCache._get_ttl(cache_type)
-        expires_at = datetime.now(timezone.utc) + timedelta(seconds=ttl)  # Используется timezone.utc
+        
+        # --- ГЛАВНОЕ ИСПРАВЛЕНИЕ ---
+        # Мы используем полный путь datetime.datetime.now(datetime.timezone.utc)
+        # Это гарантирует создание времени с часовым поясом ("aware").
+        expires_at = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(seconds=ttl)
+        # ---------------------------
+
         hash_key = GroqCache._generate_hash(prompt, lang, model)
 
         async with db.connection() as conn:
@@ -76,7 +80,7 @@ class GroqCache:
                     lang, 
                     model, 
                     tokens_used, 
-                    expires_at
+                    expires_at # Теперь это точно Aware Datetime (с UTC)
                 )
                 logger.debug(f"Cache set for key: {hash_key}, type: {cache_type}")
                 return True
@@ -86,7 +90,7 @@ class GroqCache:
 
     @staticmethod
     async def clear_expired() -> int:
-        """Очищает просроченные записи из кэша и возвращает количество удалённых"""
+        """Очищает просроченные записи из кэша"""
         async with db.connection() as conn:
             query = "DELETE FROM groq_cache WHERE expires_at <= NOW() RETURNING hash"
             rows = await conn.fetch(query)
@@ -100,8 +104,6 @@ class GroqCache:
             total_count = await conn.fetchval("SELECT COUNT(*) FROM groq_cache")
             expired_count = await conn.fetchval("SELECT COUNT(*) FROM groq_cache WHERE expires_at <= NOW()")
             
-            # Предположим, что мы хотим получить общий размер кэша
-            # В PostgreSQL можно использовать pg_database_size, но для конкретной таблицы проще (хотя это может быть медленно)
             size_kb = await conn.fetchval("SELECT pg_relation_size('groq_cache') / 1024")
             
             return {
@@ -110,6 +112,5 @@ class GroqCache:
                 'current_entries': total_count - expired_count,
                 'estimated_size_kb': size_kb,
             }
-
 
 groq_cache = GroqCache()
