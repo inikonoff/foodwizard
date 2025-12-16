@@ -1,7 +1,8 @@
 import logging
 import hashlib
 import json
-from datetime import datetime, timedelta, timezone
+# ИМПОРТ: timezone уже здесь, это правильно
+from datetime import datetime, timedelta, timezone 
 from . import db
 from config import CACHE_TTL_RECIPE, CACHE_TTL_ANALYSIS, CACHE_TTL_VALIDATION, CACHE_TTL_INTENT, CACHE_TTL_DISH_LIST
 from typing import Optional, Any, Dict
@@ -18,7 +19,7 @@ class GroqCache:
         """
         data = f"{prompt}_{lang}_{model}"
         return hashlib.sha256(data.encode()).hexdigest()
-    
+
     @staticmethod
     def _get_ttl(cache_type: str) -> int:
         """Возвращает TTL в секундах в зависимости от типа запроса"""
@@ -26,40 +27,41 @@ class GroqCache:
             'recipe': CACHE_TTL_RECIPE,
             'analysis': CACHE_TTL_ANALYSIS,
             'validation': CACHE_TTL_VALIDATION,
-            'intent': CACHE_TTL_INTENT, # Добавлено
-            'dish_list': CACHE_TTL_DISH_LIST # Добавлено
+            'intent': CACHE_TTL_INTENT, 
+            'dish_list': CACHE_TTL_DISH_LIST 
         }
         return ttl_map.get(cache_type, CACHE_TTL_RECIPE)
-    
+
     @staticmethod
     async def get(prompt: str, lang: str, model: str, cache_type: str = 'recipe') -> Optional[str]:
         """Получает результат из кэша, если он есть и не истёк"""
         async with db.connection() as conn:
             # Используем хеш, зависящий от языка и модели
             hash_key = GroqCache._generate_hash(prompt, lang, model) 
-            
+
             query = """
             SELECT response
             FROM groq_cache
             WHERE hash = $1 AND expires_at > NOW()
             """
-            
+
             # fetchval вернет строку (response) или None
             response = await conn.fetchval(query, hash_key)
-            
+
             if response:
                 logger.debug(f"Cache hit for key: {hash_key}")
                 return response
-            
+
             logger.debug(f"Cache miss for key: {hash_key}")
             return None
-    
+
     @staticmethod
     async def set(prompt: str, response: str, lang: str, model: str, tokens_used: int, cache_type: str = 'recipe') -> bool:
         """Сохраняет результат в кэше с TTL"""
-        
+
         ttl = GroqCache._get_ttl(cache_type)
-        expires_at = datetime.now(tomezone.utc) + timedelta(seconds=ttl)
+        # ИСПРАВЛЕНИЕ: изменено 'tomezone' на 'timezone'
+        expires_at = datetime.now(timezone.utc) + timedelta(seconds=ttl)
         hash_key = GroqCache._generate_hash(prompt, lang, model)
 
         async with db.connection() as conn:
@@ -87,7 +89,7 @@ class GroqCache:
             except Exception as e:
                 logger.error(f"Ошибка при сохранении кэша: {e}")
                 return False
-    
+
     @staticmethod
     async def clear_expired() -> int:
         """Очищает просроченные записи из кэша и возвращает количество удалённых"""
@@ -96,7 +98,7 @@ class GroqCache:
             rows = await conn.fetch(query)
             logger.info(f"Очищено {len(rows)} просроченных записей кэша")
             return len(rows)
-    
+
     @staticmethod
     async def get_stats() -> Dict[str, Any]:
         """Возвращает статистику кэша"""
@@ -110,9 +112,9 @@ class GroqCache:
                 SUM(tokens_used) as total_tokens
             FROM groq_cache
             """
-            
+
             row = await conn.fetchrow(stats_query)
-            
+
             return {
                 'total_entries': row['total'] or 0,
                 'active_entries': row['active'] or 0,
