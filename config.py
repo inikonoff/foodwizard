@@ -32,25 +32,23 @@ if admin_str:
 # Секретный код для активации премиума
 SECRET_PROMO_CODE = os.getenv("SECRET_PROMO_CODE", "FOOD2025")
 
-# ===== МОДЕЛЬ GROQ =====
-GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
-GROQ_MAX_TOKENS = int(os.getenv("GROQ_MAX_TOKENS", "2000"))
+# ===== МОДЕЛИ И НАСТРОЙКИ LLM =====
+GROQ_MODEL = os.getenv("GROQ_MODEL", "mixtral-8x7b-32768")
+GROQ_MAX_TOKENS = int(os.getenv("GROQ_MAX_TOKENS", "1000"))
+
+# ===== ДИРЕКТОРИИ И ФАЙЛЫ =====
+# Для Render.com используем /tmp
+TEMP_DIR = os.getenv("TEMP_DIR", "/tmp/chef_bot")
 
 # ===== НАСТРОЙКИ КЭША =====
-# Время жизни кэша в секундах
-CACHE_TTL_RECIPE = int(os.getenv("CACHE_TTL_RECIPE", "86400"))  # 24 часа
-CACHE_TTL_ANALYSIS = int(os.getenv("CACHE_TTL_ANALYSIS", "7200"))  # 2 часа
-CACHE_TTL_VALIDATION = int(os.getenv("CACHE_TTL_VALIDATION", "1800"))  # 30 минут
+# Время жизни кэша (в секундах)
+CACHE_TTL_RECIPE = int(os.getenv("CACHE_TTL_RECIPE", "3600"))  # 1 час
+CACHE_TTL_ANALYSIS = int(os.getenv("CACHE_TTL_ANALYSIS", "86400")) # 1 день
+CACHE_TTL_VALIDATION = int(os.getenv("CACHE_TTL_VALIDATION", "86400")) # 1 день
+CACHE_TTL_INTENT = int(os.getenv("CACHE_TTL_INTENT", "86400")) # 1 день
+CACHE_TTL_DISH_LIST = int(os.getenv("CACHE_TTL_DISH_LIST", "3600")) # 1 час
 
-# ===== НАСТРОЙКИ ПРИЛОЖЕНИЯ =====
-# Временная директория
-TEMP_DIR = os.getenv("TEMP_DIR", "/tmp/chef_bot")
-os.makedirs(TEMP_DIR, exist_ok=True)
-
-# Максимальное количество сообщений в истории
-MAX_HISTORY_MESSAGES = int(os.getenv("MAX_HISTORY_MESSAGES", "10"))
-
-# Избранное на страницу
+# ===== НАСТРОЙКИ ИНТЕРФЕЙСА =====
 FAVORITES_PER_PAGE = int(os.getenv("FAVORITES_PER_PAGE", "5"))
 
 # Поддерживаемые языки (в порядке приоритета)
@@ -79,20 +77,13 @@ def validate_config():
     """Проверяет корректность конфигурации"""
     errors = []
     
-    if not TELEGRAM_TOKEN:
-        errors.append("TELEGRAM_TOKEN не установлен")
-    
-    if not GROQ_API_KEY:
-        errors.append("GROQ_API_KEY не установлен")
-    
-    if not DATABASE_URL:
-        errors.append("DATABASE_URL не установлен")
-    
-    if DEFAULT_LANGUAGE not in SUPPORTED_LANGUAGES:
-        errors.append(f"DEFAULT_LANGUAGE должен быть одним из: {SUPPORTED_LANGUAGES}")
+    # Проверка на наличие токенов
+    if not TELEGRAM_TOKEN: errors.append("TELEGRAM_TOKEN")
+    if not GROQ_API_KEY: errors.append("GROQ_API_KEY")
+    if not DATABASE_URL: errors.append("DATABASE_URL")
     
     if errors:
-        raise ValueError(f"Ошибки конфигурации:\n" + "\n".join(errors))
+        raise ValueError(f"Отсутствуют необходимые переменные окружения: {', '.join(errors)}")
 
-# Проверяем конфигурацию при импорте
-validate_config()
+# Выполняем проверку при загрузке
+# validate_config()
