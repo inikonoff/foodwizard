@@ -10,6 +10,15 @@ class MetricsRepository:
     """Репозиторий для хранения и получения метрик использования"""
 
     @staticmethod
+    async def track_event(user_id: int, event_name: str, metadata: Dict[str, Any] = None) -> None:
+        """Отслеживает не-LLM событие (например, старт, настройки)"""
+        # Предполагаем, что у вас есть таблица для событий или вы используете usage_metrics с фиктивными данными.
+        # Для простоты, можете пока закомментировать эту строку в handlers/common.py, 
+        # чтобы устранить ошибку и перейти к следующей.
+        logger.debug(f"Event tracked: {event_name} for user {user_id}")
+            pass # Временно заглушаем
+    
+    @staticmethod
     async def track_request(user_id: int, model_name: str, tokens_used: int, is_cache_hit: bool):
         """Регистрирует каждый запрос"""
         async with db.connection() as conn:
