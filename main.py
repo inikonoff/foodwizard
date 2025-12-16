@@ -1,211 +1,166 @@
 import asyncio
+import os
 import logging
 import sys
-from contextlib import asynccontextmanager
-from datetime import datetime, time, timedelta
-import pytz
-
+import contextlib
 from aiogram import Bot, Dispatcher
-from aiogram.types import BotCommand, BotCommandScopeDefault
-from aiogram.client.default import DefaultBotProperties
-from aiogram.enums import ParseMode
+from aiogram.types import BotCommand
+from aiohttp import web  # <--- НОВЫЙ ИМПОРТ ДЛЯ WEB-СЕРВЕРА
 
-from config import TELEGRAM_TOKEN, SUPPORTED_LANGUAGES, DEFAULT_LANGUAGE
+from config import TELEGRAM_TOKEN, LOG_FILE, LOG_LEVEL, ADMIN_IDS, validate_config, WEBHOOK_URL
 from database import db
-from database.users import users_repo
+from handlers import register_all_handlers
 from database.metrics import metrics
 from database.cache import groq_cache
-from handlers import register_all_handlers
 from locales.texts import get_text
 
-# Настройка логирования
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[
-        logging.StreamHandler(sys.stdout),
-        logging.FileHandler("bot.log", encoding="utf-8")
-    ]
-)
+# --- НАСТРОЙКА ЛОГГИРОВАНИЯ ---
+def setup_logging():
+    """Настраивает логирование в файл и STDOUT"""
+    if not os.path.exists('logs'):
+        os.makedirs('logs')
+        
+    logging.basicConfig(
+        level=LOG_LEVEL,
+        format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
+        handlers=[
+            logging.FileHandler(LOG_FILE, encoding='utf-8'),
+            logging.StreamHandler(sys.stdout) # Важно для Render
+        ]
+    )
+    # Снижаем уровень логов для некоторых библиотек
+    logging.getLogger('aiogram').setLevel(logging.WARNING)
+    logging.getLogger('asyncpg').setLevel(logging.WARNING)
+    
+setup_logging()
 logger = logging.getLogger(__name__)
 
-# Инициализация бота и диспетчера
-bot = Bot(
-    token=TELEGRAM_TOKEN,
-    default=DefaultBotProperties(parse_mode=ParseMode.HTML)
-)
+# --- Инициализация ---
+try:
+    validate_config()
+except ValueError as e:
+    logger.error(f"❌ Критическая ошибка конфигурации: {e}")
+    sys.exit(1)
+
+bot = Bot(token=TELEGRAM_TOKEN, parse_mode='HTML')
 dp = Dispatcher()
 
-@asynccontextmanager
-async def lifespan():
-    """Управление жизненным циклом приложения"""
-    # Запуск
-    logger.info("🚀 Запуск бота...")
+# --- 🌐 ВЕБ-СЕРВЕР ДЛЯ RENDER (HEALTH CHECK) ---
+async def health_check(request: web.Request):
+    """Ответ на проверку работоспособности"""
+    return web.Response(text="Bot is running OK")
+
+async def start_web_server():
+    """Запускает заглушку веб-сервера"""
+    try:
+        app = web.Application()
+        # Добавляем маршруты для проверки
+        app.router.add_get('/', health_check)
+        app.router.add_get('/health', health_check)
+        
+        runner = web.AppRunner(app)
+        await runner.setup()
+        
+        # Render передает порт через переменную окружения PORT
+        # Используем 8080 как дефолт, но лучше брать из os.environ['PORT']
+        port = int(os.environ.get("PORT", 8080))
+        
+        # Запускаем сервер в фоновом режиме
+        site = web.TCPSite(runner, '0.0.0.0', port)
+        await site.start()
+        logger.info(f"✅ WEB SERVER STARTED ON PORT {port}")
+    except Exception as e:
+        logger.error(f"❌ Error starting web server: {e}")
+
+# --- ФУНКЦИИ ЖИЗНЕННОГО ЦИКЛА ---
+
+async def on_startup(dispatcher: Dispatcher, bot: Bot):
+    """Выполняется при запуске бота"""
+    logger.info("⚙️ Запуск обработчиков...")
     
-    # Подключаемся к базе данных
+    # Регистрация всех хэндлеров
+    register_all_handlers(dispatcher)
+
+    # Настройка команд
+    await setup_bot_commands(bot)
+    
+    # Очистка кэша и метрик
+    await groq_cache.clear_expired()
+    await metrics.cleanup_old_metrics()
+    
+    # Сообщаем об успешном запуске администраторам
+    for admin_id in ADMIN_IDS:
+        try:
+            await bot.send_message(admin_id, "✅ Бот запущен и готов к работе!")
+        except Exception as e:
+            logger.error(f"Не удалось отправить сообщение администратору {admin_id}: {e}")
+
+async def on_shutdown(dispatcher: Dispatcher, bot: Bot):
+    """Выполняется при остановке бота"""
+    logger.info("🛑 Остановка бота...")
+    await dispatcher.storage.close()
+    await bot.session.close()
+    await db.close() # Закрываем соединение с БД
+    logger.info("👋 Бот остановлен.")
+    
+# --- НАСТРОЙКА МЕНЮ ---
+async def setup_bot_commands(bot: Bot):
+    """Устанавливает команды меню"""
+    commands = [
+        BotCommand(command="start", description=get_text('ru', 'btn_restart')),
+        BotCommand(command="favorites", description=get_text('ru', 'btn_favorites')),
+        BotCommand(command="lang", description=get_text('ru', 'btn_change_lang')),
+        BotCommand(command="help", description=get_text('ru', 'btn_help')),
+        BotCommand(command="stats", description="📊 Статистика")
+    ]
+    try:
+        await bot.set_my_commands(commands)
+        logger.info("✅ Команды меню установлены.")
+    except Exception as e:
+        logger.error(f"Не удалось установить команды: {e}")
+        
+@contextlib.asynccontextmanager
+async def lifespan():
+    """Контекстный менеджер для управления жизненным циклом ресурсов"""
+    logger.info("🔗 Попытка подключения к базе данных...")
     await db.connect()
     
-    # Тестируем подключение к БД
+    # Проверка подключения
     db_ok = await db.test_connection()
     if not db_ok:
-        logger.error("❌ Не удалось подключиться к базе данных")
-        raise ConnectionError("Database connection failed")
+        logger.error("❌ Критическая ошибка: Подключение к БД не прошло проверку. Завершение работы.")
+        sys.exit(1)
     
-    # Очищаем старый кэш при запуске (необязательно, но полезно)
+    logger.info("✅ Ресурсы инициализированы.")
     try:
-        cleared = await groq_cache.clear_expired()
-        if cleared > 0:
-            logger.info(f"🧹 Очищено {cleared} просроченных записей кэша при запуске")
-    except Exception as e:
-        logger.warning(f"⚠️ Не удалось очистить кэш при запуске: {e}")
-    
-    # Очищаем старые метрики
-    try:
-        cleared_metrics = await metrics.cleanup_old_metrics(days_to_keep=30)
-        if cleared_metrics > 0:
-            logger.info(f"📊 Очищено {cleared_metrics} старых метрик")
-    except Exception as e:
-        logger.warning(f"⚠️ Не удалось очистить метрики: {e}")
-    
-    # Проверяем истечение премиума при запуске
-    try:
-        expired = await users_repo.check_premium_expiry()
-        if expired > 0:
-            logger.info(f"⭐ Деактивировано {expired} просроченных премиум-подписок")
-    except Exception as e:
-        logger.warning(f"⚠️ Не удалось проверить премиум-подписки: {e}")
-    
-    logger.info("✅ Инициализация завершена")
-    yield
-    
-    # Завершение работы
-    logger.info("🛑 Завершение работы бота...")
-    await db.close()
-    logger.info("🏁 Работа завершена")
+        yield
+    finally:
+        logger.info("🧹 Очистка ресурсов...")
+        await db.close()
 
-async def setup_bot_commands():
-    """Настраивает команды бота для разных языков"""
-    commands_by_language = {}
-    
-    # Команды для каждого языка
-    for lang in SUPPORTED_LANGUAGES:
-        commands_by_language[lang] = [
-            BotCommand(command="/start", description=get_text(lang, "btn_restart")),
-            BotCommand(command="/favorites", description=get_text(lang, "btn_favorites")),
-            BotCommand(command="/lang", description=get_text(lang, "btn_change_lang")),
-            BotCommand(command="/help", description=get_text(lang, "btn_help")),
-            BotCommand(command="/stats", description="📊 Статистика"),
-            BotCommand(command="/code", description="⭐ Активировать премиум"),
-        ]
-    
-    # Добавляем команду /admin только на русском
-    commands_by_language["ru"].append(
-        BotCommand(command="/admin", description="🔧 Админ-панель")
-    )
-    
-    # Устанавливаем команды для каждого языка
-    for lang, commands in commands_by_language.items():
-        try:
-            await bot.set_my_commands(
-                commands=commands,
-                scope=BotCommandScopeDefault(),
-                language_code=lang
-            )
-            logger.info(f"✅ Команды установлены для языка {lang}")
-        except Exception as e:
-            logger.error(f"❌ Ошибка установки команд для языка {lang}: {e}")
-    
-    # Устанавливаем команды по умолчанию
-    default_commands = commands_by_language.get(DEFAULT_LANGUAGE, [])
-    if default_commands:
-        try:
-            await bot.set_my_commands(
-                commands=default_commands,
-                scope=BotCommandScopeDefault()
-            )
-            logger.info(f"✅ Команды по умолчанию установлены")
-        except Exception as e:
-            logger.error(f"❌ Ошибка установки команд по умолчанию: {e}")
-
-async def check_premium_expiry_periodically():
-    """Периодически проверяет истечение срока премиума"""
-    while True:
-        try:
-            # Запускаем в 03:00 каждый день
-            tz = pytz.timezone('Europe/Moscow')
-            now = datetime.now(tz)
-            target_time = time(3, 0, 0)
-            
-            # Ждём до 03:00
-            if now.time() < target_time:
-                wait_seconds = (datetime.combine(now.date(), target_time) - now).seconds
-            else:
-                # Уже после 03:00, ждём до завтра
-                tomorrow = now.date() + timedelta(days=1)
-                wait_seconds = (datetime.combine(tomorrow, target_time) - now).seconds
-            
-            logger.info(f"⏳ Следующая проверка премиума через {wait_seconds} секунд")
-            await asyncio.sleep(wait_seconds)
-            
-            # Проверяем истечение премиума
-            expired_count = await users_repo.check_premium_expiry()
-            if expired_count > 0:
-                logger.info(f"⭐ Деактивировано {expired_count} просроченных премиум-подписок")
-            
-        except Exception as e:
-            logger.error(f"❌ Ошибка в задаче проверки премиума: {e}")
-            await asyncio.sleep(3600)  # Ждём час при ошибке
-
-async def cleanup_tasks_periodically():
-    """Периодически выполняет задачи очистки"""
-    while True:
-        try:
-            # Запускаем каждый час
-            await asyncio.sleep(3600)
-            
-            # Очищаем старый кэш
-            cleared_cache = await groq_cache.clear_expired()
-            if cleared_cache > 0:
-                logger.info(f"🧹 Очищено {cleared_cache} просроченных записей кэша")
-            
-            # Очищаем старые метрики (раз в день)
-            current_hour = datetime.now().hour
-            if current_hour == 4:  # В 04:00
-                cleared_metrics = await metrics.cleanup_old_metrics(days_to_keep=30)
-                if cleared_metrics > 0:
-                    logger.info(f"📊 Очищено {cleared_metrics} старых метрик")
-            
-        except Exception as e:
-            logger.error(f"❌ Ошибка в задачах очистки: {e}")
-            await asyncio.sleep(3600)
-
+# --- ГЛАВНАЯ ФУНКЦИЯ ---
 async def main():
-    """Основная функция запуска бота"""
-    try:
-        # Используем контекстный менеджер для управления жизненным циклом
-        async with lifespan():
-            # Настраиваем команды бота
-            await setup_bot_commands()
-            
-            # Регистрируем все обработчики
-            register_all_handlers(dp)
-            
-            # Запускаем фоновые задачи
-            asyncio.create_task(check_premium_expiry_periodically())
-            asyncio.create_task(cleanup_tasks_periodically())
-            
-            # Запускаем бота
-            logger.info("🤖 Бот запущен и готов к работе!")
-            await dp.start_polling(bot)
-            
-    except KeyboardInterrupt:
-        logger.info("⏹️ Бот остановлен пользователем")
-    except Exception as e:
-        logger.error(f"💀 Критическая ошибка при запуске: {e}")
-        raise
+    logger.info("🚀 Запуск бота...")
+    
+    # 1. Запускаем Web Server
+    # Это ключевой момент для Render/Heroku, чтобы открыть порт до старта Polling
+    await start_web_server()
+
+    async with lifespan():
+        # Регистрация хуков
+        dp.startup.register(lambda: on_startup(dp, bot))
+        dp.shutdown.register(lambda: on_shutdown(dp, bot))
+        
+        # 2. Запуск Polling
+        # Polling будет блокировать основной поток, пока не будет остановлен
+        logger.info("⏳ Запуск Polling...")
+        await dp.start_polling(bot)
 
 if __name__ == "__main__":
     try:
         asyncio.run(main())
-    except (KeyboardInterrupt, SystemExit):
-        logger.info("⏹️ Бот остановлен")
+    except KeyboardInterrupt:
+        logger.info("Бот остановлен пользователем (KeyboardInterrupt)")
+    except Exception as e:
+        logger.critical(f"💀 Критическая ошибка при запуске: {e}", exc_info=True)
+
