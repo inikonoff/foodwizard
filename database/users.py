@@ -143,7 +143,7 @@ class UserRepository:
     async def activate_premium(user_id: int, days: int = 30) -> bool:
         """Активирует премиум на указанное количество дней"""
         async with db.connection() as conn:
-            premium_until = datetime.now() + timedelta(days=days)
+            premium_until = datetime.now(timezone.utc) + timedelta(days=days)
             
             result = await conn.execute(
                 """
