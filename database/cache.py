@@ -53,22 +53,30 @@ class GroqCache:
         """Сохраняет результат в кэше с TTL"""
         
         ttl = GroqCache._get_ttl(cache_type)
-        hash_key = GroqCache._generate_hash(prompt, lang, model)
         
-        # --- ГЛАВНОЕ ИСПРАВЛЕНИЕ: Переносим арифметику времени в SQL ---
-        # Передаем только NOW() в UTC и TTL как секунды.
-        now_utc = datetime.now(timezone.utc)
+        # 1. Рассчитываем expires_at в UTC
+        expires_at_aware = datetime.now(timezone.utc) + timedelta(seconds=ttl)
+
+        # 2. --- ФИНАЛЬНОЕ ИСПРАВЛЕНИЕ Timezone ---
+        # Убираем информацию о часовом поясе, чтобы избежать конфликта asyncpg,
+        # так как ваша среда, похоже, ожидает Naive-дату для колонок с TimeZone.
+        expires_at_naive = expires_at_aware.replace(tzinfo=None)
+        
+        # 3. Аналогично для created_at
+        created_at_aware = datetime.now(timezone.utc)
+        created_at_naive = created_at_aware.replace(tzinfo=None)
+        
+        hash_key = GroqCache._generate_hash(prompt, lang, model)
 
         async with db.connection() as conn:
             query = """
             INSERT INTO groq_cache (hash, response, language, model, tokens_used, expires_at, created_at)
-            -- expires_at рассчитывается в PostgreSQL: now_utc + TTL в секундах
-            VALUES ($1, $2, $3, $4, $5, $7 + INTERVAL '1 second' * $6, $7)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
             ON CONFLICT (hash) DO UPDATE
             SET response = EXCLUDED.response,
                 tokens_used = EXCLUDED.tokens_used,
                 expires_at = EXCLUDED.expires_at,
-                created_at = EXCLUDED.created_at -- Обновляем created_at из EXCLUDED (что равно $7)
+                created_at = EXCLUDED.created_at
             """
             try:
                 await conn.execute(
@@ -78,14 +86,14 @@ class GroqCache:
                     lang, 
                     model, 
                     tokens_used, 
-                    ttl,          # $6 - TTL (интервал в секундах)
-                    now_utc       # $7 - Время создания (с UTC)
+                    expires_at_naive,  # Naive дата
+                    created_at_naive   # Naive дата
                 )
                 logger.debug(f"Cache set for key: {hash_key}, type: {cache_type}")
                 return True
             except Exception as e:
                 logger.error(f"Ошибка при сохранении кэша: {e}")
-                logger.error(f"Тип now_utc: {type(now_utc)}, значение: {now_utc}, tzinfo: {now_utc.tzinfo}")
+                logger.error(f"Тип expires_at: {type(expires_at_naive)}, значение: {expires_at_naive}, tzinfo: {expires_at_naive.tzinfo}")
                 return False
 
     @staticmethod
@@ -104,7 +112,6 @@ class GroqCache:
             total_count = await conn.fetchval("SELECT COUNT(*) FROM groq_cache")
             expired_count = await conn.fetchval("SELECT COUNT(*) FROM groq_cache WHERE expires_at <= NOW()")
             
-            # Проверка размера, безопасно для пустой таблицы
             size_val = await conn.fetchval("SELECT pg_relation_size('groq_cache')")
             size_kb = (size_val or 0) / 1024
             
