@@ -1,7 +1,7 @@
 import logging
 import hashlib
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from . import db
 from config import CACHE_TTL_RECIPE, CACHE_TTL_ANALYSIS, CACHE_TTL_VALIDATION, CACHE_TTL_INTENT, CACHE_TTL_DISH_LIST
 from typing import Optional, Any, Dict
@@ -59,7 +59,7 @@ class GroqCache:
         """Сохраняет результат в кэше с TTL"""
         
         ttl = GroqCache._get_ttl(cache_type)
-        expires_at = datetime.now() + timedelta(seconds=ttl)
+        expires_at = datetime.now(tomezone.utc) + timedelta(seconds=ttl)
         hash_key = GroqCache._generate_hash(prompt, lang, model)
 
         async with db.connection() as conn:
