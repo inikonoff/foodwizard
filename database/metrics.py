@@ -15,7 +15,7 @@ class MetricsRepository:
         # Предполагаем, что у вас есть таблица для событий или вы используете usage_metrics с фиктивными данными.
         # Для простоты, можете пока закомментировать эту строку в handlers/common.py, 
         # чтобы устранить ошибку и перейти к следующей.
-        logger.debug(f"Event tracked: {event_name} for user {user_id}")
+            logger.debug(f"Event tracked: {event_name} for user {user_id}")
             pass # Временно заглушаем
     
     @staticmethod
