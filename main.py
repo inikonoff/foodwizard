@@ -5,7 +5,7 @@ import sys
 import contextlib
 from aiogram import Bot, Dispatcher
 from aiogram.types import BotCommand
-from aiogram.client.default import DefaultBotProperties # <-- ИСПРАВЛЕНИЕ: Новый импорт для aiogram 3.x
+from aiogram.client.default import DefaultBotProperties
 from aiohttp import web
 
 from config import TELEGRAM_TOKEN, LOG_FILE, LOG_LEVEL, ADMIN_IDS, validate_config, WEBHOOK_URL
@@ -29,7 +29,6 @@ def setup_logging():
             logging.StreamHandler(sys.stdout) # Важно для Render
         ]
     )
-    # Снижаем уровень логов для некоторых библиотек
     logging.getLogger('aiogram').setLevel(logging.WARNING)
     logging.getLogger('asyncpg').setLevel(logging.WARNING)
 
@@ -43,10 +42,9 @@ except ValueError as e:
     logger.error(f"❌ Критическая ошибка конфигурации: {e}")
     sys.exit(1)
 
-# ИСПРАВЛЕНИЕ 1: Новый синтаксис Bot() с DefaultBotProperties
-# ИСПРАВЛЕНИЕ 2: Устранены опечатки 'DefaultBotPriperties' и 'parse_ode'
+# ИСПРАВЛЕНО: Синтаксис Bot()
 bot = Bot(token=TELEGRAM_TOKEN, default=DefaultBotProperties(parse_mode='HTML'))
-# ИСПРАВЛЕНИЕ 3: Добавлена инициализация Dispatcher
+# ИСПРАВЛЕНО: Инициализация Dispatcher
 dp = Dispatcher()
 
 
@@ -59,17 +57,14 @@ async def start_web_server():
     """Запускает заглушку веб-сервера"""
     try:
         app = web.Application()
-        # Добавляем маршруты для проверки
         app.router.add_get('/', health_check)
         app.router.add_get('/health', health_check)
 
         runner = web.AppRunner(app)
         await runner.setup()
 
-        # Render передает порт через переменную окружения PORT
         port = int(os.environ.get("PORT", 8080))
 
-        # Запускаем сервер в фоновом режиме
         site = web.TCPSite(runner, '0.0.0.0', port)
         await site.start()
         logger.info(f"✅ WEB SERVER STARTED ON PORT {port}")
@@ -82,20 +77,15 @@ async def on_startup(dispatcher: Dispatcher, bot: Bot):
     """Выполняется при запуске бота"""
     logger.info("⚙️ Запуск обработчиков...")
 
-    # Регистрация всех хэндлеров
     register_all_handlers(dispatcher)
-
-    # Настройка команд
     await setup_bot_commands(bot)
 
-    # Очистка кэша и метрик
+    # Здесь вызываются потенциально ошибочные функции
     await groq_cache.clear_expired()
     await metrics.cleanup_old_metrics()
 
-    # Сообщаем об успешном запуске администраторам
     for admin_id in ADMIN_IDS:
         try:
-            # Здесь может быть ошибка, если вы не исправили проблему с timezone!
             await bot.send_message(admin_id, "✅ Бот запущен и готов к работе!")
         except Exception as e:
             logger.error(f"Не удалось отправить сообщение администратору {admin_id}: {e}")
@@ -147,15 +137,13 @@ async def lifespan():
 async def main():
     logger.info("🚀 Запуск бота...")
 
-    # 1. Запускаем Web Server (для Render/UptimeRobot)
     await start_web_server()
 
     async with lifespan():
-        # Регистрация хуков
-        dp.startup.register(on_startup)
-        dp.shutdown.register(on_shutdown)
+        # ИСПРАВЛЕНО: Прямая регистрация для устранения RuntimeWarning
+        dp.startup.register(on_startup) 
+        dp.shutdown.register(on_shutdown) 
 
-        # 2. Запуск Polling
         logger.info("⏳ Запуск Polling...")
         await dp.start_polling(bot)
 
