@@ -11,7 +11,7 @@ SpeechRecognition==3.10.4
 pydub==0.25.1
 
 # HTTP клиент
-aiohttp==3.10.5
+aiohttp>=3.10.5
 
 # Конфигурация
 python-dotenv==1.0.1
