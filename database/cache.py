@@ -1,17 +1,21 @@
 import logging
 import hashlib
 import json
-from typing import Optional, Any, Dict
+from typing import Optional, Any
 from datetime import datetime, timedelta
 from . import db
-from config import CACHE_TTL_RECIPE, CACHE_TTL_ANALYSIS, CACHE_TTL_VALIDATION
+from config import CACHE_TTL_RECIPE, CACHE_TTL_ANALYSIS, CACHE_TTL_VALIDATION, CACHE_TTL_INTENT, CACHE_TTL_DISH_LIST
 
 logger = logging.getLogger(__name__)
 
 class GroqCache:
     @staticmethod
     def _generate_hash(prompt: str, lang: str, model: str) -> str:
-        """Генерирует уникальный хеш для запроса"""
+        """Генерирует уникальный хеш для запроса.
+        
+        Ключ кэша должен зависеть от промпта, языка и модели для
+        корректной работы многоязычного кэширования.
+        """
         data = f"{prompt}_{lang}_{model}"
         return hashlib.sha256(data.encode()).hexdigest()
     
@@ -21,7 +25,9 @@ class GroqCache:
         ttl_map = {
             'recipe': CACHE_TTL_RECIPE,
             'analysis': CACHE_TTL_ANALYSIS,
-            'validation': CACHE_TTL_VALIDATION
+            'validation': CACHE_TTL_VALIDATION,
+            'intent': CACHE_TTL_INTENT, # Добавлено
+            'dish_list': CACHE_TTL_DISH_LIST # Добавлено
         }
         return ttl_map.get(cache_type, CACHE_TTL_RECIPE)
     
@@ -29,58 +35,57 @@ class GroqCache:
     async def get(prompt: str, lang: str, model: str, cache_type: str = 'recipe') -> Optional[str]:
         """Получает результат из кэша, если он есть и не истёк"""
         async with db.connection() as conn:
-            hash_key = GroqCache._generate_hash(prompt, lang, model)
+            # Используем хеш, зависящий от языка и модели
+            hash_key = GroqCache._generate_hash(prompt, lang, model) 
             
             query = """
-            SELECT response, expires_at 
-            FROM groq_cache 
+            SELECT response
+            FROM groq_cache
             WHERE hash = $1 AND expires_at > NOW()
             """
             
-            row = await conn.fetchrow(query, hash_key)
+            # fetchval вернет строку (response) или None
+            response = await conn.fetchval(query, hash_key)
             
-            if row:
-                logger.info(f"Кэш попадание для {hash_key[:8]}...")
-                return row['response']
-            else:
-                logger.info(f"Кэш промах для {hash_key[:8]}...")
-                return None
+            if response:
+                logger.debug(f"Cache hit for key: {hash_key}")
+                return response
+            
+            logger.debug(f"Cache miss for key: {hash_key}")
+            return None
     
     @staticmethod
-    async def set(prompt: str, lang: str, model: str, response: str, 
-                  cache_type: str = 'recipe', tokens_used: Optional[int] = None) -> bool:
-        """Сохраняет результат в кэш"""
+    async def set(prompt: str, response: str, lang: str, model: str, tokens_used: int, cache_type: str = 'recipe') -> bool:
+        """Сохраняет результат в кэше с TTL"""
+        
+        ttl = GroqCache._get_ttl(cache_type)
+        expires_at = datetime.now() + timedelta(seconds=ttl)
+        hash_key = GroqCache._generate_hash(prompt, lang, model)
+
         async with db.connection() as conn:
-            hash_key = GroqCache._generate_hash(prompt, lang, model)
-            ttl_seconds = GroqCache._get_ttl(cache_type)
-            expires_at = datetime.now() + timedelta(seconds=ttl_seconds)
-            
             query = """
-            INSERT INTO groq_cache (hash, response, language, model, tokens_used, created_at, expires_at)
-            VALUES ($1, $2, $3, $4, $5, NOW(), $6)
-            ON CONFLICT (hash) DO UPDATE 
+            INSERT INTO groq_cache (hash, response, language, model, tokens_used, expires_at, created_at)
+            VALUES ($1, $2, $3, $4, $5, $6, NOW())
+            ON CONFLICT (hash) DO UPDATE
             SET response = EXCLUDED.response,
-                language = EXCLUDED.language,
-                model = EXCLUDED.model,
                 tokens_used = EXCLUDED.tokens_used,
-                created_at = NOW(),
-                expires_at = EXCLUDED.expires_at
+                expires_at = EXCLUDED.expires_at,
+                created_at = NOW()
             """
-            
             try:
                 await conn.execute(
-                    query,
-                    hash_key,
-                    response,
-                    lang,
-                    model,
-                    tokens_used,
+                    query, 
+                    hash_key, 
+                    response, 
+                    lang, 
+                    model, 
+                    tokens_used, 
                     expires_at
                 )
-                logger.info(f"Кэш сохранён: {hash_key[:8]}... (TTL: {ttl_seconds} сек)")
+                logger.debug(f"Cache set for key: {hash_key}, type: {cache_type}")
                 return True
             except Exception as e:
-                logger.error(f"Ошибка сохранения в кэш: {e}")
+                logger.error(f"Ошибка при сохранении кэша: {e}")
                 return False
     
     @staticmethod
@@ -89,10 +94,8 @@ class GroqCache:
         async with db.connection() as conn:
             query = "DELETE FROM groq_cache WHERE expires_at <= NOW() RETURNING hash"
             rows = await conn.fetch(query)
-            count = len(rows)
-            if count > 0:
-                logger.info(f"🧹 Очищено {count} просроченных записей кэша")
-            return count
+            logger.info(f"Очищено {len(rows)} просроченных записей кэша")
+            return len(rows)
     
     @staticmethod
     async def get_stats() -> Dict[str, Any]:
@@ -115,8 +118,7 @@ class GroqCache:
                 'active_entries': row['active'] or 0,
                 'expired_entries': row['expired'] or 0,
                 'avg_response_size': round(row['avg_response_size'] or 0, 2),
-                'total_tokens_saved': row['total_tokens'] or 0
+                'total_tokens_cached': row['total_tokens'] or 0
             }
 
-# Создаём экземпляр для удобного импорта
 groq_cache = GroqCache()
