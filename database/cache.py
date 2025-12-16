@@ -1,7 +1,7 @@
 import logging
 import hashlib
 import json
-import datetime # <--- ЯВНЫЙ ИМПОРТ МОДУЛЯ (Главное исправление)
+import datetime # <--- Используем чистый импорт модуля
 from . import db
 from config import CACHE_TTL_RECIPE, CACHE_TTL_ANALYSIS, CACHE_TTL_VALIDATION, CACHE_TTL_INTENT, CACHE_TTL_DISH_LIST
 from typing import Optional, Any, Dict
@@ -34,6 +34,7 @@ class GroqCache:
         hash_key = GroqCache._generate_hash(prompt, lang, model)
         
         async with db.connection() as conn:
+            # Для сравнения в SQL используем CURRENT_TIMESTAMP или NOW(), Postgres сам разберется с зонами
             query = """
             SELECT response, expires_at
             FROM groq_cache
@@ -51,15 +52,16 @@ class GroqCache:
     @staticmethod
     async def set(prompt: str, response: str, lang: str, model: str, tokens_used: int, cache_type: str = 'recipe') -> bool:
         """Сохраняет результат в кэше с TTL"""
-
+        
         ttl = GroqCache._get_ttl(cache_type)
         
-        # --- ГЛАВНОЕ ИСПРАВЛЕНИЕ ---
-        # Мы используем полный путь datetime.datetime.now(datetime.timezone.utc)
-        # Это гарантирует создание времени с часовым поясом ("aware").
-        expires_at = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(seconds=ttl)
-        # ---------------------------
-
+        # --- ИСПРАВЛЕНИЕ: ГАРАНТИРОВАННЫЙ UTC ---
+        # Мы явно берем текущее время в UTC и добавляем к нему таймбрейк.
+        # Результат гарантированно имеет timezone.utc
+        now_utc = datetime.datetime.now(datetime.timezone.utc)
+        expires_at = now_utc + datetime.timedelta(seconds=ttl)
+        # ----------------------------------------
+        
         hash_key = GroqCache._generate_hash(prompt, lang, model)
 
         async with db.connection() as conn:
@@ -80,12 +82,14 @@ class GroqCache:
                     lang, 
                     model, 
                     tokens_used, 
-                    expires_at # Теперь это точно Aware Datetime (с UTC)
+                    expires_at # Теперь это 100% объект с часовым поясом
                 )
                 logger.debug(f"Cache set for key: {hash_key}, type: {cache_type}")
                 return True
             except Exception as e:
                 logger.error(f"Ошибка при сохранении кэша: {e}")
+                # Добавим вывод типа для отладки, если вдруг снова упадет
+                logger.error(f"Тип expires_at: {type(expires_at)}, значение: {expires_at}, tzinfo: {expires_at.tzinfo}")
                 return False
 
     @staticmethod
@@ -104,12 +108,14 @@ class GroqCache:
             total_count = await conn.fetchval("SELECT COUNT(*) FROM groq_cache")
             expired_count = await conn.fetchval("SELECT COUNT(*) FROM groq_cache WHERE expires_at <= NOW()")
             
-            size_kb = await conn.fetchval("SELECT pg_relation_size('groq_cache') / 1024")
+            # Проверка размера, безопасно для пустой таблицы
+            size_val = await conn.fetchval("SELECT pg_relation_size('groq_cache')")
+            size_kb = (size_val or 0) / 1024
             
             return {
-                'total_entries': total_count,
-                'expired_entries': expired_count,
-                'current_entries': total_count - expired_count,
+                'total_entries': total_count or 0,
+                'expired_entries': expired_count or 0,
+                'current_entries': (total_count or 0) - (expired_count or 0),
                 'estimated_size_kb': size_kb,
             }
 
