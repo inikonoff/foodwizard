@@ -12,13 +12,11 @@ from locales.prompts import get_prompt
 
 logger = logging.getLogger(__name__)
 
-# --- ИСПРАВЛЕНИЕ: Удалена глобальная инициализация клиента ---
-# Клиент будет создаваться внутри async with, чтобы избежать "Unclosed client session".
-# client = AsyncGroq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None 
+# Глобальный клиент Groq удален, чтобы избежать Unclosed client session.
 
 class GroqService:
     def __init__(self):
-        if not GROQ_API_KEY: # Проверяем ключ, а не глобальный клиент
+        if not GROQ_API_KEY:
             logger.warning("Groq API ключ не установлен. Некоторые функции будут недоступны.")
     
     async def _send_request(self, system_prompt: str, user_prompt: str, 
@@ -27,7 +25,7 @@ class GroqService:
         if not GROQ_API_KEY:
             return "Ошибка: API ключ не настроен."
         
-        # --- ИСПРАВЛЕНИЕ: Клиент инициализируется как контекстный менеджер ---
+        # ИСПРАВЛЕНИЕ: Клиент инициализируется как контекстный менеджер
         async with AsyncGroq(api_key=GROQ_API_KEY) as client:
             try:
                 # Генерируем ключ кэша
@@ -42,7 +40,7 @@ class GroqService:
                 )
                 
                 if cached_response:
-                    # ИСПРАВЛЕНИЕ: Добавлен await перед track_event для Cache Hit
+                    # ИСПРАВЛЕНИЕ: Добавлен await перед track_event
                     await metrics.track_event(user_id, "groq_cache_hit", {"key": cache_key, "lang": lang})
                     return cached_response
 
@@ -70,7 +68,7 @@ class GroqService:
                     cache_type=cache_type
                 )
                 
-                # ИСПРАВЛЕНИЕ: Добавлен await перед track_event для Groq Request
+                # ИСПРАВЛЕНИЕ: Добавлен await перед track_event
                 await metrics.track_event(user_id, "groq_request", {"key": cache_key, "lang": lang}) 
                 
                 return response_text
@@ -94,7 +92,7 @@ class GroqService:
             temperature=0.7,
             cache_type="recipe",
             lang=lang,
-            user_id=user_id # Передаем user_id для метрик
+            user_id=user_id 
         )
         
         return response
@@ -110,7 +108,7 @@ class GroqService:
             temperature=0.1,
             cache_type="analysis",
             lang=lang,
-            user_id=user_id # Передаем user_id для метрик
+            user_id=user_id 
         )
         
         try:
@@ -137,7 +135,7 @@ class GroqService:
             temperature=0.5,
             cache_type="dish_list",
             lang=lang,
-            user_id=user_id # Передаем user_id для метрик
+            user_id=user_id 
         )
         
         try:
@@ -164,7 +162,7 @@ class GroqService:
             temperature=0.1,
             cache_type="validation",
             lang=lang,
-            user_id=user_id # Передаем user_id для метрик
+            user_id=user_id 
         )
         
         try:
@@ -192,7 +190,7 @@ class GroqService:
             temperature=0.1,
             cache_type="intent",
             lang=lang,
-            user_id=user_id # Передаем user_id для метрик
+            user_id=user_id 
         )
         
         try:
