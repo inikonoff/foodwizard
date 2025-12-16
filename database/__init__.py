@@ -34,6 +34,19 @@ class Database:
             except Exception as e:
                 logger.error(f"❌ Ошибка подключения к Supabase: {e}")
                 raise
+
+    @classmethod
+    async def test_connection(cls) -> bool:
+        """Проверяет работоспособность подключения, выполняя простой запрос."""
+        try:
+            # Пытаемся получить соединение и выполнить простейший запрос
+            async with cls.connection() as conn:
+                result = await conn.fetchval("SELECT 1")
+                return result == 1
+        except Exception as e:
+            logger.error(f"Не удалось протестировать подключение к БД: {e}")
+            return False
+            
     
     @classmethod
     async def close(cls):
