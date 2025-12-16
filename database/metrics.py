@@ -1,7 +1,7 @@
 import logging
 import json
 from typing import Dict, Any, Optional, List
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from . import db
 
 logger = logging.getLogger(__name__)
@@ -66,7 +66,7 @@ class MetricsCollector:
     async def get_daily_stats(date: Optional[datetime] = None) -> Dict[str, Any]:
         """Возвращает статистику за день"""
         if date is None:
-            date = datetime.now()
+            date = datetime.now(timezone.utc)
         
         start_date = date.replace(hour=0, minute=0, second=0, microsecond=0)
         end_date = start_date + timedelta(days=1)
@@ -99,7 +99,7 @@ class MetricsCollector:
     @staticmethod
     async def get_language_stats(days: int = 7) -> Dict[str, Any]:
         """Возвращает статистику по языкам за последние N дней"""
-        start_date = datetime.now() - timedelta(days=days)
+        start_date = datetime.now(timezone.utc) - timedelta(days=days)
         
         async with db.connection() as conn:
             # Статистика по языкам для рецептов
@@ -152,7 +152,7 @@ class MetricsCollector:
     @staticmethod
     async def cleanup_old_metrics(days_to_keep: int = 30) -> int:
         """Удаляет старые метрики, оставляя только за последние N дней"""
-        cutoff_date = datetime.now() - timedelta(days=days_to_keep)
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=days_to_keep)
         
         async with db.connection() as conn:
             query = "DELETE FROM metrics WHERE created_at < $1 RETURNING id"
