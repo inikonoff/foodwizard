@@ -1,5 +1,6 @@
 import asyncpg
 import logging
+import ssl  # <-- ДОБАВЛЕНО
 from typing import Optional
 from contextlib import asynccontextmanager
 
@@ -17,15 +18,21 @@ class Database:
         """Создаёт пул подключений к базе данных"""
         if cls._pool is None:
             try:
+                # Настройка SSL для Supabase (критично для удаленных БД)
+                ctx = ssl.create_default_context()
+                ctx.check_hostname = False
+                ctx.verify_mode = ssl.CERT_NONE
+
                 cls._pool = await asyncpg.create_pool(
                     dsn=DATABASE_URL,
                     min_size=1,
                     max_size=10,
-                    command_timeout=60
+                    command_timeout=60,
+                    ssl=ctx  # <-- ДОБАВЛЕНО
                 )
-                logger.info("? Подключение к Supabase установлено")
+                logger.info("✅ Подключение к Supabase установлено")
             except Exception as e:
-                logger.error(f"? Ошибка подключения к Supabase: {e}")
+                logger.error(f"❌ Ошибка подключения к Supabase: {e}")
                 raise
     
     @classmethod
@@ -34,13 +41,16 @@ class Database:
         if cls._pool:
             await cls._pool.close()
             cls._pool = None
-            logger.info("? Подключение к Supabase закрыто")
+            logger.info("✅ Подключение к Supabase закрыто")
     
     @classmethod
     @asynccontextmanager
     async def connection(cls):
         """Контекстный менеджер для получения соединения"""
-        await cls.connect()
+        # Убеждаемся, что пул создан
+        if cls._pool is None:
+            await cls.connect()
+            
         async with cls._pool.acquire() as conn:
             yield conn
     
