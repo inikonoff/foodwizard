@@ -3,6 +3,10 @@ import os
 import logging
 import sys
 import contextlib
+from aiogram.client.default import DefaultBotProperties # <-- НОВЫЙ ИМПОРТ
+from aiogram import Bot, Dispatcher
+# ...
+
 from aiogram import Bot, Dispatcher
 from aiogram.types import BotCommand
 from aiohttp import web  # <--- НОВЫЙ ИМПОРТ ДЛЯ WEB-СЕРВЕРА
