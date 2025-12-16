@@ -36,7 +36,7 @@ if admin_str:
 SECRET_PROMO_CODE = os.getenv("SECRET_PROMO_CODE", "FOOD2025")
 
 # ===== МОДЕЛИ И НАСТРОЙКИ LLM =====
-GROQ_MODEL = os.getenv("GROQ_MODEL", "mixtral-8x7b-32768")
+GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 GROQ_MAX_TOKENS = int(os.getenv("GROQ_MAX_TOKENS", "1000"))
 
 # ===== ДИРЕКТОРИИ И ФАЙЛЫ =====
