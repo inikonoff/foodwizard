@@ -6,7 +6,6 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from database.users import users_repo
 from database.favorites import favorites_repo
 from database.metrics import metrics
-# from services.voice_service import voice_service # (Нужен для голосовых)
 from services.groq_service import groq_service
 from locales.texts import get_text
 from state_manager import state_manager
@@ -15,9 +14,11 @@ logger = logging.getLogger(__name__)
 
 # --- Вспомогательная функция для безопасного логирования метрик ---
 async def track_safely(user_id: int, event_name: str, data: dict = None):
+    """Оборачивает логирование метрик в try/except"""
     try:
         await metrics.track_event(user_id, event_name, data)
     except Exception as e:
+        # Логируем ошибку, но не даем ей убить хендлер
         logger.error(f"❌ Ошибка записи метрики ({event_name}): {e}", exc_info=True)
 
 
@@ -34,15 +35,13 @@ async def handle_text_message(message: Message):
     allowed, used, limit = await users_repo.check_and_increment_request(user_id, "text")
     
     if not allowed:
-        # ИСПОЛЬЗУЕМ ЛОКАЛИЗАЦИЮ
+        # ИСПРАВЛЕНО: Используем КОРРЕКТНЫЙ ключ limit_text_exceeded
         await message.answer(
             get_text(lang, "limit_text_exceeded", used=used, limit=limit),
             parse_mode="HTML"
         )
         return
 
-    # [...] остальной код без изменений
-    
     # Сохраняем продукты в состоянии
     state_manager.set_products(user_id, text)
     
@@ -56,6 +55,8 @@ async def handle_text_message(message: Message):
         await wait_msg.delete()
         
         if not categories:
+            # Записываем ошибку в метрики, прежде чем ответить пользователю
+            await track_safely(user_id, "category_analysis_failed", {"language": lang, "products": text})
             await message.answer(get_text(lang, "error_generation"))
             return
         
@@ -86,7 +87,8 @@ async def handle_text_message(message: Message):
         )
         
     except Exception as e:
-        logger.error(f"Ошибка анализа категорий (handle_text_message): {e}", exc_info=True)
+        # Логируем полный Traceback ошибки
+        logger.error(f"❌ Ошибка анализа категорий (handle_text_message): {e}", exc_info=True)
         await wait_msg.delete()
         await message.answer(get_text(lang, "error_generation"))
 
@@ -115,6 +117,8 @@ async def handle_category_selection(callback: CallbackQuery):
         await wait_msg.delete()
         
         if not dishes:
+            # Записываем ошибку
+            await track_safely(user_id, "dish_list_failed", {"language": lang, "category": category, "products": products})
             await callback.message.answer(get_text(lang, "error_generation"))
             return
         
@@ -145,7 +149,7 @@ async def handle_category_selection(callback: CallbackQuery):
         )
         
     except Exception as e:
-        logger.error(f"Ошибка генерации списка блюд (handle_category_selection): {e}", exc_info=True)
+        logger.error(f"❌ Ошибка генерации списка блюд (handle_category_selection): {e}", exc_info=True)
         await wait_msg.delete()
         await callback.message.answer(get_text(lang, "error_generation"))
 
@@ -155,7 +159,6 @@ async def handle_dish_selection(callback: CallbackQuery):
     user_id = callback.from_user.id
     lang = (await users_repo.get_user(user_id)).get('language_code', 'ru')
     
-    # Блок try/except на верхнем уровне, чтобы ловить все ошибки
     try:
         dish_index = int(callback.data.split('_')[1])
         dishes = state_manager.get_generated_dishes(user_id)
@@ -185,7 +188,7 @@ async def handle_dish_selection(callback: CallbackQuery):
              await callback.message.answer(get_text(lang, "safety_refusal"))
              return
 
-        # Добавляем метрику (БЕЗОПАСНО)
+        # Добавляем метрику (ЗАЩИЩЕНО)
         await track_safely(
             user_id,
             "recipe_generated",
@@ -235,13 +238,13 @@ async def handle_dish_selection(callback: CallbackQuery):
         await callback.answer()
         
     except Exception as e:
-        logger.error(f"Ошибка генерации рецепта (handle_dish_selection): {e}", exc_info=True)
+        logger.error(f"❌ Ошибка генерации рецепта (handle_dish_selection): {e}", exc_info=True)
         try:
             await wait_msg.delete() 
         except:
             pass
         await callback.message.answer(get_text(lang, "error_generation")) 
-        await callback.answer(get_text(lang, "error_generation")) 
+        await callback.answer(get_text(lang, "error_generation"))
 
 
 async def handle_back_to_categories(callback: CallbackQuery):
