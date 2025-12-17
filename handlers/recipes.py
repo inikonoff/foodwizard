@@ -36,7 +36,7 @@ async def handle_text_message(message: Message):
     if not allowed:
         # ИСПОЛЬЗУЕМ ЛОКАЛИЗАЦИЮ
         await message.answer(
-            get_text(lang, "limit_exceeded", used=used, limit=limit),
+            get_text(lang, "limit_text_exceeded", used=used, limit=limit),
             parse_mode="HTML"
         )
         return
