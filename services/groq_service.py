@@ -139,8 +139,8 @@ class GroqService:
 
     async def generate_dishes_list(self, products: str, category: str, lang: str = "ru", user_id: int = 0) -> Optional[List[Dict]]:
         """Генерирует список из 5 блюд в выбранной категории"""
-        system_prompt = get_prompt(lang, "dish_generation").format(category=category)
-        user_prompt = get_prompt(lang, "dish_generation_user").format(products=products)
+        system_prompt = get_prompt(lang, "dish_generation")
+        user_prompt = get_prompt(lang, "dish_generation_user").format(products=products, category=category)
         
         response = await self._send_request(
             system_prompt=system_prompt,
