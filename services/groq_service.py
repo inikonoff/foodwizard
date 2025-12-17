@@ -5,6 +5,7 @@ from typing import Dict, List, Optional
 from datetime import datetime
 
 from groq import AsyncGroq 
+from groq.lib.httpx_client import HTTPXClient
 from config import GROQ_API_KEY, GROQ_MODEL, GROQ_MAX_TOKENS
 from database.cache import groq_cache
 from database.metrics import metrics
@@ -16,65 +17,78 @@ class GroqService:
     def __init__(self):
         if not GROQ_API_KEY:
             logger.warning("Groq API ключ не установлен. Некоторые функции будут недоступны.")
-    
+            # Клиент не создается, если нет ключа
+            self.client = None
+        else:
+            # ИНИЦИАЛИЗАЦИЯ КЛИЕНТА ПРИ ЗАПУСКЕ БОТА
+            self.client = AsyncGroq(api_key=GROQ_API_KEY)
+            
+    async def close(self):
+        """Закрывает HTTP-сессию клиента Groq"""
+        if self.client and hasattr(self.client, 'close'):
+            # Закрываем сессию, если она была открыта
+            await self.client.close()
+            logger.info("✅ Groq client session closed.")
+
     async def _send_request(self, system_prompt: str, user_prompt: str, 
                             temperature: float = 0.5, cache_type: str = "general", lang: str = "ru", user_id: int = 0) -> str:
         """Базовая функция отправки запроса с кэшированием"""
-        if not GROQ_API_KEY:
+        if not self.client:
             return "Ошибка: API ключ не настроен."
         
-        # ИСПРАВЛЕНИЕ: Клиент инициализируется как контекстный менеджер (для избежания Unclosed client session)
-        async with AsyncGroq(api_key=GROQ_API_KEY) as client:
-            try:
-                # Генерируем ключ кэша
-                cache_key = groq_cache._generate_hash(f"{system_prompt[:100]}_{user_prompt[:200]}", lang, GROQ_MODEL)
-                
-                # Пытаемся получить из кэша
-                cached_response = await groq_cache.get(
-                    prompt=cache_key,
-                    lang=lang, 
-                    model=GROQ_MODEL,
-                    cache_type=cache_type
-                )
-                
-                if cached_response:
-                    # ИСПРАВЛЕНИЕ: Добавлен await перед track_event
-                    await metrics.track_event(user_id, "groq_cache_hit", {"key": cache_key, "lang": lang})
-                    return cached_response
+        try:
+            # Генерируем ключ кэша
+            cache_key = groq_cache._generate_hash(f"{system_prompt[:100]}_{user_prompt[:200]}", lang, GROQ_MODEL)
+            
+            # Пытаемся получить из кэша
+            cached_response = await groq_cache.get(
+                prompt=cache_key,
+                lang=lang, 
+                model=GROQ_MODEL,
+                cache_type=cache_type
+            )
+            
+            if cached_response:
+                await metrics.track_event(user_id, "groq_cache_hit", {"key": cache_key, "lang": lang})
+                return cached_response
 
-                # Отправка запроса Groq
-                chat_completion = await client.chat.completions.create(
-                    messages=[
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_prompt}
-                    ],
-                    model=GROQ_MODEL,
-                    temperature=temperature,
-                    max_tokens=GROQ_MAX_TOKENS,
-                    response_format={"type": "json_object"} if cache_type in ["analysis", "validation", "intent"] else None
-                )
+            # Определяем, нужен ли JSON
+            is_json = cache_type in ["analysis", "validation", "intent", "dish_list"]
+            
+            # Отправка запроса Groq
+            chat_completion = await self.client.chat.completions.create(
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                model=GROQ_MODEL,
+                temperature=temperature,
+                max_tokens=GROQ_MAX_TOKENS,
+                response_format={"type": "json_object"} if is_json else None
+            )
 
-                response_text = chat_completion.choices[0].message.content
-                
-                # Сохраняем в кэше
-                await groq_cache.set(
-                    prompt=cache_key,
-                    response=response_text,
-                    lang=lang, 
-                    model=GROQ_MODEL,
-                    tokens_used=chat_completion.usage.total_tokens,
-                    cache_type=cache_type
-                )
-                
-                # ИСПРАВЛЕНИЕ: Добавлен await перед track_event
-                await metrics.track_event(user_id, "groq_request", {"key": cache_key, "lang": lang}) 
-                
-                return response_text
+            response_text = chat_completion.choices[0].message.content
+            
+            # Сохраняем в кэше
+            await groq_cache.set(
+                prompt=cache_key,
+                response=response_text,
+                lang=lang, 
+                model=GROQ_MODEL,
+                tokens_used=chat_completion.usage.total_tokens,
+                cache_type=cache_type
+            )
+            
+            await metrics.track_event(user_id, "groq_request", {"key": cache_key, "lang": lang}) 
+            
+            return response_text
 
-            except Exception as e:
-                logger.error(f"Ошибка Groq API: {e}")
-                # Гарантия: возвращаем не пустую строку, чтобы избежать TelegramBadRequest
-                return get_prompt(lang, "recipe_error")
+        except Exception as e:
+            # !!! ИСПРАВЛЕНО: добавлено exc_info=True !!!
+            logger.error(f"Ошибка Groq API в _send_request: {e}", exc_info=True)
+            # В случае ошибки возвращаем текст ошибки для дальнейшей обработки
+            return get_prompt(lang, "recipe_error")
+
 
     async def generate_recipe(self, dish_name: str, products: str, lang: str = "ru", user_id: int = 0) -> str:
         """Генерирует подробный рецепт"""
@@ -116,7 +130,8 @@ class GroqService:
             if isinstance(data, list) and all(isinstance(item, str) for item in data):
                 return data
         except Exception as e:
-            logger.error(f"Ошибка парсинга категорий: {e}")
+            # !!! ИСПРАВЛЕНО: добавлено exc_info=True !!!
+            logger.error(f"Ошибка парсинга категорий: {e}", exc_info=True)
         
         return None
 
@@ -141,7 +156,8 @@ class GroqService:
             if isinstance(data, list) and all(isinstance(item, dict) for item in data):
                 return data
         except Exception as e:
-            logger.error(f"Ошибка парсинга списка блюд: {e}")
+            # !!! ИСПРАВЛЕНО: добавлено exc_info=True !!!
+            logger.error(f"Ошибка парсинга списка блюд: {e}", exc_info=True)
             
         return None
 
@@ -165,8 +181,9 @@ class GroqService:
             
             if isinstance(data, dict) and data.get("valid", False):
                 return True
-        except:
-            pass
+        except Exception as e:
+            # !!! ИСПРАВЛЕНО: добавлено exc_info=True !!!
+            logger.error(f"Ошибка парсинга валидации: {e}", exc_info=True)
         
         return False
     
@@ -194,7 +211,8 @@ class GroqService:
             if isinstance(data, dict):
                 return data
         except Exception as e:
-            logger.error(f"Ошибка парсинга интента: {e}")
+            # !!! ИСПРАВЛЕНО: добавлено exc_info=True !!!
+            logger.error(f"Ошибка парсинга интента: {e}", exc_info=True)
         
         return {"intent": "products", "content": user_message}
 
