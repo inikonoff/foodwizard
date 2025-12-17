@@ -14,6 +14,14 @@ from config import SUPPORTED_LANGUAGES, ADMIN_IDS, SECRET_PROMO_CODE
 
 logger = logging.getLogger(__name__)
 
+# --- Вспомогательная функция для безопасного логирования метрик ---
+async def track_safely(user_id: int, event_name: str, data: dict = None):
+    try:
+        await metrics.track_event(user_id, event_name, data)
+    except Exception as e:
+        logger.error(f"❌ Ошибка записи метрики ({event_name}): {e}", exc_info=True)
+
+
 # --- КОМАНДА /START ---
 async def cmd_start(message: Message):
     user_id = message.from_user.id
@@ -56,8 +64,8 @@ async def cmd_start(message: Message):
     full_text = f"{welcome_text}\n\n{start_manual}"
     await message.answer(full_text, reply_markup=builder.as_markup(), parse_mode="Markdown")
     
-    # Логируем событие
-    await metrics.track_event(user_id, "start_command", {"language": lang})
+    # Логируем событие (БЕЗОПАСНО)
+    await track_safely(user_id, "start_command", {"language": lang})
 
 # --- КОМАНДА /FAVORITES ---
 async def cmd_favorites(message: Message):
@@ -113,8 +121,8 @@ async def cmd_favorites(message: Message):
     text = get_text(lang, "favorites_list", page=1, total_pages=total_pages, recipes=recipes_text)
     await message.answer(text, reply_markup=builder.as_markup(), parse_mode="Markdown")
     
-    # Логируем событие
-    await metrics.track_event(user_id, "favorites_viewed", {"page": 1, "total": len(favorites)})
+    # Логируем событие (БЕЗОПАСНО)
+    await track_safely(user_id, "favorites_viewed", {"page": 1, "total": len(favorites)})
 
 # --- КОМАНДА /LANG ---
 async def cmd_lang(message: Message):
@@ -171,8 +179,8 @@ async def cmd_help(message: Message):
     
     await message.answer(help_text, reply_markup=builder.as_markup(), parse_mode="Markdown")
     
-    # Логируем событие
-    await metrics.track_event(user_id, "help_viewed", {"language": lang})
+    # Логируем событие (БЕЗОПАСНО)
+    await track_safely(user_id, "help_viewed", {"language": lang})
 
 # --- КОМАНДА /CODE ---
 async def cmd_code(message: Message):
@@ -207,8 +215,8 @@ async def cmd_code(message: Message):
             )
             await message.answer(response, parse_mode="HTML")
             
-            # Логируем активацию премиума
-            await metrics.track_event(user_id, "premium_activated", {
+            # Логируем активацию премиума (БЕЗОПАСНО)
+            await track_safely(user_id, "premium_activated", {
                 "method": "promo_code",
                 "days": 365*99
             })
@@ -433,33 +441,39 @@ async def handle_change_language(callback: CallbackQuery):
 
 async def handle_set_language(callback: CallbackQuery):
     user_id = callback.from_user.id
+    
+    # Защита: lang_code должен быть строкой!
     lang_code = callback.data.split("_")[2]  # set_lang_ru -> ru
     
-    # Обновляем язык пользователя
+    # Обновляем язык пользователя (должно принимать str)
     await users_repo.update_language(user_id, lang_code)
     
-    # Получаем имя пользователя для приветствия
+    # Получаем обновленные данные пользователя
     user_data = await users_repo.get_user(user_id)
+    # Защита: если по какой-то причине lang_code не обновился или БД вернула None
+    final_lang = user_data.get('language_code', 'ru') if user_data else 'ru'
+    final_lang = final_lang if final_lang in SUPPORTED_LANGUAGES else 'ru'
+
     first_name = user_data.get('first_name', 'User') if user_data else 'User'
     
     # Отправляем подтверждение
-    welcome_text = get_text(lang_code, "welcome", name=first_name)
-    start_manual = get_text(lang_code, "start_manual")
+    welcome_text = get_text(final_lang, "welcome", name=first_name)
+    start_manual = get_text(final_lang, "start_manual")
     
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(
-            text=get_text(lang_code, "btn_favorites"),
+            text=get_text(final_lang, "btn_favorites"),
             callback_data="show_favorites"
         )
     )
     builder.row(
         InlineKeyboardButton(
-            text=get_text(lang_code, "btn_change_lang"),
+            text=get_text(final_lang, "btn_change_lang"),
             callback_data="change_language"
         ),
         InlineKeyboardButton(
-            text=get_text(lang_code, "btn_help"),
+            text=get_text(final_lang, "btn_help"),
             callback_data="show_help"
         )
     )
@@ -471,9 +485,9 @@ async def handle_set_language(callback: CallbackQuery):
         parse_mode="Markdown"
     )
     
-    # Логируем смену языка
-    await metrics.track_event(user_id, "language_changed", {"language": lang_code})
-    await callback.answer(get_text(lang_code, "lang_changed"))
+    # Логируем смену языка (БЕЗОПАСНО)
+    await track_safely(user_id, "language_changed", {"language": lang_code})
+    await callback.answer(get_text(final_lang, "lang_changed"))
 
 async def handle_show_favorites(callback: CallbackQuery):
     user_id = callback.from_user.id
@@ -626,11 +640,11 @@ async def handle_buy_premium(callback: CallbackQuery):
     text = (
         "?? <b>Премиум подписка</b>\n\n"
         "? <b>Что входит:</b>\n"
-        " 100 текстовых запросов в день\n"
-        " 50 голосовых запросов в день\n"
-        " Приоритетная обработка\n"
-        " Доступ к новым функциям первым\n"
-        " Поддержка разработчика ??\n\n"
+        "  100 текстовых запросов в день\n"
+        "  50 голосовых запросов в день\n"
+        "  Приоритетная обработка\n"
+        "  Доступ к новым функциям первым\n"
+        "  Поддержка разработчика ??\n\n"
         "?? <b>Лимиты обновляются каждый день в 00:00</b>"
     )
     
