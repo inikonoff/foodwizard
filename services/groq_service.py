@@ -137,7 +137,7 @@ class GroqService:
         
         return None
 
-   async def generate_dishes_list(self, products: str, category: str, lang: str = "ru", user_id: int = 0) -> Optional[List[Dict]]:
+    async def generate_dishes_list(self, products: str, category: str, lang: str = "ru", user_id: int = 0) -> Optional[List[Dict]]:
         # ... (пропуск кода) ...
         
         try:
