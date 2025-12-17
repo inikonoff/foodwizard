@@ -5,7 +5,6 @@ from typing import Dict, List, Optional
 from datetime import datetime
 
 from groq import AsyncGroq 
-from groq.lib.httpx_client import HTTPXClient
 from config import GROQ_API_KEY, GROQ_MODEL, GROQ_MAX_TOKENS
 from database.cache import groq_cache
 from database.metrics import metrics
