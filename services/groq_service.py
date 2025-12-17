@@ -5,6 +5,7 @@ from typing import Dict, List, Optional
 from datetime import datetime
 
 from groq import AsyncGroq 
+# УДАЛЕНО: from groq.lib.httpx_client import HTTPXClient
 from config import GROQ_API_KEY, GROQ_MODEL, GROQ_MAX_TOKENS
 from database.cache import groq_cache
 from database.metrics import metrics
@@ -16,16 +17,13 @@ class GroqService:
     def __init__(self):
         if not GROQ_API_KEY:
             logger.warning("Groq API ключ не установлен. Некоторые функции будут недоступны.")
-            # Клиент не создается, если нет ключа
             self.client = None
         else:
-            # ИНИЦИАЛИЗАЦИЯ КЛИЕНТА ПРИ ЗАПУСКЕ БОТА
             self.client = AsyncGroq(api_key=GROQ_API_KEY)
             
     async def close(self):
         """Закрывает HTTP-сессию клиента Groq"""
         if self.client and hasattr(self.client, 'close'):
-            # Закрываем сессию, если она была открыта
             await self.client.close()
             logger.info("✅ Groq client session closed.")
 
@@ -83,9 +81,7 @@ class GroqService:
             return response_text
 
         except Exception as e:
-            # !!! ИСПРАВЛЕНО: добавлено exc_info=True !!!
             logger.error(f"Ошибка Groq API в _send_request: {e}", exc_info=True)
-            # В случае ошибки возвращаем текст ошибки для дальнейшей обработки
             return get_prompt(lang, "recipe_error")
 
 
@@ -122,6 +118,9 @@ class GroqService:
             user_id=user_id
         )
         
+        # !!! ДОБАВЛЕН ЛОГ !!!
+        logger.info(f"Сырой ответ Groq (анализ): {response[:200]}...") 
+        
         try:
             clean_json = response.replace("```json", "").replace("```", "").strip()
             data = json.loads(clean_json)
@@ -129,7 +128,6 @@ class GroqService:
             if isinstance(data, list) and all(isinstance(item, str) for item in data):
                 return data
         except Exception as e:
-            # !!! ИСПРАВЛЕНО: добавлено exc_info=True !!!
             logger.error(f"Ошибка парсинга категорий: {e}", exc_info=True)
         
         return None
@@ -148,6 +146,9 @@ class GroqService:
             user_id=user_id
         )
         
+        # !!! ДОБАВЛЕН ЛОГ !!!
+        logger.info(f"Сырой ответ Groq (блюда): {response[:200]}...")
+        
         try:
             clean_json = response.replace("```json", "").replace("```", "").strip()
             data = json.loads(clean_json)
@@ -155,7 +156,6 @@ class GroqService:
             if isinstance(data, list) and all(isinstance(item, dict) for item in data):
                 return data
         except Exception as e:
-            # !!! ИСПРАВЛЕНО: добавлено exc_info=True !!!
             logger.error(f"Ошибка парсинга списка блюд: {e}", exc_info=True)
             
         return None
@@ -174,6 +174,9 @@ class GroqService:
             user_id=user_id
         )
         
+        # !!! ДОБАВЛЕН ЛОГ !!!
+        logger.info(f"Сырой ответ Groq (валидация): {response[:200]}...")
+        
         try:
             clean_json = response.replace("```json", "").replace("```", "").strip()
             data = json.loads(clean_json)
@@ -181,7 +184,6 @@ class GroqService:
             if isinstance(data, dict) and data.get("valid", False):
                 return True
         except Exception as e:
-            # !!! ИСПРАВЛЕНО: добавлено exc_info=True !!!
             logger.error(f"Ошибка парсинга валидации: {e}", exc_info=True)
         
         return False
@@ -203,6 +205,9 @@ class GroqService:
             user_id=user_id
         )
         
+        # !!! ДОБАВЛЕН ЛОГ !!!
+        logger.info(f"Сырой ответ Groq (интент): {response[:200]}...")
+        
         try:
             clean_json = response.replace("```json", "").replace("```", "").strip()
             data = json.loads(clean_json)
@@ -210,7 +215,6 @@ class GroqService:
             if isinstance(data, dict):
                 return data
         except Exception as e:
-            # !!! ИСПРАВЛЕНО: добавлено exc_info=True !!!
             logger.error(f"Ошибка парсинга интента: {e}", exc_info=True)
         
         return {"intent": "products", "content": user_message}
