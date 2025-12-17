@@ -12,7 +12,7 @@ from aiogram.client.default import DefaultBotProperties
 from aiohttp import web
 
 # Твои модули
-from config import TELEGRAM_TOKEN, LOG_FILE, LOG_LEVEL, ADMIN_IDS, validate_config, WEBHOOK_URL, SUPPORTED_LANGUAGES, DEFAULT_LANGUAGE
+from config import TELEGRAM_TOKEN, LOG_FILE, LOG_LEVEL, ADMIN_IDS, validate_config, SUPPORTED_LANGUAGES, DEFAULT_LANGUAGE
 from database import db
 from database.metrics import metrics
 from database.cache import groq_cache
@@ -42,7 +42,6 @@ def setup_logging():
     logging.getLogger('asyncpg').setLevel(logging.WARNING)
     logging.getLogger('httpx').setLevel(logging.WARNING)
     
-# Инициализация логирования
 setup_logging()
 logger = logging.getLogger(__name__)
 
@@ -80,18 +79,73 @@ async def start_web_server():
         logger.error(f"❌ Error starting web server: {e}", exc_info=True)
 
 
-# --- ПЕРИОДИЧЕСКИЕ ЗАДАЧИ ---
-# (Твой код check_premium_expiry_periodically и cleanup_tasks_periodically здесь...)
-# ВНИМАНИЕ: код этих функций я не повторяю, так как он большой, 
-# используй исправленные версии, которые я давал ранее!
+# --- ПЕРИОДИЧЕСКИЕ ЗАДАЧИ (ИСПРАВЛЕНЫ И ДОБАВЛЕНЫ) ---
+
+async def check_premium_expiry_periodically():
+    """Периодически проверяет истечение срока премиума (в 03:00 MSK)"""
+    while True:
+        try:
+            now = datetime.now(MSK_TZ)
+            target_time = time(3, 0, 0)
+            # ИСПРАВЛЕНО: Правильная работа с Aware/Naive datetime
+            target_dt = MSK_TZ.localize(datetime.combine(now.date(), target_time))
+            
+            if now >= target_dt:
+                target_dt += timedelta(days=1)
+            
+            wait_seconds = (target_dt - now).total_seconds()
+            
+            logger.info(f"⏳ Следующая проверка премиума через {wait_seconds:.0f} сек. ({target_dt})")
+            await asyncio.sleep(wait_seconds)
+            
+            logger.info("🔄 Начало проверки премиум-подписок...")
+            expired_count = await users_repo.check_premium_expiry()
+            if expired_count > 0:
+                logger.info(f"🚫 Деактивировано {expired_count} просроченных премиум-подписок")
+            else:
+                logger.info("✅ Просроченных подписок не найдено")
+                
+            await asyncio.sleep(60)
+            
+        except asyncio.CancelledError:
+            logger.info("⚠️ Задача проверки премиума остановлена")
+            break
+        except Exception as e:
+            logger.error(f"❌ Ошибка в задаче проверки премиума: {e}", exc_info=True)
+            await asyncio.sleep(3600)
+
+async def cleanup_tasks_periodically():
+    """Периодически выполняет задачи очистки"""
+    while True:
+        try:
+            await asyncio.sleep(3600)
+            
+            logger.info("🧹 Ежечасная очистка кэша...")
+            cleared_cache = await groq_cache.clear_expired()
+            if cleared_cache > 0:
+                logger.info(f"🗑 Очищено {cleared_cache} просроченных записей кэша")
+            
+            current_hour_msk = datetime.now(MSK_TZ).hour
+            
+            if current_hour_msk == 4:
+                logger.info("📊 Суточная очистка метрик...")
+                cleared_metrics = await metrics.cleanup_old_metrics(days_to_keep=30)
+                if cleared_metrics > 0:
+                    logger.info(f"📉 Очищено {cleared_metrics} старых метрик")
+            
+        except asyncio.CancelledError:
+            logger.info("⚠️ Задача очистки остановлена")
+            break
+        except Exception as e:
+            logger.error(f"❌ Ошибка в задачах очистки: {e}", exc_info=True)
+            await asyncio.sleep(3600)
 
 
 # --- НАСТРОЙКА МЕНЮ ---
 async def setup_bot_commands(bot: Bot):
     """Устанавливает команды меню для всех языков"""
-    # (Твой оригинальный код setup_bot_commands)
-    # Используй здесь код, который ты писал в common.py (с циклами по языкам)
-    pass 
+    # ... (Твой оригинальный код setup_bot_commands) ...
+    pass # Вставь здесь свой код из common.py
 
 # --- ФУНКЦИИ ЖИЗНЕННОГО ЦИКЛА DP ---
 
@@ -100,15 +154,13 @@ async def on_startup(dispatcher: Dispatcher, bot: Bot):
     logger.info("⚙️ Запуск обработчиков...")
 
     register_all_handlers(dispatcher)
-    await setup_bot_commands(bot) # Вызов установки команд
+    await setup_bot_commands(bot)
     
-    # Инициализация кэша и метрик
     await groq_cache.clear_expired()
     await metrics.cleanup_old_metrics()
 
     for admin_id in ADMIN_IDS:
         try:
-            # Используем ID, чтобы не упасть, если admin_id = None или 0
             if admin_id: 
                  await bot.send_message(admin_id, "✅ Бот запущен и готов к работе!")
         except Exception as e:
@@ -127,8 +179,8 @@ async def lifespan():
     logger.info("🔗 Попытка подключения к базе данных...")
     await db.connect()
 
-    db_ok = True # Заглушка, если нет db.test_connection()
-    # db_ok = await db.test_connection() # Используй это, если у тебя есть эта функция
+    db_ok = True # Предполагаем ОК, если нет db.test_connection()
+    # db_ok = await db.test_connection() 
     if not db_ok:
         logger.error("❌ Критическая ошибка: Подключение к БД не прошло проверку. Завершение работы.", exc_info=True)
         sys.exit(1)
@@ -136,8 +188,8 @@ async def lifespan():
     logger.info("✅ Ресурсы инициализированы.")
     
     # Запуск фоновых задач
-    premium_task = asyncio.create_task(check_premium_expiry_periodically())
-    cleanup_task = asyncio.create_task(cleanup_tasks_periodically())
+    premium_task = asyncio.create_task(check_premium_expiry_periodically()) # ИСПРАВЛЕНО
+    cleanup_task = asyncio.create_task(cleanup_tasks_periodically()) # ИСПРАВЛЕНО
     logger.info("✅ Фоновые задачи запущены.")
 
     try:
@@ -161,16 +213,13 @@ async def lifespan():
 async def main():
     logger.info("🚀 Запуск бота...")
     
-    # Запуск Web-сервера для Health Check
     await start_web_server()
 
     async with lifespan():
-        # Регистрация обработчиков жизненного цикла
         dp.startup.register(on_startup) 
         dp.shutdown.register(on_shutdown) 
 
         # !!! ИСПРАВЛЕНИЕ TelegramConflictError !!!
-        # Сбрасываем старые Polling-сессии (или Webhook)
         try:
             await bot.delete_webhook(drop_pending_updates=True) 
             logger.info("✅ Старые Polling/Webhook сессии сброшены.")
