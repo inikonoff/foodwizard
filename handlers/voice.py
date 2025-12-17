@@ -15,6 +15,15 @@ from state_manager import state_manager
 logger = logging.getLogger(__name__)
 voice_service = VoiceService()
 
+# --- Вспомогательная функция для безопасного логирования метрик ---
+async def track_safely(user_id: int, event_name: str, data: dict = None):
+    """Оборачивает логирование метрик в try/except"""
+    try:
+        await metrics.track_event(user_id, event_name, data)
+    except Exception as e:
+        logger.error(f"❌ Ошибка записи метрики ({event_name}): {e}", exc_info=True)
+
+
 async def handle_voice_message(message: Message):
     user_id = message.from_user.id
     
@@ -26,9 +35,9 @@ async def handle_voice_message(message: Message):
     lang = user_data.get('language_code', 'ru') if user_data else 'ru'
 
     if not allowed:
-        # ИСПОЛЬЗУЕМ ЛОКАЛИЗАЦИЮ
+        # ИСПРАВЛЕНО: Ключ локализации изменен на правильный: limit_voice_exceeded
         await message.answer(
-            get_text(lang, "voice_limit_exceeded", used=used, limit=limit),
+            get_text(lang, "limit_voice_exceeded", used=used, limit=limit),
             parse_mode="HTML"
         )
         return
@@ -49,6 +58,8 @@ async def handle_voice_message(message: Message):
 
         if not text:
             await wait_msg.delete()
+            # Записываем ошибку, даже если это проблема с самим файлом
+            await track_safely(user_id, "voice_recognition_failed", {"language": lang, "reason": "No text detected"})
             await message.answer(get_text(lang, "error_voice_recognition"))
             return
             
@@ -64,6 +75,7 @@ async def handle_voice_message(message: Message):
         await wait_msg.delete()
         
         if not categories:
+            await track_safely(user_id, "category_analysis_failed", {"language": lang, "products": text})
             await message.answer(get_text(lang, "error_generation"))
             return
         
@@ -93,10 +105,14 @@ async def handle_voice_message(message: Message):
             reply_markup=builder.as_markup()
         )
         
+        # !!! МЕТРИКА В УСПЕШНОМ БЛОКЕ !!!
+        await track_safely(user_id, "voice_recognized_success", {"language": lang, "products": text})
+        
     except Exception as e:
-        logger.error(f"Ошибка обработки голосового сообщения: {e}")
+        logger.error(f"❌ Ошибка обработки голосового сообщения: {e}", exc_info=True)
         await wait_msg.delete()
         await message.answer(get_text(lang, "error_generation"))
+        # Метрику в случае ошибки не трекаем
         
     finally:
         # Обязательно удаляем временный файл
@@ -109,4 +125,3 @@ async def handle_voice_message(message: Message):
 def register_voice_handlers(dp: Dispatcher):
     """Регистрирует обработчики для голосовых сообщений"""
     dp.message.register(handle_voice_message, F.voice)
-    
