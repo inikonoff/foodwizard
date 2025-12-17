@@ -6,6 +6,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from database.users import users_repo
 from database.favorites import favorites_repo
 from database.metrics import metrics
+# from services.voice_service import voice_service # (Нужен для голосовых)
 from services.groq_service import groq_service
 from locales.texts import get_text
 from state_manager import state_manager
@@ -77,7 +78,8 @@ async def handle_text_message(message: Message):
         )
         
     except Exception as e:
-        logger.error(f"Ошибка анализа категорий: {e}")
+        # !!! ИСПРАВЛЕНО: добавлено exc_info=True !!!
+        logger.error(f"Ошибка анализа категорий (handle_text_message): {e}", exc_info=True)
         await wait_msg.delete()
         await message.answer(get_text(lang, "error_generation"))
 
@@ -136,7 +138,8 @@ async def handle_category_selection(callback: CallbackQuery):
         )
         
     except Exception as e:
-        logger.error(f"Ошибка генерации списка блюд: {e}")
+        # !!! ИСПРАВЛЕНО: добавлено exc_info=True !!!
+        logger.error(f"Ошибка генерации списка блюд (handle_category_selection): {e}", exc_info=True)
         await wait_msg.delete()
         await callback.message.answer(get_text(lang, "error_generation"))
 
@@ -146,6 +149,7 @@ async def handle_dish_selection(callback: CallbackQuery):
     user_id = callback.from_user.id
     lang = (await users_repo.get_user(user_id)).get('language_code', 'ru')
     
+    # Блок try/except на верхнем уровне, чтобы ловить все ошибки
     try:
         dish_index = int(callback.data.split('_')[1])
         dishes = state_manager.get_generated_dishes(user_id)
@@ -222,9 +226,17 @@ async def handle_dish_selection(callback: CallbackQuery):
         await callback.answer()
         
     except Exception as e:
-        logger.error(f"Ошибка повторной генерации рецепта: {e}")
-        await wait_msg.delete()
-        await callback.answer(get_text(lang, "error_generation")) # ИСПОЛЬЗУЕМ ЛОКАЛИЗАЦИЮ
+        # !!! ИСПРАВЛЕНО: добавлено exc_info=True !!!
+        logger.error(f"Ошибка генерации рецепта (handle_dish_selection): {e}", exc_info=True)
+        try:
+             # Попытка удалить wait_msg, если не удалился ранее
+            await wait_msg.delete() 
+        except:
+            pass
+        # Вместо await callback.answer()
+        await callback.message.answer(get_text(lang, "error_generation")) 
+        await callback.answer(get_text(lang, "error_generation")) # Ответ на коллбэк, чтобы убрать часы
+
 
 async def handle_back_to_categories(callback: CallbackQuery):
     """Возвращает пользователя к выбору категорий"""
@@ -272,4 +284,3 @@ def register_recipe_handlers(dp: Dispatcher):
     dp.callback_query.register(handle_category_selection, F.data.startswith("cat_"))
     dp.callback_query.register(handle_dish_selection, F.data.startswith("dish_"))
     dp.callback_query.register(handle_back_to_categories, F.data == "back_to_categories")
-            
