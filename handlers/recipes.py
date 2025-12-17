@@ -13,6 +13,14 @@ from state_manager import state_manager
 
 logger = logging.getLogger(__name__)
 
+# --- Вспомогательная функция для безопасного логирования метрик ---
+async def track_safely(user_id: int, event_name: str, data: dict = None):
+    try:
+        await metrics.track_event(user_id, event_name, data)
+    except Exception as e:
+        logger.error(f"❌ Ошибка записи метрики ({event_name}): {e}", exc_info=True)
+
+
 async def handle_text_message(message: Message):
     """Обрабатывает текстовые сообщения с продуктами"""
     user_id = message.from_user.id
@@ -78,7 +86,6 @@ async def handle_text_message(message: Message):
         )
         
     except Exception as e:
-        # !!! ИСПРАВЛЕНО: добавлено exc_info=True !!!
         logger.error(f"Ошибка анализа категорий (handle_text_message): {e}", exc_info=True)
         await wait_msg.delete()
         await message.answer(get_text(lang, "error_generation"))
@@ -138,7 +145,6 @@ async def handle_category_selection(callback: CallbackQuery):
         )
         
     except Exception as e:
-        # !!! ИСПРАВЛЕНО: добавлено exc_info=True !!!
         logger.error(f"Ошибка генерации списка блюд (handle_category_selection): {e}", exc_info=True)
         await wait_msg.delete()
         await callback.message.answer(get_text(lang, "error_generation"))
@@ -179,13 +185,16 @@ async def handle_dish_selection(callback: CallbackQuery):
              await callback.message.answer(get_text(lang, "safety_refusal"))
              return
 
-        # Добавляем метрику
-        metrics.track_recipe_generated(
+        # Добавляем метрику (БЕЗОПАСНО)
+        await track_safely(
             user_id,
-            dish.get('name'),
-            lang,
-            dish.get('category', 'unknown'),
-            len(products.split(','))
+            "recipe_generated",
+            {
+                "dish_name": dish.get('name'),
+                "language": lang,
+                "category": dish.get('category', 'unknown'),
+                "product_count": len(products.split(','))
+            }
         )
         
         # Проверяем избранное
@@ -226,16 +235,13 @@ async def handle_dish_selection(callback: CallbackQuery):
         await callback.answer()
         
     except Exception as e:
-        # !!! ИСПРАВЛЕНО: добавлено exc_info=True !!!
         logger.error(f"Ошибка генерации рецепта (handle_dish_selection): {e}", exc_info=True)
         try:
-             # Попытка удалить wait_msg, если не удалился ранее
             await wait_msg.delete() 
         except:
             pass
-        # Вместо await callback.answer()
         await callback.message.answer(get_text(lang, "error_generation")) 
-        await callback.answer(get_text(lang, "error_generation")) # Ответ на коллбэк, чтобы убрать часы
+        await callback.answer(get_text(lang, "error_generation")) 
 
 
 async def handle_back_to_categories(callback: CallbackQuery):
