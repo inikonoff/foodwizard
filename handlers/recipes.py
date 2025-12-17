@@ -13,12 +13,12 @@ from state_manager import state_manager
 logger = logging.getLogger(__name__)
 
 # --- Вспомогательная функция для безопасного логирования метрик ---
+# Эта функция должна быть в каждом файле хендлеров, пока она не вынесена в отдельный util-модуль
 async def track_safely(user_id: int, event_name: str, data: dict = None):
     """Оборачивает логирование метрик в try/except"""
     try:
         await metrics.track_event(user_id, event_name, data)
     except Exception as e:
-        # Логируем ошибку, но не даем ей убить хендлер
         logger.error(f"❌ Ошибка записи метрики ({event_name}): {e}", exc_info=True)
 
 
@@ -55,9 +55,9 @@ async def handle_text_message(message: Message):
         await wait_msg.delete()
         
         if not categories:
-            # Записываем ошибку в метрики, прежде чем ответить пользователю
+            # ИСПРАВЛЕНИЕ: Используем error_not_enough_products при пустом ответе Groq
             await track_safely(user_id, "category_analysis_failed", {"language": lang, "products": text})
-    await message.answer(get_text(lang, "error_not_enough_products"))
+            await message.answer(get_text(lang, "error_not_enough_products"))
             return
         
         # Сохраняем категории в состоянии
@@ -111,13 +111,12 @@ async def handle_category_selection(callback: CallbackQuery):
     await callback.answer()
 
     try:
-        # Генерируем список блюд
+        # Генерируем список блюд (KeyError: '"name"' решен в GroqService)
         dishes = await groq_service.generate_dishes_list(products, category, lang)
         
         await wait_msg.delete()
         
         if not dishes:
-            # Записываем ошибку
             await track_safely(user_id, "dish_list_failed", {"language": lang, "category": category, "products": products})
             await callback.message.answer(get_text(lang, "error_generation"))
             return
