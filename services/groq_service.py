@@ -137,28 +137,26 @@ class GroqService:
         
         return None
 
-    async def generate_dishes_list(self, products: str, category: str, lang: str = "ru", user_id: int = 0) -> Optional[List[Dict]]:
-        """Генерирует список из 5 блюд в выбранной категории"""
-        system_prompt = get_prompt(lang, "dish_generation")
-        user_prompt = get_prompt(lang, "dish_generation_user").format(products=products, category=category)
-        
-        response = await self._send_request(
-            system_prompt=system_prompt,
-            user_prompt=user_prompt,
-            temperature=0.5,
-            cache_type="dish_list",
-            lang=lang,
-            user_id=user_id
-        )
-        
-        logger.info(f"Сырой ответ Groq (блюда): {response[:200]}...")
+   async def generate_dishes_list(self, products: str, category: str, lang: str = "ru", user_id: int = 0) -> Optional[List[Dict]]:
+        # ... (пропуск кода) ...
         
         try:
             clean_json = response.replace("```json", "").replace("```", "").strip()
             data = json.loads(clean_json)
             
-            if isinstance(data, list) and all(isinstance(item, dict) for item in data):
-                return data
+            # ИСПРАВЛЕНИЕ: ПАРСИНГ LIST ИЛИ DICT
+            if isinstance(data, list):
+                # Случай, если Groq вернул список напрямую (правильный вариант)
+                if all(isinstance(item, dict) for item in data):
+                    return data
+            
+            elif isinstance(data, dict):
+                # Случай, если Groq вернул словарь, содержащий список (твой случай)
+                # Ищем первый список в словаре (это и будет список блюд)
+                for key, value in data.items():
+                    if isinstance(value, list) and all(isinstance(item, dict) for item in value):
+                        return value
+                        
         except Exception as e:
             logger.error(f"Ошибка парсинга списка блюд: {e}", exc_info=True)
             
