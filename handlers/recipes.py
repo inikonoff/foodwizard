@@ -57,7 +57,7 @@ async def handle_text_message(message: Message):
         if not categories:
             # Записываем ошибку в метрики, прежде чем ответить пользователю
             await track_safely(user_id, "category_analysis_failed", {"language": lang, "products": text})
-            await message.answer(get_text(lang, "error_generation"))
+    await message.answer(get_text(lang, "error_not_enough_products"))
             return
         
         # Сохраняем категории в состоянии
