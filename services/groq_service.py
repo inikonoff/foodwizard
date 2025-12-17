@@ -5,7 +5,6 @@ from typing import Dict, List, Optional
 from datetime import datetime
 
 from groq import AsyncGroq 
-# УДАЛЕНО: from groq.lib.httpx_client import HTTPXClient
 from config import GROQ_API_KEY, GROQ_MODEL, GROQ_MAX_TOKENS
 from database.cache import groq_cache
 from database.metrics import metrics
@@ -118,15 +117,21 @@ class GroqService:
             user_id=user_id
         )
         
-        # !!! ДОБАВЛЕН ЛОГ !!!
         logger.info(f"Сырой ответ Groq (анализ): {response[:200]}...") 
         
         try:
             clean_json = response.replace("```json", "").replace("```", "").strip()
             data = json.loads(clean_json)
             
+            # !!! ИСПРАВЛЕНИЕ ДЛЯ ПАРСИНГА DICT В LIST !!!
+            if isinstance(data, dict):
+                 # Собираем список только тех ключей, где значение True
+                 return [key for key, value in data.items() if value is True]
+
+            # Оставляем старую проверку на случай, если Groq начнет возвращать List
             if isinstance(data, list) and all(isinstance(item, str) for item in data):
                 return data
+                
         except Exception as e:
             logger.error(f"Ошибка парсинга категорий: {e}", exc_info=True)
         
@@ -146,7 +151,6 @@ class GroqService:
             user_id=user_id
         )
         
-        # !!! ДОБАВЛЕН ЛОГ !!!
         logger.info(f"Сырой ответ Groq (блюда): {response[:200]}...")
         
         try:
@@ -174,7 +178,6 @@ class GroqService:
             user_id=user_id
         )
         
-        # !!! ДОБАВЛЕН ЛОГ !!!
         logger.info(f"Сырой ответ Groq (валидация): {response[:200]}...")
         
         try:
@@ -205,7 +208,6 @@ class GroqService:
             user_id=user_id
         )
         
-        # !!! ДОБАВЛЕН ЛОГ !!!
         logger.info(f"Сырой ответ Groq (интент): {response[:200]}...")
         
         try:
