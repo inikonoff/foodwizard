@@ -117,7 +117,7 @@ async def handle_category_selection(callback: CallbackQuery):
 
     try:
         # Генерируем список блюд (KeyError: '"name"' решен в GroqService)
-        dishes = await groq_service.generate_dishes_list(products, category, lang)
+        dishes = await groq_service.generate_dishes_from_products(products, category, lang)
         
         await wait_msg.delete()
         
