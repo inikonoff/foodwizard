@@ -1,10 +1,8 @@
 import logging
 import json
-import hashlib
 from typing import Dict, List, Optional
-from datetime import datetime
-
 from groq import AsyncGroq 
+
 from config import GROQ_API_KEY, GROQ_MODEL, GROQ_MAX_TOKENS
 from database.cache import groq_cache
 from database.metrics import metrics
@@ -30,7 +28,7 @@ class GroqService:
                             temperature: float = 0.5, cache_type: str = "general", lang: str = "ru", user_id: int = 0) -> str:
         """Базовая функция отправки запроса с кэшированием"""
         if not self.client:
-            return "Ошибка: API ключ не настроен."
+            return ""
 
         try:
             # Генерируем ключ кэша
@@ -48,8 +46,8 @@ class GroqService:
                 await metrics.track_event(user_id, "groq_cache_hit", {"key": cache_key, "lang": lang})
                 return cached_response
 
-            # Определяем, нужен ли JSON
-            is_json = cache_type in ["analysis", "validation", "intent", "dish_list"]
+            # Определяем формат ответа (JSON для структурированных данных)
+            is_json = cache_type in ["analysis", "dish_list"]
 
             # Отправка запроса Groq
             chat_completion = await self.client.chat.completions.create(
@@ -75,57 +73,67 @@ class GroqService:
                 cache_type=cache_type
             )
 
-            await metrics.track_event(user_id, "groq_request", {"key": cache_key, "lang": lang}) 
+            await metrics.track_event(user_id, "groq_request", {"key": cache_key, "lang": lang, "type": cache_type}) 
 
             return response_text
 
         except Exception as e:
-            logger.error(f"Ошибка Groq API в _send_request: {e}", exc_info=True)
-            return "" # Возвращаем пустую строку при ошибке
+            logger.error(f"❌ Ошибка Groq API в _send_request: {e}", exc_info=True)
+            return ""
 
     async def analyze_products(self, products: str, lang: str = "ru", user_id: int = 0) -> Optional[List[str]]:
         """Анализирует продукты и возвращает список категорий"""
-        
-        # ЗАЩИТА: Не анализируем пустой текст или команды
-        if not products or products.startswith('/') or len(products.strip()) < 2:
+        if not products or len(products.strip()) < 2:
             return None
 
         system_prompt = get_prompt(lang, "category_analysis")
         user_prompt = get_prompt(lang, "category_analysis_user").format(products=products)
 
-        response = await self._send_request(
-            system_prompt=system_prompt,
-            user_prompt=user_prompt,
-            temperature=0.1,
-            cache_type="analysis",
-            lang=lang,
-            user_id=user_id
-        )
+        response = await self._send_request(system_prompt, user_prompt, 0.1, "analysis", lang, user_id)
 
         if not response:
             return None
 
-        logger.info(f"Сырой ответ Groq (анализ): {response[:200]}") 
-
         try:
-            clean_json = response.replace("```json", "").replace("```", "").strip()
-            data = json.loads(clean_json)
-
+            data = json.loads(response)
             if isinstance(data, dict):
-                 # Собираем только те ключи, где значение True
-                 result = [key for key, value in data.items() if value is True]
-                 return result if len(result) > 0 else None
-
-            if isinstance(data, list) and all(isinstance(item, str) for item in data):
-                return data if len(data) > 0 else None
-
+                return [key for key, value in data.items() if value is True]
+            if isinstance(data, list):
+                return data
         except Exception as e:
-            logger.error(f"Ошибка парсинга категорий: {e}")
-
+            logger.error(f"❌ Ошибка парсинга категорий: {e}")
         return None
 
-    # Остальные методы (generate_recipe, validate_recipe и т.д.) остаются без изменений
-    # Но убедитесь, что везде добавлена проверка на пустой response
+    async def generate_dishes_from_products(self, products: str, category: str, lang: str = "ru", user_id: int = 0) -> List[dict]:
+        """Генерирует список названий блюд (то, что вызывается в recipes.py)"""
+        system_prompt = get_prompt(lang, "dish_list_generation")
+        user_prompt = get_prompt(lang, "dish_list_user").format(products=products, category=category)
 
-# Создаём глобальный экземпляр
+        response = await self._send_request(system_prompt, user_prompt, 0.7, "dish_list", lang, user_id)
+
+        if not response:
+            return []
+
+        try:
+            data = json.loads(response)
+            # Обработка разных форматов ответа нейросети
+            if isinstance(data, dict) and "dishes" in data:
+                return data["dishes"]
+            if isinstance(data, list):
+                return data
+            return []
+        except Exception as e:
+            logger.error(f"❌ Ошибка парсинга списка блюд: {e}")
+            return []
+
+    async def generate_recipe(self, dish_name: str, products: str, lang: str = "ru", user_id: int = 0) -> str:
+        """Генерирует финальный текст рецепта"""
+        system_prompt = get_prompt(lang, "recipe_generation")
+        user_prompt = get_prompt(lang, "recipe_user").format(dish_name=dish_name, products=products)
+
+        response = await self._send_request(system_prompt, user_prompt, 0.7, "recipe", lang, user_id)
+        
+        return response if response else "Извините, возникла ошибка при создании рецепта."
+
+# Создаём глобальный экземпляр для импорта в хендлерах
 groq_service = GroqService()
