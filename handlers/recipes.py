@@ -21,6 +21,11 @@ async def track_safely(user_id: int, event_name: str, data: dict = None):
     except Exception as e:
         logger.error(f"❌ Ошибка записи метрики ({event_name}): {e}", exc_info=True)
 
+@dp.message()
+async def handle_message(message: Message):
+    if message.from_user.is_bot:  # <<<--- ЭТО САМОЕ ВАЖНОЕ
+        return
+    
 
 async def handle_text_message(message: Message):
     """Обрабатывает текстовые сообщения с продуктами"""
