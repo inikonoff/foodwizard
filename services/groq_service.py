@@ -126,3 +126,6 @@ class GroqService:
 
     # Остальные методы (generate_recipe, validate_recipe и т.д.) остаются без изменений
     # Но убедитесь, что везде добавлена проверка на пустой response
+
+# Создаём глобальный экземпляр
+groq_service = GroqService()
