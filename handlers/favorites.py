@@ -2,7 +2,7 @@ import logging
 from aiogram import Dispatcher, F
 from aiogram.types import CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-
+from state_manager import state_manager
 from database.users import users_repo
 from database.favorites import favorites_repo
 from database.metrics import metrics
@@ -115,7 +115,6 @@ async def handle_add_to_favorites(callback: CallbackQuery):
         dish_index = int(callback.data.split('_')[2])
         
         # Получаем текущее блюдо из state_manager
-        from state_manager import state_manager
         dish_name = state_manager.get_generated_dish(user_id, dish_index)
         
         if not dish_name:
