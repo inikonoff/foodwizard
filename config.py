@@ -89,4 +89,4 @@ def validate_config():
         raise ValueError(f"Отсутствуют необходимые переменные окружения: {', '.join(errors)}")
 
 # Выполняем проверку при загрузке
-# validate_config()
+validate_config()
