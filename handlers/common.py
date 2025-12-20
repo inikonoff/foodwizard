@@ -5,7 +5,7 @@ from aiogram.filters import Command
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from database import db # Оставлен только из-за /admin reset
+from database import db 
 from database.users import users_repo
 from database.favorites import favorites_repo
 from database.metrics import metrics
@@ -15,7 +15,6 @@ from config import SUPPORTED_LANGUAGES, ADMIN_IDS, SECRET_PROMO_CODE
 logger = logging.getLogger(__name__)
 
 # --- Вспомогательная функция для безопасного логирования метрик ---
-# Добавлен сюда, чтобы быть независимым от recipes.py
 async def track_safely(user_id: int, event_name: str, data: dict = None):
     try:
         await metrics.track_event(user_id, event_name, data)
@@ -72,28 +71,22 @@ async def cmd_start(message: Message):
 async def cmd_favorites(message: Message):
     user_id = message.from_user.id
     
-    # Получаем данные пользователя
     user_data = await users_repo.get_user(user_id)
     lang = user_data.get('language_code', 'ru') if user_data else 'ru'
     
-    # Получаем первую страницу избранного
     favorites, total_pages = await favorites_repo.get_favorites_page(user_id, page=1)
     
     if not favorites:
         await message.answer(get_text(lang, "favorites_empty"))
         return
     
-    # Форматируем список рецептов
     recipes_text = ""
     for i, fav in enumerate(favorites, 1):
         date_str = fav['created_at'].strftime("%d.%m.%Y")
-        recipes_text += get_text(lang, "favorites_recipe_item", 
-                               num=i, dish=fav['dish_name'], date=date_str)
+        recipes_text += get_text(lang, "favorites_recipe_item", num=i, dish=fav['dish_name'], date=date_str)
     
-    # Создаём клавиатуру с пагинацией
     builder = InlineKeyboardBuilder()
     
-    # Кнопки пагинации (опущен для краткости)
     if total_pages > 1:
         builder.row(
             InlineKeyboardButton(text=get_text(lang, "btn_prev"), callback_data=f"fav_page_1"),
@@ -101,22 +94,17 @@ async def cmd_favorites(message: Message):
             InlineKeyboardButton(text=get_text(lang, "btn_next"), callback_data=f"fav_page_2")
         )
     
-    # Кнопка возврата
     builder.row(
-        InlineKeyboardButton(
-            text=get_text(lang, "btn_back"),
-            callback_data="main_menu"
-        )
+        InlineKeyboardButton(text=get_text(lang, "btn_back"), callback_data="main_menu")
     )
     
-    # Отправляем сообщение
     text = get_text(lang, "favorites_list", page=1, total_pages=total_pages, recipes=recipes_text)
     await message.answer(text, reply_markup=builder.as_markup(), parse_mode="Markdown")
     
     # Логируем событие (ЗАЩИЩЕНО)
     await track_safely(user_id, "favorites_viewed", {"page": 1, "total": len(favorites)})
 
-# --- КОМАНДА /LANG --- (без изменений)
+# --- КОМАНДА /LANG --- 
 async def cmd_lang(message: Message):
     user_id = message.from_user.id
     
@@ -133,10 +121,7 @@ async def cmd_lang(message: Message):
         )
     
     builder.row(
-        InlineKeyboardButton(
-            text=get_text(current_lang, "btn_back"),
-            callback_data="main_menu"
-        )
+        InlineKeyboardButton(text=get_text(current_lang, "btn_back"), callback_data="main_menu")
     )
     
     await message.answer(
@@ -155,12 +140,7 @@ async def cmd_help(message: Message):
     help_text = f"{get_text(lang, 'help_title')}\n{get_text(lang, 'help_text')}"
     
     builder = InlineKeyboardBuilder()
-    builder.row(
-        InlineKeyboardButton(
-            text=get_text(lang, "btn_back"),
-            callback_data="main_menu"
-        )
-    )
+    builder.row(InlineKeyboardButton(text=get_text(lang, "btn_back"), callback_data="main_menu"))
     
     await message.answer(help_text, reply_markup=builder.as_markup(), parse_mode="Markdown")
     
@@ -206,7 +186,7 @@ async def cmd_code(message: Message):
     else:
         await message.answer("? Неверный код.")
 
-# --- КОМАНДА /STATS --- (без изменений)
+# --- КОМАНДА /STATS ---
 async def cmd_stats(message: Message):
     user_id = message.from_user.id
     
@@ -219,7 +199,6 @@ async def cmd_stats(message: Message):
         await message.answer("Статистика недоступна")
         return
     
-    # ... (код формирования сообщения) ...
     status = "?? ПРЕМИУМ" if usage_stats['is_premium'] else "?? БЕСПЛАТНО"
     
     if usage_stats['premium_until']:
@@ -248,7 +227,7 @@ async def cmd_stats(message: Message):
     
     await message.answer(stats_text, reply_markup=builder.as_markup(), parse_mode="HTML")
 
-# --- КОМАНДА /ADMIN --- (без изменений)
+# --- КОМАНДА /ADMIN ---
 async def cmd_admin(message: Message):
     user_id = message.from_user.id
     
@@ -259,7 +238,6 @@ async def cmd_admin(message: Message):
     args = message.text.split()
     
     if len(args) < 2:
-        # ... (ответ) ...
         help_text = (
             "?? <b>Админ-панель</b>\n\n"
             "<b>Команды:</b>\n"
@@ -365,7 +343,6 @@ async def cmd_admin(message: Message):
         )
 
 # --- КОЛЛБЭКИ ---
-# handle_change_language (без изменений)
 async def handle_change_language(callback: CallbackQuery):
     user_id = callback.from_user.id
     
@@ -381,12 +358,7 @@ async def handle_change_language(callback: CallbackQuery):
             )
         )
     
-    builder.row(
-        InlineKeyboardButton(
-            text=get_text(current_lang, "btn_back"),
-            callback_data="main_menu"
-        )
-    )
+    builder.row(InlineKeyboardButton(text=get_text(current_lang, "btn_back"), callback_data="main_menu"))
     
     await callback.message.edit_text(
         get_text(current_lang, "choose_language"),
@@ -394,7 +366,6 @@ async def handle_change_language(callback: CallbackQuery):
     )
     await callback.answer()
 
-# handle_set_language (без изменений)
 async def handle_set_language(callback: CallbackQuery):
     user_id = callback.from_user.id
     
@@ -426,7 +397,6 @@ async def handle_set_language(callback: CallbackQuery):
     await track_safely(user_id, "language_changed", {"language": lang_code})
     await callback.answer(get_text(final_lang, "lang_changed"))
 
-# handle_show_favorites (без изменений)
 async def handle_show_favorites(callback: CallbackQuery):
     user_id = callback.from_user.id
     
@@ -460,7 +430,6 @@ async def handle_show_favorites(callback: CallbackQuery):
     await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="Markdown")
     await callback.answer()
 
-# handle_show_help (без изменений)
 async def handle_show_help(callback: CallbackQuery):
     user_id = callback.from_user.id
     
@@ -475,7 +444,6 @@ async def handle_show_help(callback: CallbackQuery):
     await callback.message.edit_text(help_text, reply_markup=builder.as_markup(), parse_mode="Markdown")
     await callback.answer()
 
-# handle_main_menu (без изменений)
 async def handle_main_menu(callback: CallbackQuery):
     user_id = callback.from_user.id
     
@@ -499,7 +467,6 @@ async def handle_main_menu(callback: CallbackQuery):
     )
     await callback.answer()
 
-# handle_noop, handle_buy_premium, handle_premium_1_month, handle_premium_3_months, handle_premium_1_year (без изменений)
 async def handle_noop(callback: CallbackQuery):
     await callback.answer()
 
@@ -540,4 +507,26 @@ async def handle_premium_1_year(callback: CallbackQuery):
     await callback.answer("?? Эта функция скоро будет доступна!")
 
 
-# 
+# --- РЕГИСТРАЦИЯ ОБРАБОТЧИКОВ (КОРРЕКТНО ОПРЕДЕЛЕНА) ---
+def register_common_handlers(dp: Dispatcher):
+    # Команды
+    dp.message.register(cmd_start, Command("start"))
+    dp.message.register(cmd_favorites, Command("favorites"))
+    dp.message.register(cmd_lang, Command("lang"))
+    dp.message.register(cmd_help, Command("help"))
+    dp.message.register(cmd_code, Command("code"))
+    dp.message.register(cmd_stats, Command("stats"))
+    dp.message.register(cmd_admin, Command("admin"))
+    
+    # Коллбэки
+
+dp.callback_query.register(handle_change_language, F.data == "change_language")
+    dp.callback_query.register(handle_set_language, F.data.startswith("set_lang_"))
+    dp.callback_query.register(handle_show_favorites, F.data == "show_favorites")
+    dp.callback_query.register(handle_show_help, F.data == "show_help")
+    dp.callback_query.register(handle_main_menu, F.data == "main_menu")
+    dp.callback_query.register(handle_noop, F.data == "noop")
+    dp.callback_query.register(handle_buy_premium, F.data == "buy_premium")
+    dp.callback_query.register(handle_premium_1_month, F.data == "premium_1_month")
+    dp.callback_query.register(handle_premium_3_months, F.data == "premium_3_months")
+    dp.callback_query.register(handle_premium_1_year, F.data == "premium_1_year")
