@@ -1,106 +1,80 @@
-import os
-import asyncio
 import logging
-import tempfile
-import speech_recognition as sr
+import os
+import asyncio # !!! НУЖЕН НОВЫЙ ИМПОРТ !!!
+from typing import Optional
+
 from pydub import AudioSegment
-from config import TEMP_DIR
+from pydub.exceptions import CouldntDecodeError
+import speech_recognition as sr
+
+# Твои модули
+from locales.prompts import get_prompt 
+from locales.texts import get_text # !!! НУЖЕН НОВЫЙ ИМПОРТ !!!
 
 logger = logging.getLogger(__name__)
- 
+
+# Инициализируем только recognizer (он синхронный)
+recognizer = sr.Recognizer()
+
 class VoiceService:
-    def __init__(self):
-        self.recognizer = sr.Recognizer()
-        # Настройка языков распознавания
-        self.language_map = {
-            "ru": "ru-RU",
-            "en": "en-US",
-            "de": "de-DE",
-            "fr": "fr-FR",
-            "it": "it-IT",
-            "es": "es-ES"
-        }
-    
-    async def convert_ogg_to_wav(self, ogg_path: str) -> str:
-        """Конвертирует OGG в WAV"""
-        wav_path = ogg_path.replace('.ogg', '.wav')
-        
-        # Используем asyncio для блокирующей операции
-        await asyncio.to_thread(self._convert_audio, ogg_path, wav_path)
-        
-        return wav_path
-    
-    def _convert_audio(self, input_path: str, output_path: str):
-        """Синхронная конвертация аудио"""
+    @staticmethod
+    def _sync_process_audio(ogg_path: str, lang: str) -> Optional[str]:
+        """
+        СИНХРОННАЯ функция, которая выполняет тяжелые, блокирующие операции
+        (pydub, speech_recognition).
+        """
+        temp_flac_path = None
         try:
-            audio = AudioSegment.from_ogg(input_path)
-            audio.export(output_path, format="wav")
-        except Exception as e:
-            logger.error(f"Ошибка конвертации аудио: {e}")
-            raise
-    
-    async def recognize_speech(self, wav_path: str, language: str = "ru") -> str:
-        """Распознает речь из WAV файла"""
-        # Получаем код языка для распознавания
-        recognizer_lang = self.language_map.get(language, "ru-RU")
-        
-        try:
-            # Используем asyncio для блокирующего вызова
-            text = await asyncio.to_thread(
-                self._recognize_speech_sync, wav_path, recognizer_lang
-            )
+            # 1. Конвертация (требует FFMPEG)
+            audio_ogg = AudioSegment.from_ogg(ogg_path)
+            temp_flac_path = ogg_path.replace(".ogg", ".flac")
+            
+            # Сохраняем во временный FLAC-файл, чтобы SpeechRecognition мог его прочитать
+            # NOTE: pydub не всегда может прочитать из буфера, лучше использовать файл
+            audio_ogg.export(temp_flac_path, format="flac") 
+
+            # 2. Распознавание
+            with sr.AudioFile(temp_flac_path) as source:
+                audio = recognizer.record(source)
+            
+            # Определяем код языка для Google API
+            lang_code_google = "ru-RU" if lang == "ru" else "en-US" # и т.д.
+            
+            text = recognizer.recognize_google(audio, language=lang_code_google)
             return text
-        except Exception as e:
-            logger.error(f"Ошибка распознавания речи: {e}")
-            return ""
-    
-    def _recognize_speech_sync(self, wav_path: str, language: str) -> str:
-        """Синхронное распознавание речи"""
-        try:
-            with sr.AudioFile(wav_path) as source:
-                audio = self.recognizer.record(source)
-                return self.recognizer.recognize_google(audio, language=language)
+            
+        except CouldntDecodeError:
+            logger.error(f"Ошибка декодирования аудио (CouldntDecodeError). Нет FFMPEG?")
+            # NOTE: Это самая частая ошибка, если нет FFMPEG
+            return None
         except sr.UnknownValueError:
-            logger.warning("Речь не распознана")
-            return ""
-        except sr.RequestError as e:
-            logger.error(f"Ошибка сервиса распознавания: {e}")
-            return ""
+            # Голос распознан, но не понятен
+            return "" 
         except Exception as e:
             logger.error(f"Неизвестная ошибка распознавания: {e}")
-            return ""
-    
-    async def process_voice(self, voice_file_path: str, language: str = "ru") -> str:
-        """Основной метод обработки голосового сообщения"""
-        temp_files = []
-        
-        try:
-            # Создаем временный WAV файл
-            with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as tmp_wav:
-                wav_path = tmp_wav.name
-                temp_files.append(wav_path)
+            return None
             
-            # Конвертируем OGG в WAV
-            await self.convert_ogg_to_wav(voice_file_path)
-            
-            # Распознаем речь
-            text = await self.recognize_speech(wav_path, language)
-            
-            return text.strip()
-            
-        except Exception as e:
-            logger.error(f"Ошибка обработки голоса: {e}")
-            return ""
-        
         finally:
-            # Удаляем временные файлы
-            for file_path in temp_files:
+            # Обязательно удаляем временный FLAC-файл
+            if temp_flac_path and os.path.exists(temp_flac_path):
                 try:
-                    if os.path.exists(file_path):
-                        os.unlink(file_path)
+                    os.unlink(temp_flac_path)
                 except Exception as e:
-                    logger.warning(f"Не удалось удалить временный файл {file_path}: {e}")
-    
-    async def get_supported_languages(self) -> list:
-        """Возвращает список поддерживаемых языков"""
-        return list(self.language_map.keys())
+                    logger.warning(f"Не удалось удалить временный FLAC файл {temp_flac_path}: {e}")
+
+    async def process_voice(self, ogg_path: str, lang: str) -> Optional[str]:
+        """
+        АСИНХРОННАЯ функция-обертка, запускающая синхронную работу в отдельном потоке.
+        """
+        # !!! КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Запускаем блокирующую функцию в отдельном потоке !!!
+        loop = asyncio.get_event_loop()
+        text = await loop.run_in_executor(
+             None, # Используем стандартный ThreadPoolExecutor
+             self._sync_process_audio,
+             ogg_path,
+             lang
+        )
+        # Если None - это ошибка сервера/файла, если "" - не распознано
+        return text 
+
+voice_service = VoiceService()
