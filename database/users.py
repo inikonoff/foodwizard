@@ -1,10 +1,9 @@
 import logging
 from typing import Optional, Dict, Any, Tuple
-# ИСПРАВЛЕНИЕ: Добавлен импорт timezone
 from datetime import datetime, date, timedelta, timezone 
 
 from . import db
-from .models import UserBase, UserLanguage
+from .models import UserBase, UserLanguage # Зависит от models.py
 from config import FREE_USER_LIMITS, PREMIUM_USER_LIMITS
 
 logger = logging.getLogger(__name__)
@@ -14,7 +13,7 @@ class UserRepository:
     
     @staticmethod
     async def _reset_daily_limits_if_needed(user_id: int) -> None:
-        """Сбрасывает дневные лимиты, если наступил новый день"""
+        """Сбрасывает дневные лимиты, если наступил новый день (по текущему времени БД)"""
         async with db.connection() as conn:
             user = await conn.fetchrow(
                 "SELECT last_reset_date FROM users WHERE user_id = $1", 
@@ -22,7 +21,9 @@ class UserRepository:
             )
             
             if user:
-                today = date.today()
+                # NOTE: CURRENT_DATE в SQL часто соответствует времени сервера БД (обычно UTC)
+                # Это будет работать корректно, если БД и код используют согласованные дату/время.
+                today = await conn.fetchval("SELECT CURRENT_DATE")
                 last_reset = user['last_reset_date']
                 
                 if last_reset != today:
@@ -47,6 +48,7 @@ class UserRepository:
         await UserRepository._reset_daily_limits_if_needed(user_id)
         
         async with db.connection() as conn:
+            # Используем FOR UPDATE для предотвращения "гонок"
             user = await conn.fetchrow(
                 """
                 SELECT is_premium, requests_today, voice_requests_today 
@@ -95,7 +97,7 @@ class UserRepository:
     
     @staticmethod
     async def get_usage_stats(user_id: int) -> Dict[str, Any]:
-        """Возвращает статистику использования"""
+        # ... (код без изменений) ...
         async with db.connection() as conn:
             row = await conn.fetchrow(
                 """
@@ -135,9 +137,9 @@ class UserRepository:
     
     @staticmethod
     async def activate_premium(user_id: int, days: int = 30) -> bool:
-        """Активирует премиум на указанное количество дней"""
+        """Активирует премиум на указанное количество дней, используя timezone.utc."""
         async with db.connection() as conn:
-            # ИСПРАВЛЕНО: Добавлен timezone.utc
+            # Используем UTC для консистентности
             premium_until = datetime.now(timezone.utc) + timedelta(days=days)
             
             result = await conn.execute(
@@ -172,6 +174,7 @@ class UserRepository:
     async def check_premium_expiry() -> int:
         """Проверяет истечение срока премиума, возвращает количество деактивированных"""
         async with db.connection() as conn:
+            # Сравниваем с CURRENT_DATE (предполагаем, что premium_until хранится в TIMESTAMPZ/UTC)
             result = await conn.execute(
                 """
                 UPDATE users 
@@ -191,7 +194,7 @@ class UserRepository:
     async def get_or_create(user_id: int, first_name: str, 
                            username: Optional[str] = None, 
                            language: UserLanguage = UserLanguage.RU) -> Dict[str, Any]:
-        """Получает или создаёт пользователя"""
+        # ... (код без изменений) ...
         async with db.connection() as conn:
             query = """
             INSERT INTO users (
@@ -211,12 +214,15 @@ class UserRepository:
             """
             
             try:
+                # NOTE: language.value используется, предполагаем, что это строка или Enum
+                lang_value = language.value if hasattr(language, 'value') else language
+                
                 row = await conn.fetchrow(
                     query, 
                     user_id, 
                     first_name, 
                     username, 
-                    language.value
+                    lang_value # Передаем значение
                 )
                 if row:
                     return dict(row)
@@ -228,7 +234,7 @@ class UserRepository:
     
     @staticmethod
     async def get_user(user_id: int) -> Optional[Dict[str, Any]]:
-        """Получает данные пользователя"""
+        # ... (код без изменений) ...
         async with db.connection() as conn:
             query = """
             SELECT user_id, first_name, username, language_code, is_premium, 
@@ -242,20 +248,19 @@ class UserRepository:
             return dict(row) if row else None
     
     @staticmethod
-    async def update_language(user_id: int, language: UserLanguage) -> bool:
-        """Обновляет язык пользователя"""
+    async def update_language(user_id: int, language: Any) -> bool:
+        """
+        Обновляет язык пользователя.
+        ПРИМЕЧАНИЕ: Принимает Any, но преобразует в строку для совместимости.
+        """
+        lang_value = language.value if hasattr(language, 'value') else str(language)
+        
         async with db.connection() as conn:
             query = "UPDATE users SET language_code = $1 WHERE user_id = $2"
-            result = await conn.execute(query, language.value, user_id)
+            result = await conn.execute(query, lang_value, user_id)
             return result is not None
     
-    @staticmethod
-    async def set_premium(user_id: int, is_premium: bool = True) -> bool:
-        """Устанавливает премиум статус"""
-        async with db.connection() as conn:
-            query = "UPDATE users SET is_premium = $1 WHERE user_id = $2"
-            result = await conn.execute(query, is_premium, user_id)
-            return result is not None
+    # !!! МЕТОД set_premium УДАЛЕН ИЗ-ЗА ОШИБКИ ЛОГИКИ !!!
     
     @staticmethod
     async def update_activity(user_id: int) -> None:
@@ -266,7 +271,7 @@ class UserRepository:
     
     @staticmethod
     async def get_all_users(limit: int = 1000) -> list:
-        """Получает всех пользователей (для администратора)"""
+        # ... (код без изменений) ...
         async with db.connection() as conn:
             query = "SELECT * FROM users ORDER BY last_active_at DESC LIMIT $1"
             rows = await conn.fetch(query, limit)
@@ -274,10 +279,9 @@ class UserRepository:
     
     @staticmethod
     async def count_users() -> int:
-        """Считает общее количество пользователей"""
+        # ... (код без изменений) ...
         async with db.connection() as conn:
             query = "SELECT COUNT(*) FROM users"
             return await conn.fetchval(query)
 
-# Создаём глобальный экземпляр для импорта
 users_repo = UserRepository()
