@@ -14,7 +14,7 @@ from config import SUPPORTED_LANGUAGES, ADMIN_IDS, SECRET_PROMO_CODE
 
 logger = logging.getLogger(__name__)
 
-# --- Вспомогательная функция для безопасного логирования метрик ---
+# --- Вспомогательная функция для безопасного логирования метрик (ДОЛЖНА БЫТЬ) ---
 async def track_safely(user_id: int, event_name: str, data: dict = None):
     try:
         await metrics.track_event(user_id, event_name, data)
@@ -28,43 +28,27 @@ async def cmd_start(message: Message):
     first_name = message.from_user.first_name or "User"
     username = message.from_user.username
     
-    # Получаем или создаём пользователя
     user_data = await users_repo.get_or_create(
         user_id=user_id,
         first_name=first_name,
         username=username
     )
     
-    # Определяем язык пользователя
     lang = user_data.get('language_code', 'ru') if user_data else 'ru'
     
-    # Отправляем приветственное сообщение
     welcome_text = get_text(lang, "welcome", name=first_name)
     start_manual = get_text(lang, "start_manual")
     
-    # Создаём клавиатуру с основными командами
     builder = InlineKeyboardBuilder()
+    builder.row(InlineKeyboardButton(text=get_text(lang, "btn_favorites"), callback_data="show_favorites"))
     builder.row(
-        InlineKeyboardButton(
-            text=get_text(lang, "btn_favorites"),
-            callback_data="show_favorites"
-        )
-    )
-    builder.row(
-        InlineKeyboardButton(
-            text=get_text(lang, "btn_change_lang"),
-            callback_data="change_language"
-        ),
-        InlineKeyboardButton(
-            text=get_text(lang, "btn_help"),
-            callback_data="show_help"
-        )
+        InlineKeyboardButton(text=get_text(lang, "btn_change_lang"), callback_data="change_language"),
+        InlineKeyboardButton(text=get_text(lang, "btn_help"), callback_data="show_help")
     )
     
     full_text = f"{welcome_text}\n\n{start_manual}"
     await message.answer(full_text, reply_markup=builder.as_markup(), parse_mode="Markdown")
     
-    # Логируем событие (ЗАЩИЩЕНО)
     await track_safely(user_id, "start_command", {"language": lang})
 
 # --- КОМАНДА /FAVORITES ---
@@ -94,14 +78,11 @@ async def cmd_favorites(message: Message):
             InlineKeyboardButton(text=get_text(lang, "btn_next"), callback_data=f"fav_page_2")
         )
     
-    builder.row(
-        InlineKeyboardButton(text=get_text(lang, "btn_back"), callback_data="main_menu")
-    )
+    builder.row(InlineKeyboardButton(text=get_text(lang, "btn_back"), callback_data="main_menu"))
     
     text = get_text(lang, "favorites_list", page=1, total_pages=total_pages, recipes=recipes_text)
     await message.answer(text, reply_markup=builder.as_markup(), parse_mode="Markdown")
     
-    # Логируем событие (ЗАЩИЩЕНО)
     await track_safely(user_id, "favorites_viewed", {"page": 1, "total": len(favorites)})
 
 # --- КОМАНДА /LANG --- 
@@ -120,9 +101,7 @@ async def cmd_lang(message: Message):
             )
         )
     
-    builder.row(
-        InlineKeyboardButton(text=get_text(current_lang, "btn_back"), callback_data="main_menu")
-    )
+    builder.row(InlineKeyboardButton(text=get_text(current_lang, "btn_back"), callback_data="main_menu"))
     
     await message.answer(
         get_text(current_lang, "choose_language"),
@@ -144,7 +123,6 @@ async def cmd_help(message: Message):
     
     await message.answer(help_text, reply_markup=builder.as_markup(), parse_mode="Markdown")
     
-    # Логируем событие (ЗАЩИЩЕНО)
     await track_safely(user_id, "help_viewed", {"language": lang})
 
 # --- КОМАНДА /CODE ---
@@ -176,7 +154,6 @@ async def cmd_code(message: Message):
             )
             await message.answer(response, parse_mode="HTML")
             
-            # Логируем активацию премиума (ЗАЩИЩЕНО)
             await track_safely(user_id, "premium_activated", {
                 "method": "promo_code",
                 "days": 365*99
@@ -342,7 +319,7 @@ async def cmd_admin(message: Message):
             f"? Ошибок: {fail_count}"
         )
 
-# --- КОЛЛБЭКИ ---
+# --- КОЛЛБЭКИ (все без изменений) ---
 async def handle_change_language(callback: CallbackQuery):
     user_id = callback.from_user.id
     
@@ -519,8 +496,7 @@ def register_common_handlers(dp: Dispatcher):
     dp.message.register(cmd_admin, Command("admin"))
     
     # Коллбэки
-
-dp.callback_query.register(handle_change_language, F.data == "change_language")
+    dp.callback_query.register(handle_change_language, F.data == "change_language")
     dp.callback_query.register(handle_set_language, F.data.startswith("set_lang_"))
     dp.callback_query.register(handle_show_favorites, F.data == "show_favorites")
     dp.callback_query.register(handle_show_help, F.data == "show_help")
