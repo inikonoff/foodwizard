@@ -266,3 +266,9 @@ class GroqService:
 
 # Создаём глобальный экземпляр
 groq_service = GroqService()
+
+# Алиас для обратной совместимости (временно)
+    async def generate_dishes_list(self, products: str, category: str, lang: str = "ru") -> List[Dict[str, str]]:
+        """Алиас для generate_dish_list (для обратной совместимости)"""
+        logger.warning("⚠️ Используется устаревший метод generate_dishes_list. Используйте generate_dish_list")
+        return await self.generate_dish_list(products, category, lang)
