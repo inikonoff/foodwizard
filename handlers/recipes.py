@@ -574,13 +574,15 @@ async def handle_repeat_recipe(callback: CallbackQuery):
         await callback.answer("❌ Ошибка")
 
 def register_recipe_handlers(dp: Dispatcher):
-    """Регистрирует обработчики рецептов"""
-    # Текстовые сообщения (НЕ команды!)
-    dp.message.register(
-        handle_text_message, 
-        F.text,
-        ~Command()  # Исключаем ВСЕ команды
-    )
+# В функции register_recipe_handlers
+def register_recipe_handlers(dp: Dispatcher):
+    # ...
+    # Текстовые сообщения
+    # ИСПРАВЛЕНИЕ: Удаляем ~Command(), т.к. F.text по умолчанию обрабатывает все,
+    # что не было перехвачено более приоритетными командами из common.py
+    dp.message.register(handle_text_message, F.text) 
+    
+    # ... (Остальные коллбэки)
     
     # Коллбэки
     dp.callback_query.register(handle_category_selection, F.data.startswith("cat_"))
