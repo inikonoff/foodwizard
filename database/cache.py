@@ -1,123 +1,83 @@
 import logging
-import hashlib
 import json
-from datetime import datetime, timedelta, timezone 
+import hashlib
+from typing import Optional, Dict, Any
+from datetime import datetime, timedelta, timezone
+
 from . import db
 from config import CACHE_TTL_RECIPE, CACHE_TTL_ANALYSIS, CACHE_TTL_VALIDATION, CACHE_TTL_INTENT, CACHE_TTL_DISH_LIST
-from typing import Optional, Any, Dict
 
 logger = logging.getLogger(__name__)
 
-class GroqCache:
-    
-    @staticmethod
-    def _generate_hash(prompt: str, lang: str, model: str) -> str:
-        """Генерирует уникальный SHA256 хэш на основе входных параметров."""
-        data = f"{prompt.strip()}:{lang}:{model}"
-        return hashlib.sha256(data.encode('utf-8')).hexdigest()
+class CacheRepository:
+    """Репозиторий для кэширования ответов Groq в БД."""
 
-    @staticmethod
-    def _get_ttl(cache_type: str) -> int:
-        """Возвращает TTL в секундах на основе типа кэша"""
-        ttl_map = {
-            'recipe': CACHE_TTL_RECIPE,
-            'analysis': CACHE_TTL_ANALYSIS,
-            'validation': CACHE_TTL_VALIDATION,
-            'intent': CACHE_TTL_INTENT,
-            'dish_list': CACHE_TTL_DISH_LIST,
-        }
-        return ttl_map.get(cache_type, CACHE_TTL_RECIPE)
+    def _get_ttl(self, cache_type: str) -> int:
+        """Возвращает TTL в секундах в зависимости от типа кэша."""
+        if cache_type == "analysis": return CACHE_TTL_ANALYSIS
+        if cache_type == "validation": return CACHE_TTL_VALIDATION
+        if cache_type == "intent": return CACHE_TTL_INTENT
+        if cache_type == "dish_list": return CACHE_TTL_DISH_LIST
+        return CACHE_TTL_RECIPE # По умолчанию
+        
+    def _generate_hash(self, prompt: str, lang: str, model: str) -> str:
+        """Генерирует уникальный SHA256 хэш для кэша."""
+        key_string = f"{prompt}-{lang}-{model}"
+        return hashlib.sha256(key_string.encode('utf-8')).hexdigest()
 
-    @staticmethod
-    async def get(prompt: str, lang: str, model: str, cache_type: str = 'recipe') -> Optional[str]:
-        """Получает результат из кэша, если он не просрочен"""
-        hash_key = GroqCache._generate_hash(prompt, lang, model)
+    async def get(self, prompt: str, lang: str, model: str, cache_type: str) -> Optional[str]:
+        """Получает ответ из кэша, если он не просрочен."""
+        # ИСПРАВЛЕНИЕ: Вызываем _generate_hash
+        cache_key = self._generate_hash(prompt, lang, model)
         
         async with db.connection() as conn:
+            # Срок действия проверяется на уровне SQL
             query = """
-            SELECT response, expires_at
-            FROM groq_cache
-            WHERE hash = $1 AND expires_at > NOW()
+            SELECT response FROM groq_cache 
+            WHERE prompt_hash = $1 AND cache_type = $2 AND expires_at > NOW()
             """
-            row = await conn.fetchrow(query, hash_key)
-            
-            if row:
-                logger.debug(f"Cache hit for key: {hash_key}, type: {cache_type}")
-                return row['response']
-            
-            logger.debug(f"Cache miss for key: {hash_key}, type: {cache_type}")
-            return None
+            row = await conn.fetchrow(query, cache_key, cache_type)
+            return row['response'] if row else None
 
-    @staticmethod
-    async def set(prompt: str, response: str, lang: str, model: str, tokens_used: int, cache_type: str = 'recipe') -> bool:
-        """Сохраняет результат в кэше с TTL"""
+    async def set(self, prompt: str, response: str, lang: str, model: str, tokens_used: int, cache_type: str) -> None:
+        """Устанавливает ответ в кэш."""
+        cache_key = self._generate_hash(prompt, lang, model)
+        ttl = self._get_ttl(cache_type)
+        expires_at = datetime.now(timezone.utc) + timedelta(seconds=ttl)
         
-        ttl = GroqCache._get_ttl(cache_type)
-        
-        # 1. Рассчитываем expires_at в UTC (aware time)
-        expires_at_aware = datetime.now(timezone.utc) + timedelta(seconds=ttl)
-        created_at_aware = datetime.now(timezone.utc)
-        
-        # 2. ПРЕОБРАЗОВАНИЕ В NAIVE
-        # Поскольку ваша колонка TIMESTAMP WITHOUT TIME ZONE, мы убираем информацию о часовом поясе.
-        expires_at_naive = expires_at_aware.replace(tzinfo=None)
-        created_at_naive = created_at_aware.replace(tzinfo=None)
-        
-        hash_key = GroqCache._generate_hash(prompt, lang, model)
-
         async with db.connection() as conn:
-            # SQL-запрос, принимающий две Naive-даты
             query = """
-            INSERT INTO groq_cache (hash, response, language, model, tokens_used, expires_at, created_at)
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
-            ON CONFLICT (hash) DO UPDATE
+            INSERT INTO groq_cache (prompt_hash, response, language, model, tokens_used, cache_type, expires_at, created_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+            ON CONFLICT (prompt_hash, cache_type) DO UPDATE
             SET response = EXCLUDED.response,
                 tokens_used = EXCLUDED.tokens_used,
                 expires_at = EXCLUDED.expires_at,
-                created_at = EXCLUDED.created_at
+                created_at = NOW()
             """
-            try:
-                await conn.execute(
-                    query, 
-                    hash_key, 
-                    response, 
-                    lang, 
-                    model, 
-                    tokens_used, 
-                    expires_at_naive,
-                    created_at_naive 
-                )
-                logger.debug(f"Cache set for key: {hash_key}, type: {cache_type}")
-                return True
-            except Exception as e:
-                logger.error(f"Ошибка при сохранении кэша: {e}")
-                logger.error(f"Тип expires_at: {type(expires_at_naive)}, значение: {expires_at_naive}, tzinfo: {expires_at_naive.tzinfo}")
-                return False
+            # NOTE: response должен быть JSONB в БД для этого
+            await conn.execute(
+                query, 
+                cache_key, 
+                response, 
+                lang, 
+                model, 
+                tokens_used, 
+                cache_type, 
+                expires_at
+            )
 
-    @staticmethod
-    async def clear_expired() -> int:
-        """Очищает просроченные записи из кэша и возвращает количество удалённых"""
-        async with db.connection() as conn:
-            query = "DELETE FROM groq_cache WHERE expires_at <= NOW() RETURNING hash"
-            rows = await conn.fetch(query)
-            logger.info(f"Очищено {len(rows)} просроченных записей кэша")
-            return len(rows)
+    async def clear_expired(self) -> int:
+        """Удаляет просроченные записи из кэша."""
+        try:
+            async with db.connection() as conn:
+                result = await conn.execute("DELETE FROM groq_cache WHERE expires_at < NOW()")
+                if result and "DELETE" in result:
+                    count_str = result.split(" ")[1]
+                    return int(count_str)
+                return 0
+        except Exception as e:
+            logger.error(f"Ошибка при очистке кэша: {e}", exc_info=True)
+            return 0
 
-    @staticmethod
-    async def get_stats() -> Dict[str, Any]:
-        """Получает статистику кэша"""
-        async with db.connection() as conn:
-            total_count = await conn.fetchval("SELECT COUNT(*) FROM groq_cache")
-            expired_count = await conn.fetchval("SELECT COUNT(*) FROM groq_cache WHERE expires_at <= NOW()")
-            
-            size_val = await conn.fetchval("SELECT pg_relation_size('groq_cache')")
-            size_kb = (size_val or 0) / 1024
-            
-            return {
-                'total_entries': total_count or 0,
-                'expired_entries': expired_count or 0,
-                'current_entries': (total_count or 0) - (expired_count or 0),
-                'estimated_size_kb': size_kb,
-            }
-
-groq_cache = GroqCache()
+groq_cache = CacheRepository()
