@@ -92,7 +92,6 @@ async def handle_direct_recipe_request(message: Message, text: str, lang: str):
     user_id = message.from_user.id
     
     # Извлекаем название блюда
-    # Удаляем ключевые слова и лишние пробелы
     keywords = ["рецепт", "recipe", "рецепт для", "recipe for", "дай рецепт"]
     dish_name = text.lower()
     for keyword in keywords:
@@ -584,8 +583,9 @@ def register_recipe_handlers(dp: Dispatcher):
     )
     
     # Коллбэки
-      dp.callback_query.register(handle_category_selection, F.data.startswith("cat_"))
+    dp.callback_query.register(handle_category_selection, F.data.startswith("cat_"))
     dp.callback_query.register(handle_dish_selection, F.data.startswith("dish_"))
     dp.callback_query.register(handle_back_to_categories, F.data == "back_to_categories")
     dp.callback_query.register(handle_restart, F.data == "restart")
     dp.callback_query.register(handle_repeat_recipe, F.data.startswith(("repeat_recipe_", "repeat_dish_")))
+    
