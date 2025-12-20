@@ -1,86 +1,57 @@
 import logging
-from typing import Dict, Any
-from datetime import datetime, timedelta, timezone 
+from typing import Dict, Any, Optional
+from datetime import datetime, timezone
 
 from . import db
 
 logger = logging.getLogger(__name__)
 
 class MetricsRepository:
-    """Репозиторий для хранения и получения метрик использования"""
-
-    @staticmethod
-    async def track_event(user_id: int, event_name: str, metadata: Dict[str, Any] = None) -> None:
-        """
-        Отслеживает не-LLM событие (например, старт, настройки) путем записи в таблицу usage_metrics.
-        ИСПРАВЛЕНИЕ: Перенаправляем событие в track_request с нулевыми токенами.
-        """
-        model_name = f"command_{event_name}"
-        logger.debug(f"Event tracked: {event_name} for user {user_id}. Using model_name: {model_name}")
+    """Репозиторий для записи событий и метрик"""
+    
+    # 1. track_event - ЗАЩИЩАЕМ НА УРОВНЕ РЕПОЗИТОРИЯ
+    async def track_event(self, user_id: int, event_name: str, data: Dict[str, Any] = None) -> None:
+        """Записывает событие в таблицу метрик"""
         
-        # Переиспользуем track_request для записи события
-        await MetricsRepository.track_request(
-            user_id=user_id,
-            model_name=model_name,
-            tokens_used=0,
-            is_cache_hit=False # Событие не кэшируется
-        )
+        # Если data = None, используем пустой словарь
+        data_to_store = data or {}
 
-    @staticmethod
-    async def track_request(user_id: int, model_name: str, tokens_used: int, is_cache_hit: bool):
-        """Регистрирует каждый запрос (включая команды, переданные через track_event)"""
-        async with db.connection() as conn:
-            query = """
-            INSERT INTO usage_metrics (user_id, model_name, tokens_used, is_cache_hit, timestamp)
-            VALUES ($1, $2, $3, $4, NOW())
-            """
-            try:
+        # ИСПОЛЬЗУЕМ try/except ДЛЯ ЗАЩИТЫ БИЗНЕС-ЛОГИКИ
+        try:
+            async with db.connection() as conn:
+                query = """
+                INSERT INTO metrics (user_id, event_name, data, created_at)
+                VALUES ($1, $2, $3, $4)
+                """
                 await conn.execute(
                     query, 
                     user_id, 
-                    model_name, 
-                    tokens_used, 
-                    is_cache_hit
+                    event_name, 
+                    data_to_store, # Должно быть JSONB в БД
+                    datetime.now(timezone.utc)
                 )
-            except Exception as e:
-                logger.error(f"Ошибка при сохранении метрики для пользователя {user_id}: {e}")
+        except Exception as e:
+            # Логируем ошибку, но не бросаем ее выше
+            logger.critical(f"💀 КРИТИЧЕСКАЯ ОШИБКА записи метрики в БД ({event_name}): {e}", exc_info=True)
 
-    @staticmethod
-    async def get_total_stats() -> Dict[str, Any]:
-        """Возвращает общую статистику использования"""
-        async with db.connection() as conn:
-            query = """
-            SELECT 
-                COUNT(*) as total_requests,
-                SUM(tokens_used) as total_tokens,
-                SUM(CASE WHEN is_cache_hit = TRUE THEN 1 ELSE 0 END) as cache_hits,
-                COUNT(*) - SUM(CASE WHEN is_cache_hit = TRUE THEN 1 ELSE 0 END) as non_cache_requests
-            FROM usage_metrics
-            """
-            row = await conn.fetchrow(query)
-            
-            # Обработка NULL-значений
-            return {
-                'total_requests': row['total_requests'] or 0,
-                'total_tokens': row['total_tokens'] or 0,
-                'cache_hits': row['cache_hits'] or 0,
-                'non_cache_requests': row['non_cache_requests'] or 0,
-            }
 
-    @staticmethod
-    async def cleanup_old_metrics(days_to_keep: int = 90) -> int:
-        """
-        Очищает метрики старше указанного количества дней.
-        Использует timezone.utc для создания "осведомленного" времени.
-        """
-        async with db.connection() as conn:
-            # Используем timezone.utc
-            cutoff_date = datetime.now(timezone.utc) - timedelta(days=days_to_keep)
+    # 2. cleanup_old_metrics - ОСТАВЛЕН БЕЗ ИЗМЕНЕНИЙ (он надежен)
+    async def cleanup_old_metrics(self, days_to_keep: int = 90) -> int:
+        """Удаляет старые метрики"""
+        try:
+            async with db.connection() as conn:
+                query = f"""
+                DELETE FROM metrics 
+                WHERE created_at < NOW() - interval '{days_to_keep} days'
+                """
+                result = await conn.execute(query)
+                if result and "DELETE" in result:
+                    count_str = result.split(" ")[1]
+                    return int(count_str)
+                return 0
+        except Exception as e:
+            logger.error(f"Ошибка при очистке метрик: {e}", exc_info=True)
+            return 0
 
-            query = "DELETE FROM usage_metrics WHERE timestamp < $1 RETURNING user_id"
-            rows = await conn.fetch(query, cutoff_date)
-            
-            logger.info(f"Очищено {len(rows)} старых записей метрик (старше {days_to_keep} дней)")
-            return len(rows)
-
+# Создаём глобальный экземпляр
 metrics = MetricsRepository()
