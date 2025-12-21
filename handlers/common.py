@@ -496,6 +496,8 @@ def register_common_handlers(dp: Dispatcher):
     dp.message.register(cmd_admin, Command("admin"))
     
     # Коллбэки
+    dp.callback_query.register(handle_add_favorite, F.data.startswith("add_fav_"))
+    dp.callback_query.register(handle_remove_favorite, F.data.startswith("remove_fav_"))
     dp.callback_query.register(handle_change_language, F.data == "change_language")
     dp.callback_query.register(handle_set_language, F.data.startswith("set_lang_"))
     dp.callback_query.register(handle_show_favorites, F.data == "show_favorites")
