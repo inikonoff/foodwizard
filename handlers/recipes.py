@@ -1,7 +1,8 @@
 import logging
-from aiogram import Dispatcher, F
+from aiogram import Dispatcher, F, html # <-- ДОБАВЛЕН ИМПОРТ html
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
+import re # <-- ДОБАВЛЕН ИМПОРТ re
 
 from database.users import users_repo
 from database.favorites import favorites_repo
@@ -13,13 +14,35 @@ from state_manager import state_manager
 logger = logging.getLogger(__name__)
 
 # --- Вспомогательная функция для безопасного логирования метрик ---
-# Добавлена в каждый хендлер для независимости
 async def track_safely(user_id: int, event_name: str, data: dict = None):
     """Оборачивает логирование метрик в try/except"""
     try:
         await metrics.track_event(user_id, event_name, data)
     except Exception as e:
         logger.error(f"❌ Ошибка записи метрики ({event_name}): {e}", exc_info=True)
+
+
+# --- ФУНКЦИЯ ДЛЯ ОЧИСТКИ ТЕКСТА ОТ ПРОБЛЕМНОГО MARKDOWN ---
+def safe_format_recipe_text(text: str) -> str:
+    """
+    Конвертирует вероятный Markdown в безопасный HTML и экранирует спецсимволы.
+    """
+    # 1. Экранирование критических HTML-сущностей
+    # Используем html.quote только для спецсимволов, которые не используются для тегов
+    # На самом деле, лучше сначала заменить, потом экранировать
+    
+    # 1. Заменяем Markdown на HTML
+    # **Жирный текст** -> <b>Жирный текст</b> (re.DOTALL для многострочности)
+    text = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', text, flags=re.DOTALL)
+    # *Курсив* -> <i>Курсив</i>
+    text = re.sub(r'\*(.*?)\*', r'<i>\1</i>', text, flags=re.DOTALL)
+    # `Моноширинный` -> <code>Моноширинный</code>
+    text = re.sub(r'`(.*?)`', r'<code>\1</code>', text, flags=re.DOTALL)
+    
+    # 2. Экранирование символов, которые могут ломать HTML, но не были затронуты (например, <, >)
+    text = text.replace('<', '&lt;').replace('>', '&gt;')
+    
+    return text
 
 
 async def handle_text_message(message: Message):
@@ -35,7 +58,6 @@ async def handle_text_message(message: Message):
     allowed, used, limit = await users_repo.check_and_increment_request(user_id, "text")
     
     if not allowed:
-        # ИСПРАВЛЕНО: КОРРЕКТНЫЙ ключ limit_text_exceeded
         await message.answer(
             get_text(lang, "limit_text_exceeded", used=used, limit=limit),
             parse_mode="HTML"
@@ -55,7 +77,6 @@ async def handle_text_message(message: Message):
         await wait_msg.delete()
         
         if not categories:
-            # ИСПРАВЛЕНО: error_not_enough_products при пустом ответе Groq
             await track_safely(user_id, "category_analysis_failed", {"language": lang, "products": text})
             await message.answer(get_text(lang, "error_not_enough_products"))
             return
@@ -110,7 +131,7 @@ async def handle_category_selection(callback: CallbackQuery):
     await callback.answer()
 
     try:
-        # Генерируем список блюд 
+        # Генерируем список блюд
         dishes = await groq_service.generate_dishes_list(products, category, lang)
         
         await wait_msg.delete()
@@ -169,10 +190,8 @@ async def handle_dish_selection(callback: CallbackQuery):
         dish = dishes[dish_index]
         products = state_manager.get_products(user_id)
         
-        # Сохраняем текущее блюдо
         state_manager.set_current_dish(user_id, dish)
 
-        # Отправляем сообщение о процессе
         wait_msg = await callback.message.edit_text(get_text(lang, "processing"))
         await callback.answer()
         
@@ -186,7 +205,6 @@ async def handle_dish_selection(callback: CallbackQuery):
              await callback.message.answer(get_text(lang, "safety_refusal"))
              return
 
-        # Добавляем метрику (ЗАЩИЩЕНО)
         await track_safely(
             user_id,
             "recipe_generated",
@@ -198,6 +216,9 @@ async def handle_dish_selection(callback: CallbackQuery):
             }
         )
         
+        # !!! ПРИМЕНЕНИЕ УНИВЕРСАЛЬНОГО ФОРМАТИРОВАНИЯ !!!
+        final_recipe_text = safe_format_recipe_text(recipe)
+        
         # Проверяем избранное
         is_favorite = await favorites_repo.is_favorite(user_id, dish.get('name'))
         
@@ -205,34 +226,19 @@ async def handle_dish_selection(callback: CallbackQuery):
         
         # Кнопка избранного
         if is_favorite:
-            builder.row(
-                InlineKeyboardButton(
-                    text=get_text(lang, "btn_remove_from_fav"),
-                    callback_data=f"remove_fav_{dish_index}"
-                )
-            )
+            builder.row(InlineKeyboardButton(text=get_text(lang, "btn_remove_from_fav"), callback_data=f"remove_fav_{dish_index}"))
         else:
-            builder.row(
-                InlineKeyboardButton(
-                    text=get_text(lang, "btn_add_to_fav"),
-                    callback_data=f"add_fav_{dish_index}"
-                )
-            )
+            builder.row(InlineKeyboardButton(text=get_text(lang, "btn_add_to_fav"), callback_data=f"add_fav_{dish_index}"))
         
         # Кнопки навигации
         builder.row(
-            InlineKeyboardButton(
-                text=get_text(lang, "btn_another"),
-                callback_data=callback.data  # Повторить тот же запрос
-            ),
-            InlineKeyboardButton(
-                text=get_text(lang, "btn_back"),
-                callback_data="back_to_categories"
-            )
+            InlineKeyboardButton(text=get_text(lang, "btn_another"), callback_data=callback.data),
+            InlineKeyboardButton(text=get_text(lang, "btn_back"), callback_data="back_to_categories")
         )
         
         # Отправляем новый рецепт
-        await callback.message.answer(recipe, reply_markup=builder.as_markup(), parse_mode="Markdown")
+        # ИСПОЛЬЗУЕМ parse_mode="HTML" 
+        await callback.message.answer(final_recipe_text, reply_markup=builder.as_markup(), parse_mode="HTML")
         await callback.answer()
         
     except Exception as e:
@@ -285,7 +291,6 @@ async def handle_back_to_categories(callback: CallbackQuery):
 def register_recipe_handlers(dp: Dispatcher):
     """Регистрирует обработчики рецептов"""
     # Текстовые сообщения
-    # ИСПРАВЛЕНИЕ: Удаление ~Command() для устранения ValueError
     dp.message.register(handle_text_message, F.text)
     
     # Коллбэки
