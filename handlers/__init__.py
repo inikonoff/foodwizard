@@ -3,7 +3,7 @@ from aiogram import Dispatcher
 from .common import register_common_handlers
 from .recipes import register_recipe_handlers
 from .voice import register_voice_handlers
-from .favorites import register_favorites_handlers # <--- ДОБАВЛЕН ИМПОРТ
+from .favorites import register_favorites_handlers # <--- ОБЯЗАТЕЛЬНО ИМПОРТИРУЕМ
 
 def register_all_handlers(dp: Dispatcher):
     """
@@ -15,10 +15,11 @@ def register_all_handlers(dp: Dispatcher):
     register_common_handlers(dp)
     
     # 2. Логика избранного (кнопки пагинации, добавления/удаления)
+    # Регистрируем ДО текстовых сообщений, так как это CallbackQuery
     register_favorites_handlers(dp)
     
     # 3. Голосовые сообщения
     register_voice_handlers(dp)
     
-    # 4. Текстовые сообщения и генерация рецептов (F.text ловит все остальное)
+    # 4. Текстовые сообщения и генерация рецептов (F.text ловит все остальное, поэтому последний)
     register_recipe_handlers(dp)
