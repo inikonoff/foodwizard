@@ -267,9 +267,19 @@ async def update_favorite_button(callback: CallbackQuery, dish_index: int, is_fa
         logger.error(f"Ошибка обновления кнопки избранного: {e}", exc_info=True)
 
 
+# ... (весь предыдущий код handlers/favorites.py) ...
+
+# --- РЕГИСТРАЦИЯ ОБРАБОТЧИКОВ ---
 def register_favorites_handlers(dp: Dispatcher):
     """Регистрирует обработчики для избранного"""
+    # 1. Пагинация
     dp.callback_query.register(handle_favorite_pagination, F.data.startswith("fav_page_"))
+    
+    # 2. Добавление (Имя функции должно совпадать с def handle_add_to_favorites)
     dp.callback_query.register(handle_add_to_favorites, F.data.startswith("add_fav_"))
+    
+    # 3. Удаление из карточки (Имя функции должно совпадать с def handle_remove_from_favorites)
     dp.callback_query.register(handle_remove_from_favorites, F.data.startswith("remove_fav_"))
+    
+    # 4. Удаление из списка
     dp.callback_query.register(handle_delete_favorite, F.data.startswith("delete_fav_"))
