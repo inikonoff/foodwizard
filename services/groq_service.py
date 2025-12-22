@@ -2,7 +2,7 @@ import logging
 import json
 import hashlib
 from typing import Dict, List, Optional
-from datetime import datetime, timedelta, timezone # Для кэша
+from datetime import datetime, timedelta, timezone
 
 from groq import AsyncGroq 
 from config import GROQ_API_KEY, GROQ_MODEL, GROQ_MAX_TOKENS
@@ -33,10 +33,8 @@ class GroqService:
             return "Ошибка: API ключ не настроен."
         
         try:
-            # Генерируем ключ кэша
             cache_key = groq_cache._generate_hash(f"{system_prompt[:100]}_{user_prompt[:200]}", lang, GROQ_MODEL)
             
-            # Пытаемся получить из кэша
             cached_response = await groq_cache.get(
                 prompt=cache_key,
                 lang=lang, 
@@ -48,10 +46,8 @@ class GroqService:
                 await metrics.track_event(user_id, "groq_cache_hit", {"key": cache_key, "lang": lang})
                 return cached_response
 
-            # Определяем, нужен ли JSON
             is_json = cache_type in ["analysis", "validation", "intent", "dish_list"]
             
-            # Отправка запроса Groq
             chat_completion = await self.client.chat.completions.create(
                 messages=[
                     {"role": "system", "content": system_prompt},
@@ -65,7 +61,6 @@ class GroqService:
 
             response_text = chat_completion.choices[0].message.content
             
-            # Сохраняем в кэше
             await groq_cache.set(
                 prompt=cache_key,
                 response=response_text,
@@ -123,24 +118,30 @@ class GroqService:
             clean_json = response.replace("```json", "").replace("```", "").strip()
             data = json.loads(clean_json)
             
-            # ИСПРАВЛЕНИЕ: ПАРСИНГ DICT В LIST
-            if isinstance(data, dict):
-                 return [key for key, value in data.items() if value is True]
+            # 1. Если это список ["soup", "main"]
+            if isinstance(data, list):
+                if all(isinstance(item, str) for item in data):
+                    return data
 
-            # Проверка на случай, если Groq вернет List напрямую
-            if isinstance(data, list) and all(isinstance(item, str) for item in data):
-                return data
+            # 2. Если это словарь (объект)
+            if isinstance(data, dict):
+                # Вариант А: {"categories": ["soup", "main"]} - КАК В ТВОЕМ ЛОГЕ
+                if "categories" in data and isinstance(data["categories"], list):
+                    return data["categories"]
                 
+                # Вариант Б: {"soup": true, "main": false} - Старый формат
+                # Собираем ключи, где значение True
+                return [key for key, value in data.items() if value is True]
+
         except Exception as e:
             logger.error(f"Ошибка парсинга категорий: {e}", exc_info=True)
         
         return None
 
     async def generate_dishes_list(self, products: str, category: str, lang: str = "ru", user_id: int = 0) -> Optional[List[Dict]]:
-        # !!! МЕТОД ГАРАНТИРОВАНО ПРИСУТСТВУЕТ И ПРАВИЛЬНО ОПРЕДЕЛЕН !!!
         """Генерирует список из 5 блюд в выбранной категории"""
-        system_prompt = get_prompt(lang, "dish_generation") # Удален .format(category)
-        user_prompt = get_prompt(lang, "dish_generation_user").format(products=products, category=category) # Category добавлено
+        system_prompt = get_prompt(lang, "dish_generation")
+        user_prompt = get_prompt(lang, "dish_generation_user").format(products=products, category=category)
         
         response = await self._send_request(
             system_prompt=system_prompt,
@@ -157,13 +158,12 @@ class GroqService:
             clean_json = response.replace("```json", "").replace("```", "").strip()
             data = json.loads(clean_json)
             
-            # ИСПРАВЛЕНИЕ: ПАРСИНГ LIST ИЛИ DICT
             if isinstance(data, list):
                 if all(isinstance(item, dict) for item in data):
                     return data
             
             elif isinstance(data, dict):
-                # Ищем первый список (LIST) внутри словаря (DICT)
+                # Ищем первый попавшийся список внутри словаря
                 for key, value in data.items():
                     if isinstance(value, list) and all(isinstance(item, dict) for item in value):
                         return value
@@ -187,12 +187,9 @@ class GroqService:
             user_id=user_id
         )
         
-        logger.info(f"Сырой ответ Groq (валидация): {response[:200]}...")
-        
         try:
             clean_json = response.replace("```json", "").replace("```", "").strip()
             data = json.loads(clean_json)
-            
             if isinstance(data, dict) and data.get("valid", False):
                 return True
         except Exception as e:
@@ -217,12 +214,9 @@ class GroqService:
             user_id=user_id
         )
         
-        logger.info(f"Сырой ответ Groq (интент): {response[:200]}...")
-        
         try:
             clean_json = response.replace("```json", "").replace("```", "").strip()
             data = json.loads(clean_json)
-            
             if isinstance(data, dict):
                 return data
         except Exception as e:
