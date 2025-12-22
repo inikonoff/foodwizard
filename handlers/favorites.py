@@ -2,6 +2,7 @@ import logging
 from aiogram import Dispatcher, F
 from aiogram.types import CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram.exceptions import TelegramBadRequest
 
 from state_manager import state_manager
 from database.users import users_repo
@@ -19,7 +20,7 @@ async def track_safely(user_id: int, event_name: str, data: dict = None):
     except Exception as e:
         logger.error(f"❌ Ошибка записи метрики ({event_name}): {e}", exc_info=True)
 
-# --- СПИСОК (Пагинация) ---
+# --- 1. СПИСОК (Пагинация) ---
 async def handle_favorite_pagination(callback: CallbackQuery):
     user_id = callback.from_user.id
     lang = (await users_repo.get_user(user_id)).get('language_code', 'ru')
@@ -32,7 +33,11 @@ async def handle_favorite_pagination(callback: CallbackQuery):
     favorites, total_pages = await favorites_repo.get_favorites_page(user_id, page)
     
     if not favorites:
-        await callback.message.edit_text(get_text(lang, "favorites_empty"))
+        # Если список пуст, но мы пытаемся редактировать старое сообщение
+        try:
+            await callback.message.edit_text(get_text(lang, "favorites_empty"))
+        except TelegramBadRequest:
+            await callback.message.answer(get_text(lang, "favorites_empty"))
         return 
     
     header_text = get_text(lang, "favorites_title") + f" (стр. {page}/{total_pages})"
@@ -56,7 +61,7 @@ async def handle_favorite_pagination(callback: CallbackQuery):
     await callback.answer()
     await track_safely(user_id, "favorites_page_viewed", {"page": page})
 
-# --- ПРОСМОТР РЕЦЕПТА ---
+# --- 2. ПРОСМОТР РЕЦЕПТА ---
 async def handle_view_favorite(callback: CallbackQuery):
     user_id = callback.from_user.id
     try:
@@ -79,7 +84,7 @@ async def handle_view_favorite(callback: CallbackQuery):
         logger.error(f"View Error: {e}", exc_info=True)
         await callback.answer("Ошибка")
 
-# --- УДАЛЕНИЕ ИЗ СПИСКА ---
+# --- 3. УДАЛЕНИЕ ПО ID (из списка) ---
 async def handle_delete_favorite_by_id(callback: CallbackQuery):
     user_id = callback.from_user.id
     try:
@@ -101,20 +106,22 @@ async def handle_delete_favorite_by_id(callback: CallbackQuery):
         logger.error(f"Del Error: {e}", exc_info=True)
         await callback.answer("Ошибка")
 
-# --- ДОБАВЛЕНИЕ (Кнопка под рецептом) ---
+# --- 4. ДОБАВЛЕНИЕ (Кнопка под рецептом) ---
 async def handle_add_to_favorites(callback: CallbackQuery):
     user_id = callback.from_user.id
     user_data = await users_repo.get_user(user_id)
     lang = user_data.get('language_code', 'ru') if user_data else 'ru'
     
     try:
+        # callback: add_fav_1
         dish_index = int(callback.data.split('_')[2])
+        
         dishes = state_manager.get_generated_dishes(user_id)
         current_dish_state = state_manager.get_current_dish(user_id)
         
         selected_dish = current_dish_state if current_dish_state else (dishes[dish_index] if dishes else None)
         if not selected_dish:
-            await callback.answer("Ошибка: блюдо не найдено")
+            await callback.answer("Ошибка: рецепт не найден в памяти")
             return
         
         dish_name = selected_dish.get('name')
@@ -135,22 +142,24 @@ async def handle_add_to_favorites(callback: CallbackQuery):
 
         success = await favorites_repo.add_favorite(favorite)
         if success:
+            # Уведомление всплывашкой
             await callback.answer(get_text(lang, "favorite_added").format(dish_name=dish_name))
             await track_safely(user_id, "favorite_added", {"dish_name": dish_name})
             
-            # ОБНОВЛЯЕМ КНОПКУ: Теперь она "Удалить" (is_in_favorites=True)
-            await update_favorite_button(callback, dish_index, True, lang)
+            # ОБНОВЛЕНИЕ КНОПКИ (Переключаем на "В избранном")
+            await update_favorite_button(callback, dish_index, is_in_favorites=True, lang=lang)
         else:
             await callback.answer("⚠️ Ошибка")
     except Exception as e:
         logger.error(f"Add Error: {e}", exc_info=True)
         await callback.answer("Ошибка")
 
-# --- УДАЛЕНИЕ (Кнопка под рецептом) ---
+# --- 5. УДАЛЕНИЕ (Кнопка под рецептом) ---
 async def handle_remove_from_favorites(callback: CallbackQuery):
     user_id = callback.from_user.id
     lang = (await users_repo.get_user(user_id)).get('language_code', 'ru')
     try:
+        # callback: remove_fav_1
         dish_index = int(callback.data.split('_')[2])
         current_dish = state_manager.get_current_dish(user_id)
         dishes = state_manager.get_generated_dishes(user_id)
@@ -169,18 +178,18 @@ async def handle_remove_from_favorites(callback: CallbackQuery):
             await callback.answer(get_text(lang, "favorite_removed").format(dish_name=dish_name))
             await track_safely(user_id, "favorite_removed", {"dish_name": dish_name})
             
-            # ОБНОВЛЯЕМ КНОПКУ: Теперь она "Добавить" (is_in_favorites=False)
-            await update_favorite_button(callback, dish_index, False, lang)
+            # ОБНОВЛЕНИЕ КНОПКИ (Переключаем обратно на "В избранное")
+            await update_favorite_button(callback, dish_index, is_in_favorites=False, lang=lang)
         else:
-            await callback.answer("Ошибка")
+            await callback.answer("Ошибка удаления")
     except Exception as e:
         logger.error(f"Remove Error: {e}", exc_info=True)
         await callback.answer("Ошибка")
 
-# --- ФУНКЦИЯ ПОДМЕНЫ КНОПКИ ---
+# --- ФУНКЦИЯ ОБНОВЛЕНИЯ КНОПКИ (КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ) ---
 async def update_favorite_button(callback: CallbackQuery, dish_index: int, is_in_favorites: bool, lang: str):
     """
-    Меняет одну кнопку в клавиатуре на лету.
+    Меняет кнопку в клавиатуре на лету (тоггл).
     """
     try:
         current_keyboard = callback.message.reply_markup
@@ -188,37 +197,52 @@ async def update_favorite_button(callback: CallbackQuery, dish_index: int, is_in
         
         builder = InlineKeyboardBuilder()
         
+        # Пересобираем клавиатуру
         for row in current_keyboard.inline_keyboard:
             new_row = []
             for button in row:
-                # Ищем кнопку избранного (add_fav или remove_fav)
-                if button.callback_data and (f"add_fav_{dish_index}" in button.callback_data or f"remove_fav_{dish_index}" in button.callback_data):
-                    
+                # Проверяем callback_data. Кнопки выглядят как add_fav_X или remove_fav_X
+                # Нам нужно найти ту, которая относится к текущему индексу блюда
+                is_target_btn = False
+                if button.callback_data:
+                    # Проверяем точное совпадение префикса и индекса
+                    if button.callback_data == f"add_fav_{dish_index}" or button.callback_data == f"remove_fav_{dish_index}":
+                        is_target_btn = True
+                
+                if is_target_btn:
                     if is_in_favorites:
-                        # Ставим кнопку "🌟 В избранном" (которая будет удалять)
+                        # Ставим кнопку "🌟 В избранном" (нажатие удалит)
                         new_btn = InlineKeyboardButton(
                             text=get_text(lang, "btn_remove_from_fav"), 
                             callback_data=f"remove_fav_{dish_index}"
                         )
                     else:
-                        # Ставим кнопку "☆ В избранное" (которая будет добавлять)
+                        # Ставим кнопку "☆ В избранное" (нажатие добавит)
                         new_btn = InlineKeyboardButton(
                             text=get_text(lang, "btn_add_to_fav"), 
                             callback_data=f"add_fav_{dish_index}"
                         )
                     new_row.append(new_btn)
                 else:
+                    # Остальные кнопки (Ещё рецепт, Назад) оставляем как есть
                     new_row.append(button)
             builder.row(*new_row)
             
         await callback.message.edit_reply_markup(reply_markup=builder.as_markup())
         
+    except TelegramBadRequest as e:
+        # Игнорируем ошибку, если сообщение не изменилось (пользователь нажал дважды быстро)
+        if "message is not modified" in str(e):
+            return
+        logger.error(f"Ошибка обновления кнопки: {e}")
     except Exception as e:
-        logger.error(f"Ошибка визуального обновления кнопки: {e}")
+        logger.error(f"Неизвестная ошибка обновления кнопки: {e}")
 
 def register_favorites_handlers(dp: Dispatcher):
     dp.callback_query.register(handle_favorite_pagination, F.data.startswith("fav_page_"))
     dp.callback_query.register(handle_view_favorite, F.data.startswith("view_fav_"))
     dp.callback_query.register(handle_delete_favorite_by_id, F.data.startswith("delete_fav_id_"))
+    
+    # Обработчики для качелей
     dp.callback_query.register(handle_add_to_favorites, F.data.startswith("add_fav_"))
     dp.callback_query.register(handle_remove_from_favorites, F.data.startswith("remove_fav_"))
