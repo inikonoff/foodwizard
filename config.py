@@ -5,8 +5,8 @@ from typing import List
 # Загружаем переменные окружения
 load_dotenv()
 
-# Для совместимости с гибридным main.py (даже если Webhook не используется)
-WEBHOOK_URL = os.environ.get("WEBHOOK_URL", "") # Можно оставить пустой строкой, если используете Polling
+# Для совместимости с гибридным main.py
+WEBHOOK_URL = os.environ.get("WEBHOOK_URL", "")
 
 # ===== API КЛЮЧИ =====
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
@@ -23,14 +23,17 @@ if not DATABASE_URL:
     raise ValueError("DATABASE_URL не установлен в переменных окружения")
 
 # ===== АДМИНИСТРАТОРЫ И БЕЗОПАСНОСТЬ =====
-# Преобразуем строку "123,456" в список [123, 456]
-# ADMIN_IDS: List[int] = []
+
+# !!! ВАЖНО: Переменная должна существовать, даже если она пустая !!!
+ADMIN_IDS: List[int] = [] 
+
+# Если вы хотите вернуть админов, раскомментируйте блок ниже:
 # admin_str = os.getenv("ADMIN_IDS", "")
 # if admin_str:
-#    for admin_id in admin_str.split(","):
-#        admin_id = admin_id.strip()
-#       if admin_id.isdigit():
-#          ADMIN_IDS.append(int(admin_id))
+#     for admin_id in admin_str.split(","):
+#         admin_id = admin_id.strip()
+#         if admin_id.isdigit():
+#             ADMIN_IDS.append(int(admin_id))
 
 # Секретный код для активации премиума
 SECRET_PROMO_CODE = os.getenv("SECRET_PROMO_CODE", "FOOD2025")
@@ -40,21 +43,18 @@ GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 GROQ_MAX_TOKENS = int(os.getenv("GROQ_MAX_TOKENS", "1000"))
 
 # ===== ДИРЕКТОРИИ И ФАЙЛЫ =====
-# Для Render.com используем /tmp
 TEMP_DIR = os.getenv("TEMP_DIR", "/tmp/chef_bot")
 
 # ===== НАСТРОЙКИ КЭША =====
-# Время жизни кэша (в секундах)
-CACHE_TTL_RECIPE = int(os.getenv("CACHE_TTL_RECIPE", "3600"))  # 1 час
-CACHE_TTL_ANALYSIS = int(os.getenv("CACHE_TTL_ANALYSIS", "86400")) # 1 день
-CACHE_TTL_VALIDATION = int(os.getenv("CACHE_TTL_VALIDATION", "86400")) # 1 день
-CACHE_TTL_INTENT = int(os.getenv("CACHE_TTL_INTENT", "86400")) # 1 день
-CACHE_TTL_DISH_LIST = int(os.getenv("CACHE_TTL_DISH_LIST", "3600")) # 1 час
+CACHE_TTL_RECIPE = int(os.getenv("CACHE_TTL_RECIPE", "3600"))
+CACHE_TTL_ANALYSIS = int(os.getenv("CACHE_TTL_ANALYSIS", "86400"))
+CACHE_TTL_VALIDATION = int(os.getenv("CACHE_TTL_VALIDATION", "86400"))
+CACHE_TTL_INTENT = int(os.getenv("CACHE_TTL_INTENT", "86400"))
+CACHE_TTL_DISH_LIST = int(os.getenv("CACHE_TTL_DISH_LIST", "3600"))
 
 # ===== НАСТРОЙКИ ИНТЕРФЕЙСА =====
 FAVORITES_PER_PAGE = int(os.getenv("FAVORITES_PER_PAGE", "5"))
 
-# Поддерживаемые языки (в порядке приоритета)
 SUPPORTED_LANGUAGES = ["ru", "en", "de", "fr", "it", "es"]
 DEFAULT_LANGUAGE = os.getenv("DEFAULT_LANGUAGE", "ru")
 
@@ -75,18 +75,11 @@ PREMIUM_USER_LIMITS = {
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 LOG_FILE = os.getenv("LOG_FILE", "bot.log")
 
-# ===== ПРОВЕРКА КОНФИГУРАЦИИ =====
 def validate_config():
-    """Проверяет корректность конфигурации"""
     errors = []
-    
-    # Проверка на наличие токенов
     if not TELEGRAM_TOKEN: errors.append("TELEGRAM_TOKEN")
     if not GROQ_API_KEY: errors.append("GROQ_API_KEY")
     if not DATABASE_URL: errors.append("DATABASE_URL")
     
     if errors:
         raise ValueError(f"Отсутствуют необходимые переменные окружения: {', '.join(errors)}")
-
-# Выполняем проверку при загрузке
-validate_config()
