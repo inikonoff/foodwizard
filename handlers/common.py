@@ -14,7 +14,7 @@ from config import SUPPORTED_LANGUAGES, ADMIN_IDS, SECRET_PROMO_CODE
 
 logger = logging.getLogger(__name__)
 
-# --- Вспомогательная функция для безопасного логирования метрик (ДОЛЖНА БЫТЬ) ---
+# --- Вспомогательная функция для безопасного логирования метрик ---
 async def track_safely(user_id: int, event_name: str, data: dict = None):
     try:
         await metrics.track_event(user_id, event_name, data)
@@ -40,10 +40,21 @@ async def cmd_start(message: Message):
     start_manual = get_text(lang, "start_manual")
     
     builder = InlineKeyboardBuilder()
-    builder.row(InlineKeyboardButton(text=get_text(lang, "btn_favorites"), callback_data="show_favorites"))
     builder.row(
-        InlineKeyboardButton(text=get_text(lang, "btn_change_lang"), callback_data="change_language"),
-        InlineKeyboardButton(text=get_text(lang, "btn_help"), callback_data="show_help")
+        InlineKeyboardButton(
+            text=get_text(lang, "btn_favorites"),
+            callback_data="show_favorites"
+        )
+    )
+    builder.row(
+        InlineKeyboardButton(
+            text=get_text(lang, "btn_change_lang"),
+            callback_data="change_language"
+        ),
+        InlineKeyboardButton(
+            text=get_text(lang, "btn_help"),
+            callback_data="show_help"
+        )
     )
     
     full_text = f"{welcome_text}\n\n{start_manual}"
@@ -78,7 +89,9 @@ async def cmd_favorites(message: Message):
             InlineKeyboardButton(text=get_text(lang, "btn_next"), callback_data=f"fav_page_2")
         )
     
-    builder.row(InlineKeyboardButton(text=get_text(lang, "btn_back"), callback_data="main_menu"))
+    builder.row(
+        InlineKeyboardButton(text=get_text(lang, "btn_back"), callback_data="main_menu")
+    )
     
     text = get_text(lang, "favorites_list", page=1, total_pages=total_pages, recipes=recipes_text)
     await message.answer(text, reply_markup=builder.as_markup(), parse_mode="Markdown")
@@ -101,7 +114,9 @@ async def cmd_lang(message: Message):
             )
         )
     
-    builder.row(InlineKeyboardButton(text=get_text(current_lang, "btn_back"), callback_data="main_menu"))
+    builder.row(
+        InlineKeyboardButton(text=get_text(current_lang, "btn_back"), callback_data="main_menu")
+    )
     
     await message.answer(
         get_text(current_lang, "choose_language"),
@@ -319,7 +334,7 @@ async def cmd_admin(message: Message):
             f"? Ошибок: {fail_count}"
         )
 
-# --- КОЛЛБЭКИ (все без изменений) ---
+# --- КОЛЛБЭКИ ---
 async def handle_change_language(callback: CallbackQuery):
     user_id = callback.from_user.id
     
@@ -335,7 +350,9 @@ async def handle_change_language(callback: CallbackQuery):
             )
         )
     
-    builder.row(InlineKeyboardButton(text=get_text(current_lang, "btn_back"), callback_data="main_menu"))
+    builder.row(
+        InlineKeyboardButton(text=get_text(current_lang, "btn_back"), callback_data="main_menu")
+    )
     
     await callback.message.edit_text(
         get_text(current_lang, "choose_language"),
@@ -401,7 +418,9 @@ async def handle_show_favorites(callback: CallbackQuery):
             InlineKeyboardButton(text=get_text(lang, "btn_next"), callback_data=f"fav_page_2")
         )
     
-    builder.row(InlineKeyboardButton(text=get_text(lang, "btn_back"), callback_data="main_menu"))
+    builder.row(
+        InlineKeyboardButton(text=get_text(lang, "btn_back"), callback_data="main_menu")
+    )
     
     text = get_text(lang, "favorites_list", page=1, total_pages=total_pages, recipes=recipes_text)
     await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="Markdown")
@@ -484,7 +503,9 @@ async def handle_premium_1_year(callback: CallbackQuery):
     await callback.answer("?? Эта функция скоро будет доступна!")
 
 
-# --- РЕГИСТРАЦИЯ ОБРАБОТЧИКОВ (КОРРЕКТНО ОПРЕДЕЛЕНА) ---
+# --- РЕГИСТРАЦИЯ ОБРАБОТЧИКОВ ---
+# Мы убрали отсюда регистрацию favorites (add_fav, remove_fav),
+# так как она теперь в handlers/favorites.py
 def register_common_handlers(dp: Dispatcher):
     # Команды
     dp.message.register(cmd_start, Command("start"))
@@ -496,8 +517,6 @@ def register_common_handlers(dp: Dispatcher):
     dp.message.register(cmd_admin, Command("admin"))
     
     # Коллбэки
-    dp.callback_query.register(handle_add_favorite, F.data.startswith("add_fav_"))
-    dp.callback_query.register(handle_remove_favorite, F.data.startswith("remove_fav_"))
     dp.callback_query.register(handle_change_language, F.data == "change_language")
     dp.callback_query.register(handle_set_language, F.data.startswith("set_lang_"))
     dp.callback_query.register(handle_show_favorites, F.data == "show_favorites")
