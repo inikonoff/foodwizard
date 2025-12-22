@@ -13,7 +13,7 @@ class StateManager:
         if user_id not in self.user_states:
              self.user_states[user_id] = {}
         
-        # Очищаем старое состояние
+        # Очищаем старое состояние, чтобы начать новый флоу
         self.user_states[user_id].clear() 
         
         self.user_states[user_id]['products'] = products
@@ -40,9 +40,18 @@ class StateManager:
         if user_id in self.user_states:
              self.user_states[user_id]['current_dish'] = dish
 
-    # !!! ДОБАВЛЕН НЕДОСТАЮЩИЙ МЕТОД !!!
     def get_current_dish(self, user_id: int) -> Optional[Dict]:
-        """Получает текущее выбранное блюдо."""
         return self.user_states.get(user_id, {}).get('current_dish')
 
+    # --- НОВЫЕ МЕТОДЫ ДЛЯ ТЕКСТА РЕЦЕПТА ---
+    def set_current_recipe_text(self, user_id: int, text: str):
+        """Сохраняет сгенерированный текст рецепта"""
+        if user_id in self.user_states:
+            self.user_states[user_id]['current_recipe_text'] = text
+
+    def get_current_recipe_text(self, user_id: int) -> Optional[str]:
+        """Возвращает текст последнего рецепта"""
+        return self.user_states.get(user_id, {}).get('current_recipe_text')
+
+# Инициализируем один глобальный экземпляр
 state_manager = StateManager()
