@@ -41,9 +41,7 @@ def parse_direct_request(text: str) -> str | None:
     triggers = [
         "рецепт ", "recipe ", 
         "дай рецепт ", "give recipe ", "give me recipe ",
-        "приготовь ", "cook ", "make ",
-        "как приготовить ", "how to cook ",
-        "хочу ", "i want "
+        "как приготовить ", "how to cook "
     ]
     
     lower_text = text.lower()
