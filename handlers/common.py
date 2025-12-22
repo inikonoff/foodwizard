@@ -1,11 +1,9 @@
 import logging
-from datetime import datetime, timedelta
 from aiogram import Dispatcher, F
 from aiogram.filters import Command
-from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton, LabeledPrice, PreCheckoutQuery, ContentType
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from database import db 
 from database.users import users_repo
 from database.favorites import favorites_repo
 from database.metrics import metrics
@@ -63,7 +61,7 @@ async def cmd_start(message: Message):
     
     await track_safely(user_id, "start_command", {"language": lang})
 
-# --- КОМАНДА /FAVORITES (ОБНОВЛЕНА: ТЕПЕРЬ С КНОПКАМИ) ---
+# --- КОМАНДА /FAVORITES (С кнопками) ---
 async def cmd_favorites(message: Message):
     user_id = message.from_user.id
     
@@ -87,7 +85,6 @@ async def cmd_favorites(message: Message):
         date_str = fav['created_at'].strftime("%d.%m")
         btn_text = f"{fav['dish_name']} ({date_str})"
         
-        # Callback должен вести на просмотр (view_fav_ID)
         builder.row(InlineKeyboardButton(
             text=btn_text, 
             callback_data=f"view_fav_{fav['id']}"
@@ -96,7 +93,6 @@ async def cmd_favorites(message: Message):
     # === ПАГИНАЦИЯ ===
     if total_pages > 1:
         pagination_row = []
-        # На первой странице кнопки "назад" нет
         pagination_row.append(InlineKeyboardButton(text=f"1/{total_pages}", callback_data="noop"))
         pagination_row.append(InlineKeyboardButton(text="➡️", callback_data="fav_page_2"))
         builder.row(*pagination_row)
@@ -152,7 +148,7 @@ async def cmd_help(message: Message):
     
     await track_safely(user_id, "help_viewed", {"language": lang})
 
-# --- КОМАНДА /CODE ---
+# --- КОМАНДА /CODE (БЕЗОПАСНАЯ) ---
 async def cmd_code(message: Message):
     user_id = message.from_user.id
     
@@ -163,7 +159,7 @@ async def cmd_code(message: Message):
     if len(args) < 2:
         await message.answer(
             "Введите код. Пример:\n"
-            "<code>/code PROMO123</code>", # <--- Безопасный пример
+            "<code>/code PROMO123</code>", # Заглушка вместо реального кода
             parse_mode="HTML"
         )
         return
@@ -346,35 +342,22 @@ async def cmd_admin(message: Message):
             f"❌ Ошибок: {fail_count}"
         )
 
-# --- КОЛЛБЭКИ ---
+# --- КОЛЛБЭКИ ИНТЕРФЕЙСА ---
 async def handle_change_language(callback: CallbackQuery):
     user_id = callback.from_user.id
-    
     user_data = await users_repo.get_user(user_id)
     current_lang = user_data.get('language_code', 'ru') if user_data else 'ru'
     
     builder = InlineKeyboardBuilder()
     for lang_code in SUPPORTED_LANGUAGES:
-        builder.row(
-            InlineKeyboardButton(
-                text=get_text(current_lang, f"lang_{lang_code}"),
-                callback_data=f"set_lang_{lang_code}"
-            )
-        )
+        builder.row(InlineKeyboardButton(text=get_text(current_lang, f"lang_{lang_code}"), callback_data=f"set_lang_{lang_code}"))
+    builder.row(InlineKeyboardButton(text=get_text(current_lang, "btn_back"), callback_data="main_menu"))
     
-    builder.row(
-        InlineKeyboardButton(text=get_text(current_lang, "btn_back"), callback_data="main_menu")
-    )
-    
-    await callback.message.edit_text(
-        get_text(current_lang, "choose_language"),
-        reply_markup=builder.as_markup()
-    )
+    await callback.message.edit_text(get_text(current_lang, "choose_language"), reply_markup=builder.as_markup())
     await callback.answer()
 
 async def handle_set_language(callback: CallbackQuery):
     user_id = callback.from_user.id
-    
     lang_code = callback.data.split("_")[2]
     
     await users_repo.update_language(user_id, lang_code)
@@ -382,7 +365,6 @@ async def handle_set_language(callback: CallbackQuery):
     user_data = await users_repo.get_user(user_id)
     final_lang = user_data.get('language_code', 'ru') if user_data else 'ru'
     final_lang = final_lang if final_lang in SUPPORTED_LANGUAGES else 'ru'
-
     first_name = user_data.get('first_name', 'User') if user_data else 'User'
     
     welcome_text = get_text(final_lang, "welcome", name=first_name)
@@ -393,47 +375,34 @@ async def handle_set_language(callback: CallbackQuery):
     builder.row(InlineKeyboardButton(text=get_text(final_lang, "btn_change_lang"), callback_data="change_language"),
                 InlineKeyboardButton(text=get_text(final_lang, "btn_help"), callback_data="show_help"))
     
-    full_text = f"{welcome_text}\n\n{start_manual}"
-    await callback.message.edit_text(
-        full_text,
-        reply_markup=builder.as_markup(),
-        parse_mode="Markdown"
-    )
-    
+    await callback.message.edit_text(full_text=f"{welcome_text}\n\n{start_manual}", reply_markup=builder.as_markup(), parse_mode="Markdown")
     await track_safely(user_id, "language_changed", {"language": lang_code})
     await callback.answer(get_text(final_lang, "lang_changed"))
 
-# --- КНОПКА "ИЗБРАННОЕ" В ГЛАВНОМ МЕНЮ (ОБНОВЛЕНА: ТЕПЕРЬ С КНОПКАМИ) ---
 async def handle_show_favorites(callback: CallbackQuery):
+    # Эта функция больше не нужна здесь, так как она переопределена и работает лучше в handlers/common.py через вызов cmd_favorites, 
+    # НО если она вызывается кнопкой в common.py, она должна быть тут.
+    # ЛУЧШИЙ ВАРИАНТ: Вызвать функцию из cmd_favorites или повторить логику.
+    # Повторим логику показа списка (как в cmd_favorites, но через edit_text)
     user_id = callback.from_user.id
-    
-    user_data = await users_repo.get_user(user_id)
-    lang = user_data.get('language_code', 'ru') if user_data else 'ru'
-    
-    # Получаем 1-ю страницу
+    lang = (await users_repo.get_user(user_id)).get('language_code', 'ru')
     favorites, total_pages = await favorites_repo.get_favorites_page(user_id, page=1)
     
     if not favorites:
         await callback.message.edit_text(get_text(lang, "favorites_empty"))
         await callback.answer()
         return
-    
+        
     header_text = get_text(lang, "favorites_title") + f" (стр. 1/{total_pages})"
-    
     builder = InlineKeyboardBuilder()
-    
-    # Кнопки рецептов
     for fav in favorites:
         date_str = fav['created_at'].strftime("%d.%m")
         btn_text = f"{fav['dish_name']} ({date_str})"
         builder.row(InlineKeyboardButton(text=btn_text, callback_data=f"view_fav_{fav['id']}"))
     
-    # Пагинация
     if total_pages > 1:
-        pagination_row = []
-        pagination_row.append(InlineKeyboardButton(text=f"1/{total_pages}", callback_data="noop"))
-        pagination_row.append(InlineKeyboardButton(text="➡️", callback_data="fav_page_2"))
-        builder.row(*pagination_row)
+        builder.row(InlineKeyboardButton(text=f"1/{total_pages}", callback_data="noop"),
+                    InlineKeyboardButton(text="➡️", callback_data="fav_page_2"))
     
     builder.row(InlineKeyboardButton(text=get_text(lang, "btn_back"), callback_data="main_menu"))
     
@@ -443,12 +412,10 @@ async def handle_show_favorites(callback: CallbackQuery):
 
 async def handle_show_help(callback: CallbackQuery):
     user_id = callback.from_user.id
-    
     user_data = await users_repo.get_user(user_id)
     lang = user_data.get('language_code', 'ru') if user_data else 'ru'
     
     help_text = f"{get_text(lang, 'help_title')}\n{get_text(lang, 'help_text')}"
-    
     builder = InlineKeyboardBuilder()
     builder.row(InlineKeyboardButton(text=get_text(lang, "btn_back"), callback_data="main_menu"))
     
@@ -457,7 +424,6 @@ async def handle_show_help(callback: CallbackQuery):
 
 async def handle_main_menu(callback: CallbackQuery):
     user_id = callback.from_user.id
-    
     user_data = await users_repo.get_user(user_id)
     lang = user_data.get('language_code', 'ru') if user_data else 'ru'
     first_name = user_data.get('first_name', 'User') if user_data else 'User'
@@ -470,12 +436,7 @@ async def handle_main_menu(callback: CallbackQuery):
     builder.row(InlineKeyboardButton(text=get_text(lang, "btn_change_lang"), callback_data="change_language"),
                 InlineKeyboardButton(text=get_text(lang, "btn_help"), callback_data="show_help"))
     
-    full_text = f"{welcome_text}\n\n{start_manual}"
-    await callback.message.edit_text(
-        full_text,
-        reply_markup=builder.as_markup(),
-        parse_mode="Markdown"
-    )
+    await callback.message.edit_text(full_text=f"{welcome_text}\n\n{start_manual}", reply_markup=builder.as_markup(), parse_mode="Markdown")
     await callback.answer()
 
 async def handle_noop(callback: CallbackQuery):
@@ -483,40 +444,82 @@ async def handle_noop(callback: CallbackQuery):
 
 async def handle_buy_premium(callback: CallbackQuery):
     user_id = callback.from_user.id
-    
-    user_data = await users_repo.get_user(user_id)
-    lang = user_data.get('language_code', 'ru') if user_data else 'ru'
+    lang = (await users_repo.get_user(user_id)).get('language_code', 'ru')
     
     builder = InlineKeyboardBuilder()
-    
     builder.row(InlineKeyboardButton(text="1 месяц - 100 звёзд ⭐️", callback_data="premium_1_month"))
     builder.row(InlineKeyboardButton(text="3 месяца - 250 звёзд ⭐️ (экономия 17%)", callback_data="premium_3_months"))
     builder.row(InlineKeyboardButton(text="1 год - 800 звёзд ⭐️ (экономия 33%)", callback_data="premium_1_year"))
     builder.row(InlineKeyboardButton(text="🔙 Вернуться", callback_data="main_menu"))
     
-    text = (
-        "💎 <b>Премиум подписка</b>\n\n"
-        "🚀 <b>Что входит:</b>\n"
-        "  100 текстовых запросов в день\n"
-        "  50 голосовых запросов в день\n"
-        "  Приоритетная обработка\n"
-        "  Доступ к новым функциям первым\n"
-        "  Поддержка разработчика ❤️\n\n"
-        "🔄 <b>Лимиты обновляются каждый день в 00:00</b>"
-    )
+    text = ("💎 <b>Премиум подписка</b>\n\n"
+            "🚀 <b>Что входит:</b>\n"
+            "  100 текстовых запросов в день\n"
+            "  50 голосовых запросов в день\n"
+            "  Приоритетная обработка\n"
+            "  Доступ к новым функциям первым\n"
+            "  Поддержка разработчика ❤️\n\n"
+            "🔄 <b>Лимиты обновляются каждый день в 00:00</b>")
     
     await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="HTML")
     await callback.answer()
 
+# --- ОБРАБОТЧИКИ ОПЛАТЫ (TELEGRAM STARS) ---
 async def handle_premium_1_month(callback: CallbackQuery):
-    await callback.answer("🔜 Эта функция скоро будет доступна!")
+    await callback.message.answer_invoice(
+        title="Премиум подписка (1 месяц)",
+        description="Доступ к расширенным функциям бота на 30 дней.",
+        payload="premium_30_days",
+        provider_token="",  
+        currency="XTR",
+        prices=[LabeledPrice(label="1 месяц", amount=100)],
+    )
+    await callback.answer()
 
 async def handle_premium_3_months(callback: CallbackQuery):
-    await callback.answer("🔜 Эта функция скоро будет доступна!")
+    await callback.message.answer_invoice(
+        title="Премиум подписка (3 месяца)",
+        description="Доступ к расширенным функциям бота на 90 дней. Выгодно!",
+        payload="premium_90_days",
+        provider_token="",
+        currency="XTR",
+        prices=[LabeledPrice(label="3 месяца", amount=250)],
+    )
+    await callback.answer()
 
 async def handle_premium_1_year(callback: CallbackQuery):
-    await callback.answer("🔜 Эта функция скоро будет доступна!")
+    await callback.message.answer_invoice(
+        title="Премиум подписка (1 год)",
+        description="Максимальный доступ на 365 дней.",
+        payload="premium_365_days",
+        provider_token="",
+        currency="XTR",
+        prices=[LabeledPrice(label="1 год", amount=800)],
+    )
+    await callback.answer()
 
+# --- ОБРАБОТКА САМОГО ПЛАТЕЖА ---
+async def on_pre_checkout_query(pre_checkout_query: PreCheckoutQuery):
+    await pre_checkout_query.answer(ok=True)
+
+async def on_successful_payment(message: Message):
+    payment_info = message.successful_payment
+    payload = payment_info.invoice_payload
+    user_id = message.from_user.id
+    
+    days = 0
+    if payload == "premium_30_days": days = 30
+    elif payload == "premium_90_days": days = 90
+    elif payload == "premium_365_days": days = 365
+        
+    if days > 0:
+        success = await users_repo.activate_premium(user_id, days)
+        if success:
+            await message.answer(f"🌟 <b>Оплата прошла успешно!</b>\n\nВам начислен Премиум доступ на <b>{days} дней</b>.\nСпасибо за поддержку! ❤️", parse_mode="HTML")
+            await track_safely(user_id, "payment_success", {"amount": payment_info.total_amount, "currency": payment_info.currency, "days": days})
+        else:
+            logger.error(f"Деньги списаны, но БД не обновилась! User: {user_id}, Days: {days}")
+            await message.answer("⚠️ Оплата прошла, но произошла ошибка активации. Пожалуйста, свяжитесь с поддержкой.")
 
 # --- РЕГИСТРАЦИЯ ОБРАБОТЧИКОВ ---
 def register_common_handlers(dp: Dispatcher):
@@ -529,14 +532,20 @@ def register_common_handlers(dp: Dispatcher):
     dp.message.register(cmd_stats, Command("stats"))
     dp.message.register(cmd_admin, Command("admin"))
     
-    # Коллбэки
+    # Коллбэки интерфейса
     dp.callback_query.register(handle_change_language, F.data == "change_language")
     dp.callback_query.register(handle_set_language, F.data.startswith("set_lang_"))
     dp.callback_query.register(handle_show_favorites, F.data == "show_favorites")
     dp.callback_query.register(handle_show_help, F.data == "show_help")
     dp.callback_query.register(handle_main_menu, F.data == "main_menu")
     dp.callback_query.register(handle_noop, F.data == "noop")
+    
+    # Коллбэки выбора тарифа
     dp.callback_query.register(handle_buy_premium, F.data == "buy_premium")
     dp.callback_query.register(handle_premium_1_month, F.data == "premium_1_month")
     dp.callback_query.register(handle_premium_3_months, F.data == "premium_3_months")
     dp.callback_query.register(handle_premium_1_year, F.data == "premium_1_year")
+    
+    # Обработчики оплаты (Stars)
+    dp.pre_checkout_query.register(on_pre_checkout_query)
+    dp.message.register(on_successful_payment, F.content_type == ContentType.SUCCESSFUL_PAYMENT)
