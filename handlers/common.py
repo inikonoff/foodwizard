@@ -1,9 +1,11 @@
 import logging
+from datetime import datetime, timedelta
 from aiogram import Dispatcher, F
 from aiogram.filters import Command
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton, LabeledPrice, PreCheckoutQuery, ContentType
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
+from database import db 
 from database.users import users_repo
 from database.favorites import favorites_repo
 from database.metrics import metrics
@@ -345,15 +347,27 @@ async def cmd_admin(message: Message):
 # --- КОЛЛБЭКИ ИНТЕРФЕЙСА ---
 async def handle_change_language(callback: CallbackQuery):
     user_id = callback.from_user.id
+    
     user_data = await users_repo.get_user(user_id)
     current_lang = user_data.get('language_code', 'ru') if user_data else 'ru'
     
     builder = InlineKeyboardBuilder()
     for lang_code in SUPPORTED_LANGUAGES:
-        builder.row(InlineKeyboardButton(text=get_text(current_lang, f"lang_{lang_code}"), callback_data=f"set_lang_{lang_code}"))
-    builder.row(InlineKeyboardButton(text=get_text(current_lang, "btn_back"), callback_data="main_menu"))
+        builder.row(
+            InlineKeyboardButton(
+                text=get_text(current_lang, f"lang_{lang_code}"),
+                callback_data=f"set_lang_{lang_code}"
+            )
+        )
     
-    await callback.message.edit_text(get_text(current_lang, "choose_language"), reply_markup=builder.as_markup())
+    builder.row(
+        InlineKeyboardButton(text=get_text(current_lang, "btn_back"), callback_data="main_menu")
+    )
+    
+    await callback.message.edit_text(
+        get_text(current_lang, "choose_language"),
+        reply_markup=builder.as_markup()
+    )
     await callback.answer()
 
 async def handle_set_language(callback: CallbackQuery):
@@ -365,6 +379,7 @@ async def handle_set_language(callback: CallbackQuery):
     user_data = await users_repo.get_user(user_id)
     final_lang = user_data.get('language_code', 'ru') if user_data else 'ru'
     final_lang = final_lang if final_lang in SUPPORTED_LANGUAGES else 'ru'
+
     first_name = user_data.get('first_name', 'User') if user_data else 'User'
     
     welcome_text = get_text(final_lang, "welcome", name=first_name)
@@ -375,34 +390,45 @@ async def handle_set_language(callback: CallbackQuery):
     builder.row(InlineKeyboardButton(text=get_text(final_lang, "btn_change_lang"), callback_data="change_language"),
                 InlineKeyboardButton(text=get_text(final_lang, "btn_help"), callback_data="show_help"))
     
-    await callback.message.edit_text(full_text=f"{welcome_text}\n\n{start_manual}", reply_markup=builder.as_markup(), parse_mode="Markdown")
+    # ИСПРАВЛЕНО: full_text -> text
+    await callback.message.edit_text(
+        text=f"{welcome_text}\n\n{start_manual}", 
+        reply_markup=builder.as_markup(), 
+        parse_mode="Markdown"
+    )
+    
     await track_safely(user_id, "language_changed", {"language": lang_code})
     await callback.answer(get_text(final_lang, "lang_changed"))
 
 async def handle_show_favorites(callback: CallbackQuery):
-    # Эта функция больше не нужна здесь, так как она переопределена и работает лучше в handlers/common.py через вызов cmd_favorites, 
-    # НО если она вызывается кнопкой в common.py, она должна быть тут.
-    # ЛУЧШИЙ ВАРИАНТ: Вызвать функцию из cmd_favorites или повторить логику.
-    # Повторим логику показа списка (как в cmd_favorites, но через edit_text)
+    # Эта функция для кнопки в меню. Она должна перенаправлять на ту же логику, что и cmd_favorites
+    # Но так как callback требует редактирования, повторим логику с edit_text
     user_id = callback.from_user.id
-    lang = (await users_repo.get_user(user_id)).get('language_code', 'ru')
+    
+    user_data = await users_repo.get_user(user_id)
+    lang = user_data.get('language_code', 'ru') if user_data else 'ru'
+    
     favorites, total_pages = await favorites_repo.get_favorites_page(user_id, page=1)
     
     if not favorites:
         await callback.message.edit_text(get_text(lang, "favorites_empty"))
         await callback.answer()
         return
-        
+    
     header_text = get_text(lang, "favorites_title") + f" (стр. 1/{total_pages})"
+    
     builder = InlineKeyboardBuilder()
+    
     for fav in favorites:
         date_str = fav['created_at'].strftime("%d.%m")
         btn_text = f"{fav['dish_name']} ({date_str})"
         builder.row(InlineKeyboardButton(text=btn_text, callback_data=f"view_fav_{fav['id']}"))
     
     if total_pages > 1:
-        builder.row(InlineKeyboardButton(text=f"1/{total_pages}", callback_data="noop"),
-                    InlineKeyboardButton(text="➡️", callback_data="fav_page_2"))
+        pagination_row = []
+        pagination_row.append(InlineKeyboardButton(text=f"1/{total_pages}", callback_data="noop"))
+        pagination_row.append(InlineKeyboardButton(text="➡️", callback_data="fav_page_2"))
+        builder.row(*pagination_row)
     
     builder.row(InlineKeyboardButton(text=get_text(lang, "btn_back"), callback_data="main_menu"))
     
@@ -412,10 +438,12 @@ async def handle_show_favorites(callback: CallbackQuery):
 
 async def handle_show_help(callback: CallbackQuery):
     user_id = callback.from_user.id
+    
     user_data = await users_repo.get_user(user_id)
     lang = user_data.get('language_code', 'ru') if user_data else 'ru'
     
     help_text = f"{get_text(lang, 'help_title')}\n{get_text(lang, 'help_text')}"
+    
     builder = InlineKeyboardBuilder()
     builder.row(InlineKeyboardButton(text=get_text(lang, "btn_back"), callback_data="main_menu"))
     
@@ -424,6 +452,7 @@ async def handle_show_help(callback: CallbackQuery):
 
 async def handle_main_menu(callback: CallbackQuery):
     user_id = callback.from_user.id
+    
     user_data = await users_repo.get_user(user_id)
     lang = user_data.get('language_code', 'ru') if user_data else 'ru'
     first_name = user_data.get('first_name', 'User') if user_data else 'User'
@@ -436,7 +465,12 @@ async def handle_main_menu(callback: CallbackQuery):
     builder.row(InlineKeyboardButton(text=get_text(lang, "btn_change_lang"), callback_data="change_language"),
                 InlineKeyboardButton(text=get_text(lang, "btn_help"), callback_data="show_help"))
     
-    await callback.message.edit_text(full_text=f"{welcome_text}\n\n{start_manual}", reply_markup=builder.as_markup(), parse_mode="Markdown")
+    # ИСПРАВЛЕНО: full_text -> text
+    await callback.message.edit_text(
+        text=f"{welcome_text}\n\n{start_manual}", 
+        reply_markup=builder.as_markup(), 
+        parse_mode="Markdown"
+    )
     await callback.answer()
 
 async def handle_noop(callback: CallbackQuery):
@@ -444,22 +478,27 @@ async def handle_noop(callback: CallbackQuery):
 
 async def handle_buy_premium(callback: CallbackQuery):
     user_id = callback.from_user.id
-    lang = (await users_repo.get_user(user_id)).get('language_code', 'ru')
+    
+    user_data = await users_repo.get_user(user_id)
+    lang = user_data.get('language_code', 'ru') if user_data else 'ru'
     
     builder = InlineKeyboardBuilder()
+    
     builder.row(InlineKeyboardButton(text="1 месяц - 100 звёзд ⭐️", callback_data="premium_1_month"))
     builder.row(InlineKeyboardButton(text="3 месяца - 250 звёзд ⭐️ (экономия 17%)", callback_data="premium_3_months"))
     builder.row(InlineKeyboardButton(text="1 год - 800 звёзд ⭐️ (экономия 33%)", callback_data="premium_1_year"))
     builder.row(InlineKeyboardButton(text="🔙 Вернуться", callback_data="main_menu"))
     
-    text = ("💎 <b>Премиум подписка</b>\n\n"
-            "🚀 <b>Что входит:</b>\n"
-            "  100 текстовых запросов в день\n"
-            "  50 голосовых запросов в день\n"
-            "  Приоритетная обработка\n"
-            "  Доступ к новым функциям первым\n"
-            "  Поддержка разработчика ❤️\n\n"
-            "🔄 <b>Лимиты обновляются каждый день в 00:00</b>")
+    text = (
+        "💎 <b>Премиум подписка</b>\n\n"
+        "🚀 <b>Что входит:</b>\n"
+        "  100 текстовых запросов в день\n"
+        "  50 голосовых запросов в день\n"
+        "  Приоритетная обработка\n"
+        "  Доступ к новым функциям первым\n"
+        "  Поддержка разработчика ❤️\n\n"
+        "🔄 <b>Лимиты обновляются каждый день в 00:00</b>"
+    )
     
     await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="HTML")
     await callback.answer()
