@@ -70,7 +70,7 @@ async def handle_favorite_pagination(callback: CallbackQuery):
     await track_safely(user_id, "favorites_page_viewed", {"page": page, "total_pages": total_pages})
 
 
-# 2. Функция добавления (ВНИМАНИЕ: имя handle_add_TO_favorites)
+# 2. Функция добавления (Обратите внимание на имя: handle_add_TO_favorites)
 async def handle_add_to_favorites(callback: CallbackQuery):
     user_id = callback.from_user.id
     user_data = await users_repo.get_user(user_id)
@@ -121,7 +121,7 @@ async def handle_add_to_favorites(callback: CallbackQuery):
         await callback.answer("⚠️ Ошибка")
 
 
-# 3. Функция удаления из карточки (ВНИМАНИЕ: имя handle_remove_FROM_favorites)
+# 3. Функция удаления из карточки (Обратите внимание на имя: handle_remove_FROM_favorites)
 async def handle_remove_from_favorites(callback: CallbackQuery):
     user_id = callback.from_user.id
     user_data = await users_repo.get_user(user_id)
@@ -198,4 +198,40 @@ async def handle_delete_favorite(callback: CallbackQuery):
 
 
 # 5. Функция обновления кнопок
-a
+async def update_favorite_button(callback: CallbackQuery, dish_index: int, is_favorite: bool, lang: str):
+    try:
+        keyboard = callback.message.reply_markup
+        if not keyboard: return
+        
+        builder = InlineKeyboardBuilder()
+        for row in keyboard.inline_keyboard:
+            new_row = []
+            for button in row:
+                if button.callback_data and ("add_fav" in button.callback_data or "remove_fav" in button.callback_data):
+                    if is_favorite:
+                        new_btn = InlineKeyboardButton(text=get_text(lang, "btn_remove_from_fav"), callback_data=f"remove_fav_{dish_index}")
+                    else:
+                        new_btn = InlineKeyboardButton(text=get_text(lang, "btn_add_to_fav"), callback_data=f"add_fav_{dish_index}")
+                    new_row.append(new_btn)
+                else:
+                    new_row.append(button)
+            builder.row(*new_row)
+        await callback.message.edit_reply_markup(reply_markup=builder.as_markup())
+    except Exception as e:
+        logger.error(f"Ошибка обновления кнопки: {e}")
+
+
+# --- РЕГИСТРАЦИЯ ОБРАБОТЧИКОВ (ИСПРАВЛЕНО) ---
+def register_favorites_handlers(dp: Dispatcher):
+    """Регистрирует обработчики для избранного"""
+    
+    # Регистрация с правильными именами функций!
+    dp.callback_query.register(handle_favorite_pagination, F.data.startswith("fav_page_"))
+    
+    # ВНИМАНИЕ: Используем handle_add_TO_favorites
+    dp.callback_query.register(handle_add_to_favorites, F.data.startswith("add_fav_"))
+    
+    # ВНИМАНИЕ: Используем handle_remove_FROM_favorites
+    dp.callback_query.register(handle_remove_from_favorites, F.data.startswith("remove_fav_"))
+    
+    dp.callback_query.register(handle_delete_favorite, F.data.startswith("delete_fav_"))
