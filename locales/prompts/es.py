@@ -33,27 +33,29 @@ Idea 4-6 opciones de platos.""",
 
     "recipe_generation": """Eres un instructor culinario detallado. Escribe una receta paso a paso.
 Formato:
-??? [Nombre del plato]
+🥘 [Nombre del plato]
 
-?? **Ingredientes:**
-- [ingrediente] - [cantidad] (? disponible / ?? comprar)
+🛒 **Ingredientes:**
+- [ingrediente] - [cantidad] (✅ disponible / ⚠️ comprar)
 
-????? **Preparacion:**
+👨‍🍳 **Preparación:**
 1. [paso 1]
 2. [paso 2]
 ...
 
-?? **Detalles:**
-?? Tiempo de coccion: [tiempo]
-?? Dificultad: [nivel]
-??? Porciones: [numero]
+📊 **Detalles:**
+⏱ Tiempo de cocción: [tiempo]
+⭐️ Dificultad: [nivel]
+👥 Porciones: [numero]
 
-?? **Consejos:**
+💡 **Consejos:**
 - [consejo 1]
 - [consejo 2]
 
-Importante: Si el ingrediente no esta en la lista de productos, marcalo "?? comprar".
-Usa el sistema metrico (gramos, mililitros).""",
+Importante:
+1. Si el ingrediente no esta en la lista de productos, marcalo "⚠️ comprar".
+2. NO uses simbolos * o ** dentro del texto de los pasos.
+3. Usa el sistema metrico (gramos, mililitros).""",
 
     "recipe_generation_user": """Nombre del plato: {dish_name}
 Productos disponibles: {products}
@@ -89,51 +91,4 @@ Devuelve JSON: {"intent": "...", "products": "...", "dish_name": "..."}
 Solo JSON.""",
 
     "intent_detection_user": "Mensaje del usuario: {message}",
-
-    "recipe_footer": "????? *?Buen provecho!* ???",
-
-    "recipe_error": "? Desafortunadamente, no se pudo generar la receta. Por favor, intentalo de nuevo.",
-
-    "safety_refusal": """? Lo siento, solo cocino comida.
-?Puedo ofrecer recetas de diferentes cocinas del mundo! ??????""",
-
-    "welcome_message": """?? *?Hola, {name}!* 
-
-Soy un bot chef que ayuda a cocinar deliciosos platos con lo que tienes a mano.
-
-*Como funciona:*
-1. ?? Envia la lista de ingredientes (texto o voz)
-2. ??? Elige categoria de plato
-3. ?? Obten lista de platos para elegir
-4. ????? Lee la receta detallada
-
-*Comandos:*
-/start - empezar de nuevo
-/favorites - recetas favoritas
-/lang - cambiar idioma
-/help - ayuda
-
-*?Buen provecho!* ??""",
-
-    "help_message": """*Ayuda sobre el uso del bot:*
-
-*?? Mensajes de voz:*
-Simplemente habla los productos en el microfono, el bot los reconocera y procesara.
-
-*?? Mensajes de texto:*
-- "zanahorias, cebollas, patatas, pollo" - lista de productos
-- "receta de pizza" - solicitud directa de receta
-- "gracias" - agradecimiento (easter egg)
-
-*? Favoritos:*
-Haz clic en ? debajo de la receta para guardarla.
-/favorites - ver recetas guardadas
-
-*?? Idioma:*
-/lang - elegir idioma (espanol, ingles, aleman, frances, italiano, ruso)
-
-*?? Premium:*
-Mas solicitudes y funciones disponibles.
-
-*Preguntas y sugerencias:* @support""",
 }
