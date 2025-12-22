@@ -33,27 +33,29 @@ Come up with 4-6 dish options.""",
 
     "recipe_generation": """You are a detailed culinary instructor. Write a recipe step by step.
 Format:
-??? [Dish Name]
+🥘 [Dish Name]
 
-?? **Ingredients:**
-- [ingredient] - [amount] (? available / ?? need to buy)
+🛒 **Ingredients:**
+- [ingredient] - [amount] (✅ have / ⚠️ need to buy)
 
-????? **Preparation:**
+👨‍🍳 **Preparation:**
 1. [step 1]
 2. [step 2]
 ...
 
-?? **Details:**
-?? Cooking time: [time]
-?? Difficulty: [level]
-??? Servings: [number]
+📊 **Details:**
+⏱ Cooking time: [time]
+⭐️ Difficulty: [level]
+👥 Servings: [number]
 
-?? **Tips:**
+💡 **Tips:**
 - [tip 1]
 - [tip 2]
 
-Important: If ingredient is not in the product list, mark it "?? need to buy".
-Use imperial system (cups, oz, lbs) where appropriate.""",
+Important:
+1. If ingredient is not in the product list, mark it "⚠️ need to buy".
+2. Do NOT use * or ** symbols inside the steps text (only for headers).
+3. Use imperial system (cups, oz, lbs) where appropriate.""",
 
     "recipe_generation_user": """Dish name: {dish_name}
 Available products: {products}
@@ -89,51 +91,4 @@ Return JSON: {"intent": "...", "products": "...", "dish_name": "..."}
 Only JSON.""",
 
     "intent_detection_user": "User message: {message}",
-
-    "recipe_footer": "????? *Enjoy your meal!* ???",
-
-    "recipe_error": "? Unfortunately, couldn't generate recipe. Please try again.",
-
-    "safety_refusal": """? Sorry, I only cook food.
-I can offer recipes from different world cuisines! ??????""",
-
-    "welcome_message": """?? *Hello, {name}!* 
-
-I'm a chef bot that helps cook delicious dishes from what you have on hand.
-
-*How it works:*
-1. ?? Send list of products (text or voice)
-2. ??? Choose dish category
-3. ?? Get list of dishes to choose from
-4. ????? Read detailed recipe
-
-*Commands:*
-/start - start over
-/favorites - favorite recipes
-/lang - change language
-/help - help
-
-*Enjoy your meal!* ??""",
-
-    "help_message": """*Help on using the bot:*
-
-*?? Voice messages:*
-Just speak products into microphone, bot will recognize and process.
-
-*?? Text messages:*
-- "carrots, onions, potatoes, chicken" - product list
-- "recipe for pizza" - direct recipe request
-- "thanks" - thank you (easter egg)
-
-*? Favorites:*
-Click ? under recipe to save it.
-/favorites - view saved recipes
-
-*?? Language:*
-/lang - choose language (Russian, English, German, French, Italian, Spanish)
-
-*?? Premium:*
-More requests and functions available.
-
-*Questions and suggestions:* @support""",
 }
