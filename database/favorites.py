@@ -99,6 +99,18 @@ class FavoritesRepository:
             
             row = await conn.fetchrow(query, user_id, dish_name)
             return dict(row) if row else None
+
+    @staticmethod
+    async def get_favorite_by_id(fav_id: int) -> Optional[Dict[str, Any]]:
+        """Получает рецепт по его уникальному ID"""
+        async with db.connection() as conn:
+            query = """
+            SELECT id, dish_name, recipe_text, category, ingredients, language, created_at
+            FROM favorites 
+            WHERE id = $1
+            """
+            row = await conn.fetchrow(query, fav_id)
+            return dict(row) if row else None
     
     @staticmethod
     async def count_favorites(user_id: int) -> int:
