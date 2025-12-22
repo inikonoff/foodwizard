@@ -24,13 +24,13 @@ if not DATABASE_URL:
 
 # ===== АДМИНИСТРАТОРЫ И БЕЗОПАСНОСТЬ =====
 # Преобразуем строку "123,456" в список [123, 456]
-ADMIN_IDS: List[int] = []
-admin_str = os.getenv("ADMIN_IDS", "")
-if admin_str:
-    for admin_id in admin_str.split(","):
-        admin_id = admin_id.strip()
-        if admin_id.isdigit():
-            ADMIN_IDS.append(int(admin_id))
+# ADMIN_IDS: List[int] = []
+# admin_str = os.getenv("ADMIN_IDS", "")
+# if admin_str:
+#    for admin_id in admin_str.split(","):
+#        admin_id = admin_id.strip()
+#       if admin_id.isdigit():
+#          ADMIN_IDS.append(int(admin_id))
 
 # Секретный код для активации премиума
 SECRET_PROMO_CODE = os.getenv("SECRET_PROMO_CODE", "FOOD2025")
