@@ -28,6 +28,7 @@ async def cmd_start(message: Message):
     first_name = message.from_user.first_name or "User"
     username = message.from_user.username
     
+    # Получаем или создаём пользователя
     user_data = await users_repo.get_or_create(
         user_id=user_id,
         first_name=first_name,
@@ -62,39 +63,50 @@ async def cmd_start(message: Message):
     
     await track_safely(user_id, "start_command", {"language": lang})
 
-# --- КОМАНДА /FAVORITES ---
+# --- КОМАНДА /FAVORITES (ОБНОВЛЕНА: ТЕПЕРЬ С КНОПКАМИ) ---
 async def cmd_favorites(message: Message):
     user_id = message.from_user.id
     
     user_data = await users_repo.get_user(user_id)
     lang = user_data.get('language_code', 'ru') if user_data else 'ru'
     
+    # Получаем 1-ю страницу
     favorites, total_pages = await favorites_repo.get_favorites_page(user_id, page=1)
     
     if not favorites:
         await message.answer(get_text(lang, "favorites_empty"))
         return
     
-    recipes_text = ""
-    for i, fav in enumerate(favorites, 1):
-        date_str = fav['created_at'].strftime("%d.%m.%Y")
-        recipes_text += get_text(lang, "favorites_recipe_item", num=i, dish=fav['dish_name'], date=date_str)
+    # Текст заголовка
+    header_text = get_text(lang, "favorites_title") + f" (стр. 1/{total_pages})"
     
     builder = InlineKeyboardBuilder()
     
-    if total_pages > 1:
-        builder.row(
-            InlineKeyboardButton(text=get_text(lang, "btn_prev"), callback_data=f"fav_page_1"),
-            InlineKeyboardButton(text=f"1/{total_pages}", callback_data="noop"),
-            InlineKeyboardButton(text=get_text(lang, "btn_next"), callback_data=f"fav_page_2")
-        )
+    # === ГЕНЕРАЦИЯ КНОПОК РЕЦЕПТОВ ===
+    for fav in favorites:
+        date_str = fav['created_at'].strftime("%d.%m")
+        btn_text = f"{fav['dish_name']} ({date_str})"
+        
+        # Callback должен вести на просмотр (view_fav_ID)
+        builder.row(InlineKeyboardButton(
+            text=btn_text, 
+            callback_data=f"view_fav_{fav['id']}"
+        ))
     
+    # === ПАГИНАЦИЯ ===
+    if total_pages > 1:
+        pagination_row = []
+        # На первой странице кнопки "назад" нет
+        pagination_row.append(InlineKeyboardButton(text=f"1/{total_pages}", callback_data="noop"))
+        pagination_row.append(InlineKeyboardButton(text="➡️", callback_data="fav_page_2"))
+        builder.row(*pagination_row)
+    
+    # Кнопка возврата
     builder.row(
         InlineKeyboardButton(text=get_text(lang, "btn_back"), callback_data="main_menu")
     )
     
-    text = get_text(lang, "favorites_list", page=1, total_pages=total_pages, recipes=recipes_text)
-    await message.answer(text, reply_markup=builder.as_markup(), parse_mode="Markdown")
+    await message.answer(header_text, reply_markup=builder.as_markup(), parse_mode="Markdown")
     
     await track_safely(user_id, "favorites_viewed", {"page": 1, "total": len(favorites)})
 
@@ -163,9 +175,9 @@ async def cmd_code(message: Message):
         
         if success:
             response = (
-                "?? <b>Код принят!</b>\n\n"
+                "💎 <b>Код принят!</b>\n\n"
                 "Активирован временный доступ к премиум функциям на <b>99 лет</b>.\n"
-                "По истечении срока действия не забудьте продлить подписку. ??"
+                "По истечении срока действия не забудьте продлить подписку. 😉"
             )
             await message.answer(response, parse_mode="HTML")
             
@@ -174,9 +186,9 @@ async def cmd_code(message: Message):
                 "days": 365*99
             })
         else:
-            await message.answer("? Ошибка активации премиума")
+            await message.answer("⚠️ Ошибка активации премиума")
     else:
-        await message.answer("? Неверный код.")
+        await message.answer("🚫 Неверный код.")
 
 # --- КОМАНДА /STATS ---
 async def cmd_stats(message: Message):
@@ -191,29 +203,29 @@ async def cmd_stats(message: Message):
         await message.answer("Статистика недоступна")
         return
     
-    status = "?? ПРЕМИУМ" if usage_stats['is_premium'] else "?? БЕСПЛАТНО"
+    status = "💎 ПРЕМИУМ" if usage_stats['is_premium'] else "👤 БЕСПЛАТНО"
     
     if usage_stats['premium_until']:
         premium_until = usage_stats['premium_until'].strftime("%d.%m.%Y")
         status += f" (до {premium_until})"
     
     stats_text = (
-        f"?? <b>Ваша статистика</b>\n\n"
+        f"📊 <b>Ваша статистика</b>\n\n"
         f"{status}\n\n"
-        f"?? <b>Текстовые запросы:</b>\n"
+        f"📝 <b>Текстовые запросы:</b>\n"
         f"   Использовано: {usage_stats['text_requests_used']}/{usage_stats['text_requests_limit']}\n"
         f"   Осталось: {usage_stats['remaining_text']}\n\n"
-        f"?? <b>Голосовые запросы:</b>\n"
+        f"🎤 <b>Голосовые запросы:</b>\n"
         f"   Использовано: {usage_stats['voice_requests_used']}/{usage_stats['voice_requests_limit']}\n"
         f"   Осталось: {usage_stats['remaining_voice']}\n\n"
-        f"?? <b>Всего запросов:</b> {usage_stats['total_requests']}\n"
-        f"?? <b>Сброс лимитов:</b> {usage_stats['last_reset_date'].strftime('%d.%m.%Y')}"
+        f"📈 <b>Всего запросов:</b> {usage_stats['total_requests']}\n"
+        f"🔄 <b>Сброс лимитов:</b> {usage_stats['last_reset_date'].strftime('%d.%m.%Y')}"
     )
     
     builder = InlineKeyboardBuilder()
     
     if not usage_stats['is_premium']:
-        builder.row(InlineKeyboardButton(text="?? Купить премиум", callback_data="buy_premium"))
+        builder.row(InlineKeyboardButton(text="💎 Купить премиум", callback_data="buy_premium"))
     
     builder.row(InlineKeyboardButton(text=get_text(lang, "btn_back"), callback_data="main_menu"))
     
@@ -224,14 +236,14 @@ async def cmd_admin(message: Message):
     user_id = message.from_user.id
     
     if user_id not in ADMIN_IDS:
-        await message.answer("? Доступ запрещён")
+        await message.answer("🚫 Доступ запрещён")
         return
     
     args = message.text.split()
     
     if len(args) < 2:
         help_text = (
-            "?? <b>Админ-панель</b>\n\n"
+            "👑 <b>Админ-панель</b>\n\n"
             "<b>Команды:</b>\n"
             "/admin stats - общая статистика\n"
             "/admin premium [user_id] - выдать премиум\n"
@@ -249,9 +261,9 @@ async def cmd_admin(message: Message):
         expired = await users_repo.check_premium_expiry()
         
         stats = (
-            f"?? <b>Общая статистика</b>\n\n"
-            f"?? Всего пользователей: {total_users}\n"
-            f"?? Деактивировано премиумов: {expired}\n"
+            f"📊 <b>Общая статистика</b>\n\n"
+            f"👥 Всего пользователей: {total_users}\n"
+            f"🚫 Деактивировано премиумов: {expired}\n"
         )
         await message.answer(stats, parse_mode="HTML")
     
@@ -263,11 +275,11 @@ async def cmd_admin(message: Message):
             success = await users_repo.activate_premium(target_user_id, days)
             
             if success:
-                await message.answer(f"? Премиум выдан пользователю {target_user_id} на {days} дней")
+                await message.answer(f"✅ Премиум выдан пользователю {target_user_id} на {days} дней")
             else:
-                await message.answer(f"? Ошибка выдачи премиума")
+                await message.answer(f"⚠️ Ошибка выдачи премиума")
         except ValueError:
-            await message.answer("? Неверный формат ID пользователя")
+            await message.answer("⚠️ Неверный формат ID пользователя")
     
     elif command == "users":
         limit = int(args[2]) if len(args) >= 3 else 10
@@ -278,9 +290,9 @@ async def cmd_admin(message: Message):
             await message.answer("Нет пользователей")
             return
         
-        users_text = "?? <b>Последние пользователи:</b>\n\n"
+        users_text = "👥 <b>Последние пользователи:</b>\n\n"
         for i, user in enumerate(users, 1):
-            premium = "??" if user['is_premium'] else "??"
+            premium = "💎" if user['is_premium'] else "👤"
             users_text += f"{i}. {user['first_name']} ({user['user_id']}) {premium}\n"
         
         await message.answer(users_text, parse_mode="HTML")
@@ -301,9 +313,9 @@ async def cmd_admin(message: Message):
                     target_user_id
                 )
             
-            await message.answer(f"? Лимиты пользователя {target_user_id} сброшены")
+            await message.answer(f"✅ Лимиты пользователя {target_user_id} сброшены")
         except ValueError:
-            await message.answer("? Неверный формат ID пользователя")
+            await message.answer("⚠️ Неверный формат ID пользователя")
     
     elif command == "broadcast":
         if len(args) < 3:
@@ -320,7 +332,7 @@ async def cmd_admin(message: Message):
             try:
                 await message.bot.send_message(
                     chat_id=user['user_id'],
-                    text=f"?? <b>Объявление от администратора:</b>\n\n{broadcast_text}",
+                    text=f"📢 <b>Объявление от администратора:</b>\n\n{broadcast_text}",
                     parse_mode="HTML"
                 )
                 success_count += 1
@@ -329,9 +341,9 @@ async def cmd_admin(message: Message):
                 fail_count += 1
         
         await message.answer(
-            f"? Рассылка завершена:\n"
-            f"? Успешно: {success_count}\n"
-            f"? Ошибок: {fail_count}"
+            f"✅ Рассылка завершена:\n"
+            f"📨 Успешно: {success_count}\n"
+            f"❌ Ошибок: {fail_count}"
         )
 
 # --- КОЛЛБЭКИ ---
@@ -391,12 +403,14 @@ async def handle_set_language(callback: CallbackQuery):
     await track_safely(user_id, "language_changed", {"language": lang_code})
     await callback.answer(get_text(final_lang, "lang_changed"))
 
+# --- КНОПКА "ИЗБРАННОЕ" В ГЛАВНОМ МЕНЮ (ОБНОВЛЕНА: ТЕПЕРЬ С КНОПКАМИ) ---
 async def handle_show_favorites(callback: CallbackQuery):
     user_id = callback.from_user.id
     
     user_data = await users_repo.get_user(user_id)
     lang = user_data.get('language_code', 'ru') if user_data else 'ru'
     
+    # Получаем 1-ю страницу
     favorites, total_pages = await favorites_repo.get_favorites_page(user_id, page=1)
     
     if not favorites:
@@ -404,27 +418,28 @@ async def handle_show_favorites(callback: CallbackQuery):
         await callback.answer()
         return
     
-    recipes_text = ""
-    for i, fav in enumerate(favorites, 1):
-        date_str = fav['created_at'].strftime("%d.%m.%Y")
-        recipes_text += get_text(lang, "favorites_recipe_item", num=i, dish=fav['dish_name'], date=date_str)
+    header_text = get_text(lang, "favorites_title") + f" (стр. 1/{total_pages})"
     
     builder = InlineKeyboardBuilder()
     
+    # Кнопки рецептов
+    for fav in favorites:
+        date_str = fav['created_at'].strftime("%d.%m")
+        btn_text = f"{fav['dish_name']} ({date_str})"
+        builder.row(InlineKeyboardButton(text=btn_text, callback_data=f"view_fav_{fav['id']}"))
+    
+    # Пагинация
     if total_pages > 1:
-        builder.row(
-            InlineKeyboardButton(text=get_text(lang, "btn_prev"), callback_data=f"fav_page_1"),
-            InlineKeyboardButton(text=f"1/{total_pages}", callback_data="noop"),
-            InlineKeyboardButton(text=get_text(lang, "btn_next"), callback_data=f"fav_page_2")
-        )
+        pagination_row = []
+        pagination_row.append(InlineKeyboardButton(text=f"1/{total_pages}", callback_data="noop"))
+        pagination_row.append(InlineKeyboardButton(text="➡️", callback_data="fav_page_2"))
+        builder.row(*pagination_row)
     
-    builder.row(
-        InlineKeyboardButton(text=get_text(lang, "btn_back"), callback_data="main_menu")
-    )
+    builder.row(InlineKeyboardButton(text=get_text(lang, "btn_back"), callback_data="main_menu"))
     
-    text = get_text(lang, "favorites_list", page=1, total_pages=total_pages, recipes=recipes_text)
-    await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="Markdown")
+    await callback.message.edit_text(header_text, reply_markup=builder.as_markup(), parse_mode="Markdown")
     await callback.answer()
+    await track_safely(user_id, "favorites_viewed", {"page": 1})
 
 async def handle_show_help(callback: CallbackQuery):
     user_id = callback.from_user.id
@@ -474,38 +489,36 @@ async def handle_buy_premium(callback: CallbackQuery):
     
     builder = InlineKeyboardBuilder()
     
-    builder.row(InlineKeyboardButton(text="1 месяц - 100 звёзд ?", callback_data="premium_1_month"))
-    builder.row(InlineKeyboardButton(text="3 месяца - 250 звёзд ? (экономия 17%)", callback_data="premium_3_months"))
-    builder.row(InlineKeyboardButton(text="1 год - 800 звёзд ? (экономия 33%)", callback_data="premium_1_year"))
-    builder.row(InlineKeyboardButton(text="?? Вернуться", callback_data="main_menu"))
+    builder.row(InlineKeyboardButton(text="1 месяц - 100 звёзд ⭐️", callback_data="premium_1_month"))
+    builder.row(InlineKeyboardButton(text="3 месяца - 250 звёзд ⭐️ (экономия 17%)", callback_data="premium_3_months"))
+    builder.row(InlineKeyboardButton(text="1 год - 800 звёзд ⭐️ (экономия 33%)", callback_data="premium_1_year"))
+    builder.row(InlineKeyboardButton(text="🔙 Вернуться", callback_data="main_menu"))
     
     text = (
-        "?? <b>Премиум подписка</b>\n\n"
-        "? <b>Что входит:</b>\n"
+        "💎 <b>Премиум подписка</b>\n\n"
+        "🚀 <b>Что входит:</b>\n"
         "  100 текстовых запросов в день\n"
         "  50 голосовых запросов в день\n"
         "  Приоритетная обработка\n"
         "  Доступ к новым функциям первым\n"
-        "  Поддержка разработчика ??\n\n"
-        "?? <b>Лимиты обновляются каждый день в 00:00</b>"
+        "  Поддержка разработчика ❤️\n\n"
+        "🔄 <b>Лимиты обновляются каждый день в 00:00</b>"
     )
     
     await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="HTML")
     await callback.answer()
 
 async def handle_premium_1_month(callback: CallbackQuery):
-    await callback.answer("?? Эта функция скоро будет доступна!")
+    await callback.answer("🔜 Эта функция скоро будет доступна!")
 
 async def handle_premium_3_months(callback: CallbackQuery):
-    await callback.answer("?? Эта функция скоро будет доступна!")
+    await callback.answer("🔜 Эта функция скоро будет доступна!")
 
 async def handle_premium_1_year(callback: CallbackQuery):
-    await callback.answer("?? Эта функция скоро будет доступна!")
+    await callback.answer("🔜 Эта функция скоро будет доступна!")
 
 
 # --- РЕГИСТРАЦИЯ ОБРАБОТЧИКОВ ---
-# Мы убрали отсюда регистрацию favorites (add_fav, remove_fav),
-# так как она теперь в handlers/favorites.py
 def register_common_handlers(dp: Dispatcher):
     # Команды
     dp.message.register(cmd_start, Command("start"))
