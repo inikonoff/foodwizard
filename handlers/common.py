@@ -163,7 +163,7 @@ async def cmd_code(message: Message):
     if len(args) < 2:
         await message.answer(
             "Введите код. Пример:\n"
-            f"<code>/code {SECRET_PROMO_CODE}</code>",
+            "<code>/code PROMO123</code>", # <--- Безопасный пример
             parse_mode="HTML"
         )
         return
