@@ -10,7 +10,7 @@ from aiogram import Bot, Dispatcher
 from aiogram.types import BotCommand
 from aiogram.client.default import DefaultBotProperties
 from aiohttp import web
-from config import TELEGRAM_TOKEN, LOG_FILE, LOG_LEVEL, validate_config, ADMIN_IDS
+from config import TELEGRAM_TOKEN, LOG_FILE, LOG_LEVEL, ADMIN_IDS, validate_config
 from database import db
 from database.metrics import metrics
 from database.cache import groq_cache
