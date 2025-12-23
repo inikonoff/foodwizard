@@ -22,9 +22,8 @@ if not DATABASE_URL:
     raise ValueError("DATABASE_URL не установлен")
 
 # ===== АДМИНИСТРАТОРЫ =====
+# Оставляем список пустым, чтобы вы могли тестировать лимиты как обычный пользователь
 ADMIN_IDS: List[int] = [] 
-# Раскомментируй и добавь свой ID для тестов, если нужно:
-# ADMIN_IDS = [123456789] 
 
 SECRET_PROMO_CODE = os.getenv("SECRET_PROMO_CODE", "FOOD2025")
 
@@ -43,7 +42,7 @@ CACHE_TTL_DISH_LIST = 3600
 # ===== НАСТРОЙКИ ИНТЕРФЕЙСА =====
 FAVORITES_PER_PAGE = int(os.getenv("FAVORITES_PER_PAGE", "5"))
 
-# !!! ВОТ ЭТО САМОЕ ВАЖНОЕ ДЛЯ КНОПОК ЯЗЫКА !!!
+# !!! ВАЖНО: ПОЛНЫЙ СПИСОК ЯЗЫКОВ !!!
 SUPPORTED_LANGUAGES = ["ru", "en", "de", "fr", "it", "es"]
 DEFAULT_LANGUAGE = "ru"
 
