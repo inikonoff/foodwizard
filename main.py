@@ -159,7 +159,7 @@ async def on_startup(dispatcher: Dispatcher, bot: Bot):
     register_all_handlers(dispatcher)
     
     # Настраиваем описание бота в Telegram
-    await set_bot_description(bot)
+    # await set_bot_description(bot)
     
     await groq_cache.clear_expired()
     await metrics.cleanup_old_metrics()
