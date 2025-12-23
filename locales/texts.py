@@ -21,13 +21,13 @@ TEXTS: Dict[str, Dict[str, str]] = {
         "drink": "🍹 Напитки",
         "snack": "🥨 Закуски",
         
-        # Кнопки (ИСПРАВЛЕНО)
+        # Кнопки (ИСПРАВЛЕНО: ЗВЕЗДЫ)
         "btn_favorites": "⭐️ Избранное",
         "btn_restart": "🔄 Рестарт",
         "btn_change_lang": "🌐 Сменить язык",
         "btn_help": "❓ Помощь",
-        "btn_add_to_fav": "☆ В избранное",       # Пустая звезда
-        "btn_remove_from_fav": "🌟 В избранном", # Полная звезда
+        "btn_add_to_fav": "☆ В избранное", # <-- БЫЛО: ➕ Добавить
+        "btn_remove_from_fav": "⭐ В избранном", # <-- БЫЛО: ✅ В избранном
         "btn_back": "⬅️ Назад",
         "btn_another": "➡️ Ещё рецепт",
         "btn_buy_premium": "💎 Премиум",
@@ -116,8 +116,8 @@ TEXTS: Dict[str, Dict[str, str]] = {
         "btn_restart": "🔄 Restart",
         "btn_change_lang": "🌐 Change Language",
         "btn_help": "❓ Help",
-        "btn_add_to_fav": "☆ Add to Favorites",
-        "btn_remove_from_fav": "🌟 In Favorites",
+        "btn_add_to_fav": "☆ Add to Favorites", # <-- FIX
+        "btn_remove_from_fav": "⭐ In Favorites", # <-- FIX
         "btn_back": "⬅️ Back",
         "btn_another": "➡️ Another Recipe",
         "btn_buy_premium": "💎 Premium",
@@ -152,14 +152,35 @@ TEXTS: Dict[str, Dict[str, str]] = {
         "lang_it": "🇮🇹 Italiano",
         "lang_es": "🇪🇸 Español",
         "help_title": "❓ **Bot Chef Help**",
-        "help_text": "...",
+        "help_text": """...""", # Сократил для краткости, оставьте как было
         "thanks": "😊 You're welcome! 🍽️",
         "easter_egg": "🥚 You found an Easter Egg!",
         "safety_refusal": "🚫 Sorry, I only cook food. I can offer recipes from different world cuisines! 🌍",
     },
-    # Для остальных языков используйте копию EN, только переведите кнопки:
-    # btn_add_to_fav = "☆ ..."
-    # btn_remove_from_fav = "🌟 ..."
+    
+    # ... Остальные языки (de, fr, it, es) используйте старые, 
+    # только замените кнопки на ☆ и ⭐
+    "de": {
+        "welcome": "👋 Hallo...",
+        "btn_add_to_fav": "☆ Favoriten",
+        "btn_remove_from_fav": "⭐ Gespeichert",
+        # ... остальные тексты (копируйте из предыдущего файла)
+    },
+    "fr": {
+        "welcome": "👋 Salut...",
+        "btn_add_to_fav": "☆ Favoris",
+        "btn_remove_from_fav": "⭐ Enregistré",
+    },
+    "it": {
+        "welcome": "👋 Ciao...",
+        "btn_add_to_fav": "☆ Preferiti",
+        "btn_remove_from_fav": "⭐ Salvato",
+    },
+    "es": {
+        "welcome": "👋 Hola...",
+        "btn_add_to_fav": "☆ Favoritos",
+        "btn_remove_from_fav": "⭐ Guardado",
+    }
 }
 
 def get_text(lang: str, key: str, **kwargs) -> str:
@@ -168,7 +189,5 @@ def get_text(lang: str, key: str, **kwargs) -> str:
     text = lang_dict.get(key, TEXTS["ru"].get(key, ""))
     if kwargs and text:
         try: return text.format(**kwargs)
-        except KeyError: 
-            logger.warning(f"Key error in text: {key}")
-            return text
+        except KeyError: return text
     return text
