@@ -7,7 +7,8 @@ from datetime import datetime, time, timedelta
 import pytz
 
 from aiogram import Bot, Dispatcher
-from aiogram.types import BotCommand
+# ДОБАВЛЕН ИМПОРТ BotCommandScopeDefault
+from aiogram.types import BotCommand, BotCommandScopeDefault
 from aiogram.client.default import DefaultBotProperties
 from aiohttp import web
 
@@ -116,18 +117,46 @@ async def cleanup_tasks_periodically():
             logger.error(f"❌ Ошибка в задачах очистки: {e}", exc_info=True)
             await asyncio.sleep(3600)
 
-# --- НАСТРОЙКА МЕНЮ ---
+# --- НАСТРОЙКА МЕНЮ (ОБНОВЛЕНО) ---
 async def setup_bot_commands(bot: Bot):
-    # Команды устанавливаются в handlers/common.py через register,
-    # здесь можно оставить заглушку или глобальную установку, если нужно.
-    pass 
+    """
+    Устанавливает кнопку Меню (слева от ввода).
+    Делаем разное меню для Русского языка и для всех остальных.
+    """
+    try:
+        # 1. Меню для русского языка (RU)
+        ru_commands = [
+            BotCommand(command="start", description="🔄 Главное меню"),
+            BotCommand(command="favorites", description="⭐️ Избранное"),
+            BotCommand(command="stats", description="💎 Профиль и Лимиты"),
+            BotCommand(command="help", description="❓ Помощь"),
+            BotCommand(command="lang", description="🌐 Язык"),
+        ]
+        await bot.set_my_commands(ru_commands, scope=BotCommandScopeDefault(), language_code="ru")
+
+        # 2. Меню по умолчанию (Английский - для всех остальных)
+        en_commands = [
+            BotCommand(command="start", description="🔄 Main Menu"),
+            BotCommand(command="favorites", description="⭐️ Favorites"),
+            BotCommand(command="stats", description="💎 Profile & Limits"),
+            BotCommand(command="help", description="❓ Help"),
+            BotCommand(command="lang", description="🌐 Language"),
+        ]
+        # Устанавливаем дефолтное меню (без language_code)
+        await bot.set_my_commands(en_commands, scope=BotCommandScopeDefault())
+        
+        logger.info("✅ Команды меню установлены (RU + Default EN)")
+        
+    except Exception as e:
+        logger.error(f"❌ Ошибка установки команд: {e}")
 
 # --- ФУНКЦИИ ЖИЗНЕННОГО ЦИКЛА DP ---
 async def on_startup(dispatcher: Dispatcher, bot: Bot):
     logger.info("⚙️ Запуск обработчиков...")
     register_all_handlers(dispatcher)
     
-    # Мы УБРАЛИ set_bot_description. Теперь описание настраивается только через BotFather.
+    # Установка команд меню
+    await setup_bot_commands(bot)
     
     await groq_cache.clear_expired()
     await metrics.cleanup_old_metrics()
