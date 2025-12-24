@@ -12,13 +12,12 @@ from aiogram.client.default import DefaultBotProperties
 from aiohttp import web
 
 # Твои модули
-from config import TELEGRAM_TOKEN, LOG_FILE, LOG_LEVEL, ADMIN_IDS, validate_config, SUPPORTED_LANGUAGES, DEFAULT_LANGUAGE
+from config import TELEGRAM_TOKEN, LOG_FILE, LOG_LEVEL, ADMIN_IDS, validate_config
 from database import db
 from database.metrics import metrics
 from database.cache import groq_cache
 from database.users import users_repo 
 from handlers import register_all_handlers
-from locales.texts import get_text, TEXTS # <--- ДОБАВЛЕН ИМПОРТ TEXTS
 from services.groq_service import groq_service 
 
 # --- КОНСТАНТЫ И НАСТРОЙКА ЛОГГИРОВАНИЯ ---
@@ -117,40 +116,10 @@ async def cleanup_tasks_periodically():
             logger.error(f"❌ Ошибка в задачах очистки: {e}", exc_info=True)
             await asyncio.sleep(3600)
 
-
-# --- НАСТРОЙКА ОПИСАНИЯ БОТА (ВИТРИНА) ---
-async def set_bot_description(bot: Bot):
-    """Обновляет описание бота в Telegram для разных языков"""
-    # 1. Дефолтное описание (Английское)
-    try:
-        en_texts = TEXTS.get("en", {})
-        if en_texts:
-            await bot.set_my_short_description(en_texts.get("bot_short_description", ""))
-            await bot.set_my_description(en_texts.get("bot_description", ""))
-            logger.info("✅ Дефолтное описание установлено (EN)")
-    except Exception as e:
-        logger.warning(f"Ошибка установки дефолтного описания: {e}")
-
-    # 2. Локализованные описания
-    for lang_code in SUPPORTED_LANGUAGES:
-        if lang_code in TEXTS:
-            try:
-                short_desc = TEXTS[lang_code].get("bot_short_description")
-                full_desc = TEXTS[lang_code].get("bot_description")
-                
-                if short_desc:
-                    await bot.set_my_short_description(short_desc, language_code=lang_code)
-                
-                if full_desc:
-                    await bot.set_my_description(full_desc, language_code=lang_code)
-                    
-                logger.info(f"✅ Описание установлено для: {lang_code}")
-            except Exception as e:
-                logger.warning(f"Ошибка установки описания для {lang_code}: {e}")
-
 # --- НАСТРОЙКА МЕНЮ ---
 async def setup_bot_commands(bot: Bot):
-    # Упрощенная установка команд
+    # Команды устанавливаются в handlers/common.py через register,
+    # здесь можно оставить заглушку или глобальную установку, если нужно.
     pass 
 
 # --- ФУНКЦИИ ЖИЗНЕННОГО ЦИКЛА DP ---
@@ -158,8 +127,7 @@ async def on_startup(dispatcher: Dispatcher, bot: Bot):
     logger.info("⚙️ Запуск обработчиков...")
     register_all_handlers(dispatcher)
     
-    # Настраиваем описание бота в Telegram
-    # await set_bot_description(bot)
+    # Мы УБРАЛИ set_bot_description. Теперь описание настраивается только через BotFather.
     
     await groq_cache.clear_expired()
     await metrics.cleanup_old_metrics()
