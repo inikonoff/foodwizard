@@ -4,46 +4,40 @@ import logging
 logger = logging.getLogger(__name__)
 
 TEXTS: Dict[str, Dict[str, str]] = {
+    # ================= РУССКИЙ (RU) =================
     "ru": {
-        # Интерфейс
-        "welcome": "👋 Привет, {name}!\n\nЯ бот-шеф. Назови продукты, а я скажу, что из них приготовить.",
-        "start_manual": "💬 **Отправьте голосовое или текстовое сообщение** с продуктами.\n📝 Или напишите **\"Дай рецепт [блюдо]\"**.",
+        "lang_ru": "🇷🇺 Русский", "lang_en": "🇬🇧 English", "lang_de": "🇩🇪 Deutsch",
+        "lang_fr": "🇫🇷 Français", "lang_it": "🇮🇹 Italiano", "lang_es": "🇪🇸 Español",
+
+        "welcome": """👋 Здравствуйте.
+
+🎤 Отправьте голосовое или текстовое сообщение с перечнем продуктов, и я подскажу, что из них можно приготовить.
+
+📝 Или напишите "Дай рецепт [блюдо]".""",
+        
+        "start_manual": "", 
         "processing": "⏳ Думаю...",
         "menu": "🍴 **Что будем готовить?**",
         "choose_language": "🌐 **Выберите язык:**",
         
-        # Категории
-        "soup": "🍜 Супы",
-        "main": "🥩 Вторые блюда",
-        "salad": "🥗 Салаты",
-        "breakfast": "🥞 Завтраки",
-        "dessert": "🍰 Десерты",
-        "drink": "🍹 Напитки",
-        "snack": "🥨 Закуски",
+        "soup": "🍜 Супы", "main": "🥩 Вторые блюда", "salad": "🥗 Салаты",
+        "breakfast": "🥞 Завтраки", "dessert": "🍰 Десерты", "drink": "🍹 Напитки", "snack": "🥨 Закуски",
         
-        # Кнопки (ИСПРАВЛЕНО: ЗВЕЗДЫ)
-        "btn_favorites": "⭐️ Избранное",
-        "btn_restart": "🔄 Рестарт",
-        "btn_change_lang": "🌐 Сменить язык",
-        "btn_help": "❓ Помощь",
-        "btn_add_to_fav": "☆ В избранное", # <-- БЫЛО: ➕ Добавить
-        "btn_remove_from_fav": "⭐ В избранном", # <-- БЫЛО: ✅ В избранном
-        "btn_back": "⬅️ Назад",
-        "btn_another": "➡️ Ещё рецепт",
-        "btn_buy_premium": "💎 Премиум",
-        "btn_page": "Стр. {page}/{total}",
+        "btn_favorites": "⭐️ Избранное", "btn_restart": "🔄 Рестарт",
+        "btn_change_lang": "🌐 Сменить язык", "btn_help": "❓ Помощь",
+        "btn_add_to_fav": "☆ В избранное", "btn_remove_from_fav": "🌟 В избранном",
+        "btn_back": "⬅️ Назад", "btn_another": "➡️ Ещё рецепт",
+        "btn_buy_premium": "💎 Премиум", "btn_page": "Стр. {page}/{total}",
         
-        # Рецепты и блюда
         "choose_category": "📝 **Выберите категорию блюд:**",
         "choose_dish": "🍳 **Выберите блюдо:**",
         "recipe_title": "✨ **Рецепт: {dish_name}**",
         "recipe_ingredients": "🛒 **Ингредиенты:**",
         "recipe_instructions": "📝 **Инструкция:**",
-        "recipe_error": "❌ Не удалось сгенерировать рецепт. Попробуйте снова или выберите другое блюдо.",
-        "dish_list_error": "❌ Не удалось получить список блюд. Попробуйте снова или измените продукты.",
-        "error_session_expired": "Время сессии истекло. Пожалуйста, начните заново, отправив список продуктов.",
+        "recipe_error": "❌ Не удалось сгенерировать рецепт.",
+        "dish_list_error": "❌ Не удалось получить список блюд.",
+        "error_session_expired": "Время сессии истекло. Начните заново.",
         
-        # Избранное
         "favorites_title": "⭐️ **Ваши избранные рецепты**",
         "favorites_empty": "😔 Список избранного пуст.",
         "favorite_added": "⭐ Рецепт **{dish_name}** добавлен в избранное!",
@@ -52,134 +46,228 @@ TEXTS: Dict[str, Dict[str, str]] = {
         "favorites_list": "⭐️ **Ваши избранные рецепты** (стр. {page}/{total_pages}):\n\n{recipes}",
         "favorites_recipe_item": "{num}. {dish} (от {date})\n",
         
-        # Ошибки и лимиты
-        "limit_voice_exceeded": "❌ **Лимит голосовых запросов исчерпан!**\n\nВы использовали {used} из {limit} голосовых запросов сегодня. Лимиты обновляются каждый день в 00:00.\n\n💎 **Хотите больше?** Используйте команду /stats",
-        "limit_text_exceeded": "❌ **Лимит текстовых запросов исчерпан!**\n\nВы использовали {used} из {limit} текстовых запросов сегодня. Лимиты обновляются каждый день в 00:00.\n\n💎 **Хотите больше?** Используйте команду /stats",
-        "error_voice_recognition": "🗣️ **Ошибка распознавания голоса.** Пожалуйста, попробуйте говорить четче или используйте текстовый ввод.",
-        "error_generation": "❌ Произошла ошибка. Попробуйте ещё раз.",
-        "error_unknown": "❌ Произошла неизвестная ошибка.",
-        "error_not_enough_products": "🤔 Не могу понять, что приготовить. Пожалуйста, назовите больше продуктов.",
+        "limit_voice_exceeded": "❌ **Лимит голосовых запросов исчерпан!**",
+        "limit_text_exceeded": "❌ **Лимит текстовых запросов исчерпан!**",
+        "error_voice_recognition": "🗣️ **Ошибка распознавания.** Говорите четче.",
+        "error_generation": "❌ Произошла ошибка.",
+        "error_unknown": "❌ Неизвестная ошибка.",
+        "error_not_enough_products": "🤔 Не могу понять, что приготовить. Назовите больше продуктов.",
         "voice_recognized": "✅ Распознано: {text}",
-        
-        # Язык
         "lang_changed": "🌐 Язык успешно изменен на русский.",
-        "lang_ru": "🇷🇺 Русский",
-        "lang_en": "🇬🇧 English",
-        "lang_de": "🇩🇪 Deutsch",
-        "lang_fr": "🇫🇷 Français",
-        "lang_it": "🇮🇹 Italiano",
-        "lang_es": "🇪🇸 Español",
-        
-        # Помощь
-        "help_title": "❓ **Помощь по Боту-Шефу**",
-        "help_text": """
-*Как использовать:*
-1. Отправьте ингредиенты (текстом или голосом)
-2. Выберите категорию блюда
-3. Выберите блюдо из списка
-4. Получите рецепт
-
-*Команды:*
-/start - начать заново
-/favorites - избранные рецепты
-/lang - сменить язык
-/help - помощь
-/stats - статистика и лимиты
-
-*Советы:*
-- Вы можете добавлять ингредиенты несколько раз
-- Нажмите на ☆ под рецептом, чтобы сохранить
-- Голосовые сообщения удаляются автоматически
-
-*Поддержка:* @support
-        """,
-        
-        "thanks": "😊 Пожалуйста! 🍽️",
-        "easter_egg": "🥚 Вы нашли пасхальное яйцо!",
-        "safety_refusal": "🚫 Извините, я готовлю только еду. Могу предложить рецепты блюд из разных кухонь мира! 🌍",
+        "safety_refusal": "🚫 Извините, я готовлю только еду.",
+        "help_title": "❓ **Помощь**",
+        "help_text": "Просто отправьте список продуктов, и я подберу рецепт.",
     },
     
+    # ================= АНГЛИЙСКИЙ (EN) =================
     "en": {
-        "welcome": "👋 Hi, {name}!\n\nI'm a bot-chef. Tell me your ingredients, and I'll tell you what to cook.",
-        "start_manual": "💬 **Send a voice or text message** with your ingredients.\n📝 Or write **\"Give me a recipe for [dish]\"**.",
+        "lang_ru": "🇷🇺 Russian", "lang_en": "🇬🇧 English", "lang_de": "🇩🇪 German",
+        "lang_fr": "🇫🇷 French", "lang_it": "🇮🇹 Italian", "lang_es": "🇪🇸 Spanish",
+
+        "welcome": """👋 Hello.
+
+🎤 Send a voice or text message listing your ingredients, and I'll suggest what you can cook with them.
+
+📝 Or write "Give me a recipe for [dish]".""",
+        
+        "start_manual": "", 
         "processing": "⏳ Thinking...",
         "menu": "🍴 **What should we cook?**",
         "choose_language": "🌐 **Choose Language:**",
-        "soup": "🍜 Soups",
-        "main": "🥩 Main Courses",
-        "salad": "🥗 Salads",
-        "breakfast": "🥞 Breakfasts",
-        "dessert": "🍰 Desserts",
-        "drink": "🍹 Drinks",
-        "snack": "🥨 Snacks",
-        "btn_favorites": "⭐️ Favorites",
-        "btn_restart": "🔄 Restart",
-        "btn_change_lang": "🌐 Change Language",
-        "btn_help": "❓ Help",
-        "btn_add_to_fav": "☆ Add to Favorites", # <-- FIX
-        "btn_remove_from_fav": "⭐ In Favorites", # <-- FIX
-        "btn_back": "⬅️ Back",
-        "btn_another": "➡️ Another Recipe",
-        "btn_buy_premium": "💎 Premium",
-        "btn_page": "Page {page}/{total}",
-        "choose_category": "📝 **Select a dish category:**",
+        
+        "soup": "🍜 Soups", "main": "🥩 Main Courses", "salad": "🥗 Salads",
+        "breakfast": "🥞 Breakfasts", "dessert": "🍰 Desserts", "drink": "🍹 Drinks", "snack": "🥨 Snacks",
+        
+        "btn_favorites": "⭐️ Favorites", "btn_restart": "🔄 Restart",
+        "btn_change_lang": "🌐 Language", "btn_help": "❓ Help",
+        "btn_add_to_fav": "☆ Add to Favorites", "btn_remove_from_fav": "🌟 In Favorites",
+        "btn_back": "⬅️ Back", "btn_another": "➡️ Another Recipe",
+        "btn_buy_premium": "💎 Premium", "btn_page": "Page {page}/{total}",
+        
+        "choose_category": "📝 **Select a category:**",
         "choose_dish": "🍳 **Select a dish:**",
         "recipe_title": "✨ **Recipe: {dish_name}**",
         "recipe_ingredients": "🛒 **Ingredients:**",
         "recipe_instructions": "📝 **Instructions:**",
-        "recipe_error": "❌ Could not generate a recipe. Please try again or select another dish.",
-        "dish_list_error": "❌ Could not get a list of dishes. Please try again or change your ingredients.",
-        "error_session_expired": "Session time expired. Please start over by sending a list of ingredients.",
-        "favorites_title": "⭐️ **Your Favorite Recipes**",
-        "favorites_empty": "😔 Your favorites list is empty.",
-        "favorite_added": "⭐ Recipe **{dish_name}** added to favorites!",
-        "favorite_removed": "🗑 Recipe **{dish_name}** removed from favorites.",
-        "favorite_limit": "❌ Favorite recipes limit reached ({limit}).",
-        "favorites_list": "⭐️ **Your Favorite Recipes** (page {page}/{total_pages}):\n\n{recipes}",
+        "recipe_error": "❌ Could not generate recipe.",
+        "dish_list_error": "❌ Could not get dish list.",
+        "error_session_expired": "Session expired. Start over.",
+        
+        "favorites_title": "⭐️ **Your Favorites**",
+        "favorites_empty": "😔 Favorites list is empty.",
+        "favorite_added": "⭐ Recipe **{dish_name}** saved!",
+        "favorite_removed": "🗑 Recipe **{dish_name}** removed.",
+        "favorite_limit": "❌ Favorites limit reached ({limit}).",
+        "favorites_list": "⭐️ **Favorites** (page {page}/{total_pages}):\n\n{recipes}",
         "favorites_recipe_item": "{num}. {dish} (from {date})\n",
-        "limit_voice_exceeded": "❌ **Voice Request Limit Exceeded!**\n\nYou have used {used} of {limit} voice requests today. Limits refresh daily at 00:00.\n\n💎 **Want more?** Use the /stats command",
-        "limit_text_exceeded": "❌ **Text Request Limit Exceeded!**\n\nYou have used {used} of {limit} text requests today. Limits refresh daily at 00:00.\n\n💎 **Want more?** Use the /stats command",
-        "error_voice_recognition": "🗣️ **Voice recognition error.** Please try speaking clearer or use text input.",
-        "error_generation": "❌ An error occurred. Please try again.",
-        "error_unknown": "❌ An unknown error occurred.",
-        "error_not_enough_products": "🤔 I can't figure out what to cook. Please name more ingredients.",
+        
+        "limit_voice_exceeded": "❌ **Voice limit exceeded!**",
+        "limit_text_exceeded": "❌ **Text limit exceeded!**",
+        "error_voice_recognition": "🗣️ **Voice error.** Speak clearer.",
+        "error_generation": "❌ An error occurred.",
+        "error_unknown": "❌ Unknown error.",
+        "error_not_enough_products": "🤔 Need more ingredients.",
         "voice_recognized": "✅ Recognized: {text}",
-        "lang_changed": "🌐 Language successfully changed to English.",
-        "lang_ru": "🇷🇺 Russian",
-        "lang_en": "🇬🇧 English",
-        "lang_de": "🇩🇪 Deutsch",
-        "lang_fr": "🇫🇷 Français",
-        "lang_it": "🇮🇹 Italiano",
-        "lang_es": "🇪🇸 Español",
-        "help_title": "❓ **Bot Chef Help**",
-        "help_text": """...""", # Сократил для краткости, оставьте как было
-        "thanks": "😊 You're welcome! 🍽️",
-        "easter_egg": "🥚 You found an Easter Egg!",
-        "safety_refusal": "🚫 Sorry, I only cook food. I can offer recipes from different world cuisines! 🌍",
+        "lang_changed": "🌐 Language changed to English.",
+        "safety_refusal": "🚫 I only cook food.",
+        "help_title": "❓ **Help**",
+        "help_text": "Just send a list of ingredients.",
     },
-    
-    # ... Остальные языки (de, fr, it, es) используйте старые, 
-    # только замените кнопки на ☆ и ⭐
+
+    # ================= НЕМЕЦКИЙ (DE) =================
     "de": {
-        "welcome": "👋 Hallo...",
-        "btn_add_to_fav": "☆ Favoriten",
-        "btn_remove_from_fav": "⭐ Gespeichert",
-        # ... остальные тексты (копируйте из предыдущего файла)
+        "lang_ru": "🇷🇺 Russisch", "lang_en": "🇬🇧 Englisch", "lang_de": "🇩🇪 Deutsch",
+        "lang_fr": "🇫🇷 Französisch", "lang_it": "🇮🇹 Italienisch", "lang_es": "🇪🇸 Spanisch",
+
+        "welcome": """👋 Hallo.
+
+🎤 Senden Sie eine Sprach- oder Textnachricht mit Ihren Zutaten, und ich schlage vor, was Sie kochen können.
+
+📝 Oder schreiben Sie "Gib mir ein Rezept für [Gericht]".""",
+
+        "start_manual": "", "processing": "⏳ Ich denke nach...",
+        "choose_language": "🌐 **Sprache wählen:**",
+        "soup": "🍜 Suppen", "main": "🥩 Hauptgerichte", "salad": "🥗 Salate",
+        "breakfast": "🥞 Frühstücke", "dessert": "🍰 Desserts", "drink": "🍹 Getränke", "snack": "🥨 Snacks",
+        
+        "btn_favorites": "⭐️ Favoriten", "btn_restart": "🔄 Neustart",
+        "btn_change_lang": "🌐 Sprache", "btn_help": "❓ Hilfe",
+        "btn_add_to_fav": "☆ Speichern", "btn_remove_from_fav": "🌟 Gespeichert",
+        "btn_back": "⬅️ Zurück", "btn_another": "➡️ Anderes Rezept",
+        "btn_buy_premium": "💎 Premium", "btn_page": "Seite {page}/{total}",
+        
+        "choose_category": "📝 **Kategorie wählen:**", "choose_dish": "🍳 **Gericht wählen:**",
+        "recipe_error": "❌ Fehler beim Rezept.", "favorites_empty": "😔 Liste leer.",
+        "favorite_added": "⭐ Gespeichert!", "favorite_removed": "🗑 Gelöscht.",
+        "favorites_title": "⭐️ **Favoriten**", 
+        "favorites_list": "⭐️ **Favoriten** (Seite {page}/{total_pages}):\n\n{recipes}",
+        "favorites_recipe_item": "{num}. {dish} (vom {date})\n",
+        
+        "limit_voice_exceeded": "❌ **Sprachlimit erreicht!**",
+        "limit_text_exceeded": "❌ **Textlimit erreicht!**",
+        "error_voice_recognition": "🗣️ **Sprachfehler.**",
+        "error_generation": "❌ Fehler.", "error_not_enough_products": "🤔 Mehr Zutaten bitte.",
+        "voice_recognized": "✅ Erkannt: {text}",
+        "lang_changed": "🌐 Sprache: Deutsch.",
+        "safety_refusal": "🚫 Ich koche nur Essen.",
+        "help_title": "❓ **Hilfe**", "help_text": "Senden Sie eine Zutatenliste.",
     },
+
+    # ================= ФРАНЦУЗСКИЙ (FR) =================
     "fr": {
-        "welcome": "👋 Salut...",
-        "btn_add_to_fav": "☆ Favoris",
-        "btn_remove_from_fav": "⭐ Enregistré",
+        "lang_ru": "🇷🇺 Russe", "lang_en": "🇬🇧 Anglais", "lang_de": "🇩🇪 Allemand",
+        "lang_fr": "🇫🇷 Français", "lang_it": "🇮🇹 Italien", "lang_es": "🇪🇸 Espagnol",
+
+        "welcome": """👋 Bonjour.
+
+🎤 Envoyez un message vocal ou texte avec vos ingrédients, et je vous suggérerai quoi cuisiner.
+
+📝 Ou écrivez "Donne-moi une recette de [plat]".""",
+
+        "start_manual": "", "processing": "⏳ Je réfléchis...",
+        "choose_language": "🌐 **Langue :**",
+        "soup": "🍜 Soupes", "main": "🥩 Plats principaux", "salad": "🥗 Salades",
+        "breakfast": "🥞 Petit-déj", "dessert": "🍰 Desserts", "drink": "🍹 Boissons", "snack": "🥨 Snacks",
+        
+        "btn_favorites": "⭐️ Favoris", "btn_restart": "🔄 Redémarrer",
+        "btn_change_lang": "🌐 Langue", "btn_help": "❓ Aide",
+        "btn_add_to_fav": "☆ Sauvegarder", "btn_remove_from_fav": "🌟 Enregistré",
+        "btn_back": "⬅️ Retour", "btn_another": "➡️ Autre recette",
+        "btn_buy_premium": "💎 Premium", "btn_page": "Page {page}/{total}",
+        
+        "choose_category": "📝 **Catégorie :**", "choose_dish": "🍳 **Plat :**",
+        "recipe_error": "❌ Erreur recette.", "favorites_empty": "😔 Liste vide.",
+        "favorite_added": "⭐ Sauvegardé !", "favorite_removed": "🗑 Supprimé.",
+        "favorites_title": "⭐️ **Vos Favoris**",
+        "favorites_list": "⭐️ **Favoris** (page {page}/{total_pages}):\n\n{recipes}",
+        "favorites_recipe_item": "{num}. {dish} (du {date})\n",
+        
+        "limit_voice_exceeded": "❌ **Limite vocale !**",
+        "limit_text_exceeded": "❌ **Limite textuelle !**",
+        "error_voice_recognition": "🗣️ **Erreur vocale.**",
+        "error_generation": "❌ Erreur.", "error_not_enough_products": "🤔 Plus d'ingrédients SVP.",
+        "voice_recognized": "✅ Reconnu : {text}",
+        "lang_changed": "🌐 Langue : Français.",
+        "safety_refusal": "🚫 Je ne cuisine que de la nourriture.",
+        "help_title": "❓ **Aide**", "help_text": "Envoyez une liste d'ingrédients.",
     },
+
+    # ================= ИТАЛЬЯНСКИЙ (IT) =================
     "it": {
-        "welcome": "👋 Ciao...",
-        "btn_add_to_fav": "☆ Preferiti",
-        "btn_remove_from_fav": "⭐ Salvato",
+        "lang_ru": "🇷🇺 Russo", "lang_en": "🇬🇧 Inglese", "lang_de": "🇩🇪 Tedesco",
+        "lang_fr": "🇫🇷 Francese", "lang_it": "🇮🇹 Italiano", "lang_es": "🇪🇸 Spagnolo",
+
+        "welcome": """👋 Ciao.
+
+🎤 Invia un messaggio vocale o di testo con i tuoi ingredienti e ti suggerirò cosa cucinare.
+
+📝 O scrivi "Dammi una ricetta per [piatto]".""",
+
+        "start_manual": "", "processing": "⏳ Sto pensando...",
+        "choose_language": "🌐 **Lingua:**",
+        "soup": "🍜 Zuppe", "main": "🥩 Secondi", "salad": "🥗 Insalate",
+        "breakfast": "🥞 Colazione", "dessert": "🍰 Dessert", "drink": "🍹 Bevande", "snack": "🥨 Snack",
+        
+        "btn_favorites": "⭐️ Preferiti", "btn_restart": "🔄 Riavvia",
+        "btn_change_lang": "🌐 Lingua", "btn_help": "❓ Aiuto",
+        "btn_add_to_fav": "☆ Salva", "btn_remove_from_fav": "🌟 Salvato",
+        "btn_back": "⬅️ Indietro", "btn_another": "➡️ Altra ricetta",
+        "btn_buy_premium": "💎 Premium", "btn_page": "Pag. {page}/{total}",
+        
+        "choose_category": "📝 **Categoria:**", "choose_dish": "🍳 **Piatto:**",
+        "recipe_error": "❌ Errore ricetta.", "favorites_empty": "😔 Lista vuota.",
+        "favorite_added": "⭐ Salvato!", "favorite_removed": "🗑 Rimosso.",
+        "favorites_title": "⭐️ **Preferiti**",
+        "favorites_list": "⭐️ **Preferiti** (pag. {page}/{total_pages}):\n\n{recipes}",
+        "favorites_recipe_item": "{num}. {dish} (del {date})\n",
+        
+        "limit_voice_exceeded": "❌ **Limite vocale!**",
+        "limit_text_exceeded": "❌ **Limite testo!**",
+        "error_voice_recognition": "🗣️ **Errore vocale.**",
+        "error_generation": "❌ Errore.", "error_not_enough_products": "🤔 Più ingredienti per favore.",
+        "voice_recognized": "✅ Riconosciuto: {text}",
+        "lang_changed": "🌐 Lingua: Italiano.",
+        "safety_refusal": "🚫 Cucino solo cibo.",
+        "help_title": "❓ **Aiuto**", "help_text": "Invia una lista di ingredienti.",
     },
+
+    # ================= ИСПАНСКИЙ (ES) =================
     "es": {
-        "welcome": "👋 Hola...",
-        "btn_add_to_fav": "☆ Favoritos",
-        "btn_remove_from_fav": "⭐ Guardado",
+        "lang_ru": "🇷🇺 Ruso", "lang_en": "🇬🇧 Inglés", "lang_de": "🇩🇪 Alemán",
+        "lang_fr": "🇫🇷 Francés", "lang_it": "🇮🇹 Italiano", "lang_es": "🇪🇸 Español",
+
+        "welcome": """👋 Hola.
+
+🎤 Envía un mensaje de voz o texto con tus ingredientes y te sugeriré qué cocinar.
+
+📝 O escribe "Dame una receta de [plato]".""",
+
+        "start_manual": "", "processing": "⏳ Pensando...",
+        "choose_language": "🌐 **Idioma:**",
+        "soup": "🍜 Sopas", "main": "🥩 Platos fuertes", "salad": "🥗 Ensaladas",
+        "breakfast": "🥞 Desayunos", "dessert": "🍰 Postres", "drink": "🍹 Bebidas", "snack": "🥨 Snacks",
+        
+        "btn_favorites": "⭐️ Favoritos", "btn_restart": "🔄 Reiniciar",
+        "btn_change_lang": "🌐 Idioma", "btn_help": "❓ Ayuda",
+        "btn_add_to_fav": "☆ Guardar", "btn_remove_from_fav": "🌟 Guardado",
+        "btn_back": "⬅️ Atrás", "btn_another": "➡️ Otra receta",
+        "btn_buy_premium": "💎 Premium", "btn_page": "Pág. {page}/{total}",
+        
+        "choose_category": "📝 **Categoría:**", "choose_dish": "🍳 **Plato:**",
+        "recipe_error": "❌ Error de receta.", "favorites_empty": "😔 Lista vacía.",
+        "favorite_added": "⭐ ¡Guardado!", "favorite_removed": "🗑 Eliminado.",
+        "favorites_title": "⭐️ **Tus Favoritos**",
+        "favorites_list": "⭐️ **Favoritos** (pág. {page}/{total_pages}):\n\n{recipes}",
+        "favorites_recipe_item": "{num}. {dish} (del {date})\n",
+        
+        "limit_voice_exceeded": "❌ **¡Límite de voz!**",
+        "limit_text_exceeded": "❌ **¡Límite de texto!**",
+        "error_voice_recognition": "🗣️ **Error de voz.**",
+        "error_generation": "❌ Error.", "error_not_enough_products": "🤔 Más ingredientes por favor.",
+        "voice_recognized": "✅ Reconocido: {text}",
+        "lang_changed": "🌐 Idioma: Español.",
+        "safety_refusal": "🚫 Solo cocino comida.",
+        "help_title": "❓ **Ayuda**", "help_text": "Envía una lista de ingredientes.",
     }
 }
 
