@@ -3,7 +3,29 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# Базовые тексты (шаблоны)
+PREMIUM_DESC_RU = """💎 **Преимущества Premium:**
+
+✅ **Избранное:** Сохраняйте любые рецепты
+✅ **Текстовые запросы:** 100 в день (вместо 10)
+✅ **Голосовые запросы:** 50 в день (вместо 3)
+✅ **Ингредиенты:** До 50 в одном запросе
+✅ **Поддержка:** Приоритетная помощь
+
+👇 **Выберите тариф:**"""
+
+PREMIUM_DESC_EN = """💎 **Premium Benefits:**
+
+✅ **Favorites:** Save unlimited recipes
+✅ **Text Requests:** 100/day (vs 10)
+✅ **Voice Requests:** 50/day (vs 3)
+✅ **Ingredients:** Up to 50 per request
+✅ **Support:** Priority support
+
+👇 **Choose a plan:**"""
+
 TEXTS: Dict[str, Dict[str, str]] = {
+    # ================= РУССКИЙ (RU) =================
     "ru": {
         "lang_ru": "🇷🇺 Русский", "lang_en": "🇬🇧 English", "lang_de": "🇩🇪 Deutsch",
         "lang_fr": "🇫🇷 Français", "lang_it": "🇮🇹 Italiano", "lang_es": "🇪🇸 Español",
@@ -22,7 +44,6 @@ TEXTS: Dict[str, Dict[str, str]] = {
         "soup": "🍜 Супы", "main": "🥩 Вторые блюда", "salad": "🥗 Салаты",
         "breakfast": "🥞 Завтраки", "dessert": "🍰 Десерты", "drink": "🍹 Напитки", "snack": "🥨 Закуски",
         
-        # Кнопки
         "btn_favorites": "⭐️ Избранное",
         "btn_restart": "🔄 Рестарт",
         "btn_change_lang": "🌐 Язык",
@@ -31,10 +52,9 @@ TEXTS: Dict[str, Dict[str, str]] = {
         "btn_remove_from_fav": "🌟 В избранном",
         "btn_back": "⬅️ Назад",
         "btn_another": "➡️ Ещё рецепт",
-        "btn_buy_premium": "💎 Купить Премиум", # <-- Кнопка в меню
+        "btn_buy_premium": "💎 Купить Премиум",
         "btn_page": "Стр. {page}/{total}",
         
-        # Рецепты
         "choose_category": "📝 **Выберите категорию блюд:**",
         "choose_dish": "🍳 **Выберите блюдо:**",
         "recipe_title": "✨ **Рецепт: {dish_name}**",
@@ -44,7 +64,6 @@ TEXTS: Dict[str, Dict[str, str]] = {
         "dish_list_error": "❌ Не удалось получить список блюд.",
         "error_session_expired": "Время сессии истекло. Начните заново.",
         
-        # Избранное
         "favorites_title": "⭐️ **Ваши избранные рецепты**",
         "favorites_empty": "😔 Список избранного пуст.",
         "favorite_added": "⭐ Рецепт **{dish_name}** добавлен в избранное!",
@@ -53,24 +72,13 @@ TEXTS: Dict[str, Dict[str, str]] = {
         "favorites_list": "⭐️ **Ваши избранные рецепты** (стр. {page}/{total_pages}):\n\n{recipes}",
         "favorites_recipe_item": "{num}. {dish} (от {date})\n",
         
-        # Премиум и Лимиты
         "premium_required_title": "💎 **Требуется Премиум**",
         "premium_required_text": "Функция **Избранное** доступна только для Премиум-пользователей.\n\nСохраняйте любимые рецепты и увеличьте лимиты!",
-        
-        "premium_description": """💎 **Преимущества Premium:**
-
-✅ **Избранное:** Сохраняйте любые рецепты
-✅ **Текстовые запросы:** 100 в день (вместо 10)
-✅ **Голосовые запросы:** 50 в день (вместо 3)
-✅ **Ингредиенты:** До 50 в одном запросе
-✅ **Поддержка:** Приоритетная помощь
-
-👇 **Выберите тариф:**""",
+        "premium_description": PREMIUM_DESC_RU,
 
         "limit_voice_exceeded": "❌ **Лимит голосовых запросов исчерпан!**\n💎 Купите Премиум для увеличения лимитов.",
         "limit_text_exceeded": "❌ **Лимит текстовых запросов исчерпан!**\n💎 Купите Премиум для увеличения лимитов.",
         
-        # Ошибки
         "error_voice_recognition": "🗣️ **Ошибка распознавания.**",
         "error_generation": "❌ Произошла ошибка.",
         "error_unknown": "❌ Неизвестная ошибка.",
@@ -80,12 +88,10 @@ TEXTS: Dict[str, Dict[str, str]] = {
         "safety_refusal": "🚫 Извините, я готовлю только еду.",
         "help_title": "❓ **Помощь**",
         "help_text": "Отправьте список продуктов, и я подберу рецепт.",
-        "bot_description": "...",
-        "bot_short_description": "...",
-        "thanks": "😊",
-        "easter_egg": "🥚",
+        "bot_description": "...", "bot_short_description": "...", "thanks": "😊", "easter_egg": "🥚",
     },
     
+    # ================= АНГЛИЙСКИЙ (EN) =================
     "en": {
         "lang_ru": "🇷🇺 Russian", "lang_en": "🇬🇧 English", "lang_de": "🇩🇪 German",
         "lang_fr": "🇫🇷 French", "lang_it": "🇮🇹 Italian", "lang_es": "🇪🇸 Spanish",
@@ -107,7 +113,7 @@ TEXTS: Dict[str, Dict[str, str]] = {
         "btn_change_lang": "🌐 Language", "btn_help": "❓ Help",
         "btn_add_to_fav": "☆ Add to Favorites", "btn_remove_from_fav": "🌟 In Favorites",
         "btn_back": "⬅️ Back", "btn_another": "➡️ Another Recipe",
-        "btn_buy_premium": "💎 Get Premium", # <-- Кнопка в меню
+        "btn_buy_premium": "💎 Get Premium",
         "btn_page": "Page {page}/{total}",
         
         "choose_category": "📝 **Select a category:**",
@@ -129,16 +135,7 @@ TEXTS: Dict[str, Dict[str, str]] = {
         
         "premium_required_title": "💎 **Premium Required**",
         "premium_required_text": "The **Favorites** feature is available only for Premium users.\n\nSave your recipes and increase limits!",
-        
-        "premium_description": """💎 **Premium Benefits:**
-
-✅ **Favorites:** Save unlimited recipes
-✅ **Text Requests:** 100/day (vs 10)
-✅ **Voice Requests:** 50/day (vs 3)
-✅ **Ingredients:** Up to 50 per request
-✅ **Support:** Priority support
-
-👇 **Choose a plan:**""",
+        "premium_description": PREMIUM_DESC_EN,
 
         "limit_voice_exceeded": "❌ **Voice limit exceeded!**\n💎 Get Premium to increase limits.",
         "limit_text_exceeded": "❌ **Text limit exceeded!**\n💎 Get Premium to increase limits.",
@@ -154,21 +151,28 @@ TEXTS: Dict[str, Dict[str, str]] = {
         "bot_description": "...", "bot_short_description": "...", "thanks": "😊", "easter_egg": "🥚",
     },
     
+    # === ОСТАЛЬНЫЕ ЯЗЫКИ (ПОЛНЫЕ КОПИИ EN, ЧТОБЫ ИЗБЕЖАТЬ СМЕШИВАНИЯ) ===
+    # Вы можете перевести их позже, но сейчас ключи должны присутствовать!
     "de": {}, "fr": {}, "it": {}, "es": {}
 }
 
-# Заполняем заглушки английским
+# Копируем структуру английского для остальных языков при старте
+# Это гарантирует, что keys не будут отсутствовать
+base_lang = TEXTS["en"]
 for lang in ["de", "fr", "it", "es"]:
-    if not TEXTS[lang]:
-        TEXTS[lang] = TEXTS["en"].copy()
-        # Для корректного отображения списка языков копируем названия
-        for l_key in ["lang_ru", "lang_en", "lang_de", "lang_fr", "lang_it", "lang_es"]:
-             TEXTS[lang][l_key] = TEXTS["en"][l_key]
+    TEXTS[lang] = base_lang.copy()
+    # Только названия языков оставим правильными, если они там есть, но в base_lang они уже универсальны
 
+# Функция получения текста
 def get_text(lang: str, key: str, **kwargs) -> str:
     if lang not in TEXTS: lang = "ru"
     lang_dict = TEXTS.get(lang, TEXTS["ru"])
+    
+    # Пытаемся получить ключ в текущем языке.
+    # Если нет - берем из русского (на всякий случай)
+    # Если и там нет - пустая строка
     text = lang_dict.get(key, TEXTS["ru"].get(key, ""))
+    
     if kwargs and text:
         try: return text.format(**kwargs)
         except KeyError: return text
