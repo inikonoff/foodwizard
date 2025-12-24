@@ -25,7 +25,7 @@ def get_main_menu_keyboard(lang: str, is_premium: bool) -> InlineKeyboardMarkup:
     
     # Кнопка Избранное (работает для всех, но внутри проверка)
     builder.row(InlineKeyboardButton(text=get_text(lang, "btn_favorites"), callback_data="show_favorites"))
-    
+
     # Кнопка Премиум (ТОЛЬКО ЕСЛИ НЕТ ПРЕМИУМА)
     if not is_premium:
         builder.row(InlineKeyboardButton(text=get_text(lang, "btn_buy_premium"), callback_data="buy_premium"))
@@ -269,10 +269,14 @@ async def handle_main_menu(callback: CallbackQuery):
 
 async def handle_noop(c): await c.answer()
 
+# ... (начало файла без изменений) ...
+
 # --- ОПЛАТА И ПРЕМИУМ ---
 async def handle_buy_premium(callback: CallbackQuery):
     user_id = callback.from_user.id
-    lang = (await users_repo.get_user(user_id)).get('language_code', 'ru')
+    # Гарантированно получаем язык
+    user_data = await users_repo.get_user(user_id)
+    lang = user_data.get('language_code', 'ru') if user_data else 'ru'
     
     builder = InlineKeyboardBuilder()
     builder.row(InlineKeyboardButton(text="1 мес - 100 ⭐️", callback_data="premium_1_month"))
@@ -280,11 +284,24 @@ async def handle_buy_premium(callback: CallbackQuery):
     builder.row(InlineKeyboardButton(text="1 год - 800 ⭐️ (-33%)", callback_data="premium_1_year"))
     builder.row(InlineKeyboardButton(text=get_text(lang, "btn_back"), callback_data="main_menu"))
     
-    # Берем описание из texts.py
-    desc = get_text(lang, "premium_description").replace("**", "<b>").replace("__", "")
-    # Небольшой хак, чтобы закрыть жирный тег, если он в конце (проще сделать replace)
+    try:
+        # Получаем описание
+        desc = get_text(lang, "premium_description")
+        if not desc:
+            desc = "💎 Premium / Премиум" # Заглушка, если текст потерялся
+        
+        # Чистим от Markdown, который может сломать HTML
+        desc = desc.replace("**", "<b>").replace("__", "")
+        
+        await callback.message.edit_text(desc, reply_markup=builder.as_markup(), parse_mode="HTML")
+    except Exception as e:
+        logger.error(f"Ошибка отображения премиум меню: {e}")
+        # Если не удалось отредактировать (например, из-за картинки или разметки), пробуем отправить новым
+        try:
+            await callback.message.answer("💎 Premium Plans:", reply_markup=builder.as_markup())
+        except:
+            pass
     
-    await callback.message.edit_text(desc, reply_markup=builder.as_markup(), parse_mode="HTML")
     await callback.answer()
 
 # Хендлеры оплаты остаются теми же (они корректны)
