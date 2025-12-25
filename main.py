@@ -74,6 +74,51 @@ async def start_web_server():
 
 
 # --- ПЕРИОДИЧЕСКИЕ ЗАДАЧИ ---
+# ... (импорты) ...
+
+async def check_trials_periodically(bot: Bot):
+    """Раз в час проверяет выдачу триалов"""
+    while True:
+        try:
+            logger.info("🎁 Проверка триалов...")
+            user_ids = await users_repo.process_trial_activations()
+            
+            for uid in user_ids:
+                try:
+                    user = await users_repo.get_user(uid)
+                    lang = user.get('language_code', 'ru')
+                    # Отправляем радостное сообщение
+                    await bot.send_message(uid, get_text(lang, "trial_activated_notification"))
+                    logger.info(f"🎁 Триал выдан: {uid}")
+                    await asyncio.sleep(0.5)
+                except Exception as e:
+                    logger.warning(f"Не удалось отправить уведомление {uid}: {e}")
+            
+            await asyncio.sleep(3600) # 1 час
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            logger.error(f"Ошибка триалов: {e}")
+            await asyncio.sleep(3600)
+
+@contextlib.asynccontextmanager
+async def lifespan():
+    # ... (подключение БД) ...
+    
+    premium_task = asyncio.create_task(check_premium_expiry_periodically()) 
+    cleanup_task = asyncio.create_task(cleanup_tasks_periodically())
+    
+    # ЗАПУСК ЗАДАЧИ ТРИАЛОВ
+    trial_task = asyncio.create_task(check_trials_periodically(bot)) 
+    logger.info("✅ Фоновые задачи запущены.")
+
+    try:
+        yield
+    finally:
+        # ... (отмена задач) ...
+        trial_task.cancel()
+        # ...
+
 async def check_premium_expiry_periodically():
     while True:
         try:
