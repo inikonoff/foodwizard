@@ -19,7 +19,12 @@ async def track_safely(user_id: int, event_name: str, data: dict = None):
 
 async def handle_favorite_pagination(callback: CallbackQuery):
     user_id = callback.from_user.id
-    lang = (await users_repo.get_user(user_id)).get('language_code', 'ru')
+    user_data = await users_repo.get_user(user_id)
+    lang = user_data.get('language_code', 'en')
+    
+    # ПРИМЕЧАНИЕ: Мы разрешаем просмотр избранного всем.
+    # Ограничение только на ДОБАВЛЕНИЕ новых (см. handle_add_to_favorites).
+    
     try: page = int(callback.data.split('_')[2])
     except: page = 1
     
@@ -51,14 +56,14 @@ async def handle_view_favorite(callback: CallbackQuery):
         fav_id = int(callback.data.split('_')[2])
         recipe = await favorites_repo.get_favorite_by_id(fav_id)
         if not recipe:
-            await callback.answer("Рецепт не найден")
+            await callback.answer("Not found")
             return
         text = f"🍳 <b>{recipe['dish_name']}</b>\n\n{recipe['recipe_text']}\n\n🛒 <i>{recipe.get('ingredients', '')}</i>"
         builder = InlineKeyboardBuilder()
-        builder.row(InlineKeyboardButton(text="🗑 Удалить", callback_data=f"delete_fav_id_{fav_id}"))
-        builder.row(InlineKeyboardButton(text="🔙 К списку", callback_data="fav_page_1"))
+        builder.row(InlineKeyboardButton(text="🗑", callback_data=f"delete_fav_id_{fav_id}"))
+        builder.row(InlineKeyboardButton(text="🔙", callback_data="fav_page_1"))
         await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="HTML")
-    except: await callback.answer("Ошибка")
+    except: await callback.answer("Error")
 
 async def handle_delete_favorite_by_id(callback: CallbackQuery):
     user_id = callback.from_user.id
@@ -66,24 +71,24 @@ async def handle_delete_favorite_by_id(callback: CallbackQuery):
         fav_id = int(callback.data.split('_')[3])
         fav = await favorites_repo.get_favorite_by_id(fav_id)
         if fav and await favorites_repo.remove_favorite(user_id, fav['dish_name']):
-            await callback.answer("Удалено")
+            await callback.answer("Deleted")
             callback.data = "fav_page_1"
             await handle_favorite_pagination(callback)
-        else: await callback.answer("Ошибка")
-    except: await callback.answer("Ошибка")
+        else: await callback.answer("Error")
+    except: await callback.answer("Error")
 
-# --- ДОБАВЛЕНИЕ С МЯГКИМ ЛИМИТОМ ---
+# --- ДОБАВЛЕНИЕ (С МЯГКИМ ЛИМИТОМ) ---
 async def handle_add_to_favorites(callback: CallbackQuery):
     user_id = callback.from_user.id
     user_data = await users_repo.get_user(user_id)
-    lang = user_data.get('language_code', 'ru')
+    lang = user_data.get('language_code', 'en')
     is_premium = user_data.get('is_premium', False)
 
     try:
-        # Проверка лимита для Free (мягкая монетизация)
+        # 1. ПРОВЕРКА ЛИМИТА
         if not is_premium:
             current_count = await favorites_repo.count_favorites(user_id)
-            if current_count >= FREE_USER_LIMITS["max_favorites"]:
+            if current_count >= FREE_USER_LIMITS["max_favorites"]: # 3
                 await callback.answer(get_text(lang, "limit_favorites_exceeded"), show_alert=True)
                 return
 
@@ -93,11 +98,11 @@ async def handle_add_to_favorites(callback: CallbackQuery):
         selected = current if current else (dishes[dish_index] if dishes else None)
         
         if not selected:
-            await callback.answer("Ошибка данных")
+            await callback.answer("Error: Dish not found")
             return
             
         dish_name = selected.get('name')
-        text = state_manager.get_current_recipe_text(user_id) or f"Рецепт: {dish_name}"
+        text = state_manager.get_current_recipe_text(user_id) or f"Recipe: {dish_name}"
         
         fav = FavoriteRecipe(
             user_id=user_id, dish_name=dish_name, recipe_text=text,
@@ -108,12 +113,12 @@ async def handle_add_to_favorites(callback: CallbackQuery):
         if await favorites_repo.add_favorite(fav):
             await callback.answer(get_text(lang, "favorite_added").format(dish_name=dish_name))
             await update_favorite_button(callback, dish_index, True, lang)
-        else: await callback.answer("Ошибка")
-    except: await callback.answer("Ошибка")
+        else: await callback.answer("Error")
+    except: await callback.answer("Error")
 
 async def handle_remove_from_favorites(callback: CallbackQuery):
     user_id = callback.from_user.id
-    lang = (await users_repo.get_user(user_id)).get('language_code', 'ru')
+    lang = (await users_repo.get_user(user_id)).get('language_code', 'en')
     try:
         dish_index = int(callback.data.split('_')[2])
         dishes = state_manager.get_generated_dishes(user_id)
@@ -123,8 +128,8 @@ async def handle_remove_from_favorites(callback: CallbackQuery):
         if dish_name and await favorites_repo.remove_favorite(user_id, dish_name):
             await callback.answer(get_text(lang, "favorite_removed").format(dish_name=dish_name))
             await update_favorite_button(callback, dish_index, False, lang)
-        else: await callback.answer("Ошибка")
-    except: await callback.answer("Ошибка")
+        else: await callback.answer("Error")
+    except: await callback.answer("Error")
 
 async def update_favorite_button(callback: CallbackQuery, dish_index: int, is_fav: bool, lang: str):
     try:
