@@ -3,7 +3,7 @@ from typing import Optional
 from pydantic import BaseModel
 from datetime import datetime
 
-# Перечисление языков
+# --- ЯЗЫКИ ---
 class UserLanguage(str, Enum):
     RU = "ru"
     EN = "en"
@@ -12,7 +12,7 @@ class UserLanguage(str, Enum):
     IT = "it"
     ES = "es"
 
-# Перечисление категорий (Важно для favorites.py)
+# --- КАТЕГОРИИ БЛЮД ---
 class Category(str, Enum):
     SOUP = "soup"
     MAIN = "main"
@@ -23,7 +23,15 @@ class Category(str, Enum):
     SNACK = "snack"
     UNKNOWN = "unknown"
 
-# Модель для избранного рецепта
+# --- МОДЕЛИ ПОЛЬЗОВАТЕЛЕЙ (ВОТ ЧЕГО НЕ ХВАТАЛО) ---
+class UserBase(BaseModel):
+    user_id: int
+    first_name: str
+    username: Optional[str] = None
+    language_code: str = "en"
+    is_premium: bool = False
+
+# --- МОДЕЛИ РЕЦЕПТОВ ---
 class FavoriteRecipe(BaseModel):
     user_id: int
     dish_name: str
