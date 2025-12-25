@@ -299,4 +299,17 @@ def register_common_handlers(dp: Dispatcher):
     dp.message.register(cmd_stats, Command("stats"))
     dp.message.register(cmd_admin, Command("admin"))
     
-    dp.callback_query.registe
+    dp.callback_query.register(handle_change_language, F.data == "change_language")
+    dp.callback_query.register(handle_set_language, F.data.startswith("set_lang_"))
+    dp.callback_query.register(handle_show_favorites, F.data == "show_favorites")
+    dp.callback_query.register(handle_show_help, F.data == "show_help")
+    dp.callback_query.register(handle_main_menu, F.data == "main_menu")
+    dp.callback_query.register(handle_noop, F.data == "noop")
+    
+    dp.callback_query.register(handle_buy_premium, F.data == "buy_premium")
+    dp.callback_query.register(handle_premium_1_month, F.data == "premium_1_month")
+    dp.callback_query.register(handle_premium_3_months, F.data == "premium_3_months")
+    dp.callback_query.register(handle_premium_1_year, F.data == "premium_1_year")
+    
+    dp.pre_checkout_query.register(on_pre_checkout_query)
+    dp.message.register(on_successful_payment, F.content_type == ContentType.SUCCESSFUL_PAYMENT)
