@@ -1,11 +1,11 @@
 import logging
-from datetime import datetime
+import re
+from datetime import datetime, timezone # <--- ДОБАВЛЕН timezone
 from aiogram import Dispatcher, F
 from aiogram.filters import Command
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton, LabeledPrice, PreCheckoutQuery, ContentType
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram import html
-import re
 
 from database.users import users_repo
 from database.favorites import favorites_repo
@@ -42,19 +42,40 @@ async def cmd_start(message: Message):
     first_name = message.from_user.first_name or "User"
     username = message.from_user.username
     
+    # 1. Создаем пользователя
     user_data = await users_repo.get_or_create(user_id, first_name, username)
-    lang = user_data.get('language_code', 'en')
+    
+    # 2. Определяем язык (по дефолту en)
+    lang = user_data.get('language_code', 'en') 
+    is_premium = user_data.get('is_premium', False)
     
     welcome_text = safe_format_text(get_text(lang, "welcome", name=html.quote(first_name)))
+    
+    # 3. Отправляем приветствие
     await message.answer(welcome_text, parse_mode="HTML")
     await track_safely(user_id, "start_command", {"language": lang})
     
-    # ПОДАРОК НОВИЧКУ
+    # 4. ЛОГИКА ПОДАРКА (ИСПРАВЛЕННАЯ)
+    # Проверяем статус 'pending'
     if user_data.get('trial_status') == 'pending':
         created_at = user_data.get('created_at')
         if created_at:
-            now = datetime.now(created_at.tzinfo)
-            if (now - created_at).total_seconds() < 60:
+            # Если база вернула время без таймзоны (naive), считаем что это UTC
+            if created_at.tzinfo is None:
+                created_at = created_at.replace(tzinfo=timezone.utc)
+            
+            # Текущее время тоже берем строго в UTC
+            now = datetime.now(timezone.utc)
+            
+            # Считаем разницу
+            diff = (now - created_at).total_seconds()
+            
+            # Лог для отладки (будет видно в консоли Render, если не сработает)
+            logger.info(f"User {user_id} created {diff}s ago. (Status: pending)")
+
+            # Увеличим окно до 120 секунд (2 минуты) на всякий случай
+            # Используем abs(diff), чтобы защититься от рассинхрона времени серверов
+            if abs(diff) < 120:
                 await asyncio.sleep(2)
                 gift_text = safe_format_text(get_text(lang, "welcome_gift_alert"))
                 await message.answer(gift_text, parse_mode="HTML")
@@ -79,7 +100,10 @@ async def handle_main_menu(callback: CallbackQuery):
 # --- FAVORITES ---
 async def cmd_favorites(message: Message):
     user_id = message.from_user.id
-    lang = (await users_repo.get_user(user_id)).get('language_code', 'en')
+    # Гарантируем EN если не найдено
+    user = await users_repo.get_user(user_id)
+    lang = user.get('language_code', 'en') if user else 'en'
+    
     favorites, pages = await favorites_repo.get_favorites_page(user_id, 1)
     
     if not favorites:
@@ -105,7 +129,8 @@ async def handle_show_favorites(c):
 # --- LANG ---
 async def cmd_lang(m): 
     uid = m.from_user.id
-    lang = (await users_repo.get_user(uid)).get('language_code', 'en')
+    user = await users_repo.get_user(uid)
+    lang = user.get('language_code', 'en') if user else 'en'
     b = InlineKeyboardBuilder()
     for l in SUPPORTED_LANGUAGES:
         lbl = get_text(lang, f"lang_{l}")
@@ -130,7 +155,8 @@ async def handle_set_language(c: CallbackQuery):
 # --- HELP ---
 async def cmd_help(m):
     uid = m.from_user.id
-    lang = (await users_repo.get_user(uid)).get('language_code', 'en')
+    user = await users_repo.get_user(uid)
+    lang = user.get('language_code', 'en') if user else 'en'
     t = safe_format_text(get_text(lang, 'help_title'))
     tx = safe_format_text(get_text(lang, 'help_text'))
     b = InlineKeyboardBuilder()
@@ -143,11 +169,10 @@ async def handle_show_help(c): await cmd_help(c.message)
 # --- CODE / ADMIN / STATS ---
 async def cmd_code(message: Message):
     user_id = message.from_user.id
-    user_data = await users_repo.get_user(user_id)
-    lang = user_data.get('language_code', 'en')
+    user = await users_repo.get_user(user_id)
+    lang = user.get('language_code', 'en') if user else 'en'
     args = message.text.split()
     if len(args) < 2:
-        # Выводим инструкцию вместо кода
         instr = get_text(lang, "promo_instruction")
         if not instr: instr = "Example: <code>/code PROMO123</code>"
         await message.answer(instr, parse_mode="HTML")
@@ -166,7 +191,8 @@ async def cmd_stats(m):
     uid = m.from_user.id
     st = await users_repo.get_usage_stats(uid)
     if not st: return
-    lang = (await users_repo.get_user(uid)).get('language_code', 'en')
+    user = await users_repo.get_user(uid)
+    lang = user.get('language_code', 'en') if user else 'en'
     stat = "💎 PREMIUM" if st['is_premium'] else "👤 FREE"
     t = f"📊 <b>Statistics</b>\n\n{stat}\n📝 Text: {st['text_requests_used']}/{st['text_requests_limit']}\n🎤 Voice: {st['voice_requests_used']}/{st['voice_requests_limit']}"
     b = InlineKeyboardBuilder()
@@ -182,7 +208,8 @@ async def handle_noop(c): await c.answer()
 # --- ОПЛАТА ---
 async def handle_buy_premium(c: CallbackQuery):
     uid = c.from_user.id
-    lang = (await users_repo.get_user(uid)).get('language_code', 'en')
+    user = await users_repo.get_user(uid)
+    lang = user.get('language_code', 'en') if user else 'en'
     b = InlineKeyboardBuilder()
     b.row(InlineKeyboardButton(text="1 Mon - 100 ⭐️", callback_data="premium_1_month"))
     b.row(InlineKeyboardButton(text="3 Mon - 250 ⭐️ (-17%)", callback_data="premium_3_months"))
@@ -193,23 +220,21 @@ async def handle_buy_premium(c: CallbackQuery):
     await c.answer()
 
 async def handle_premium_1_month(c):
-    await c.message.answer_invoice("Premium (1 mon)", "30 days", "premium_30_days", "", "XTR", [LabeledPrice(label="1", amount=100)])
+    await c.message.answer_invoice("Premium (1 month)", "30 days full access", "premium_30_days", "", "XTR", [LabeledPrice(label="1 month", amount=100)])
     await c.answer()
 async def handle_premium_3_months(c):
-    await c.message.answer_invoice("Premium (3 mon)", "90 days", "premium_90_days", "", "XTR", [LabeledPrice(label="3", amount=250)])
+    await c.message.answer_invoice("Premium (3 months)", "90 days full access", "premium_90_days", "", "XTR", [LabeledPrice(label="3 months", amount=250)])
     await c.answer()
 async def handle_premium_1_year(c):
-    await c.message.answer_invoice("Premium (1 yr)", "365 days", "premium_365_days", "", "XTR", [LabeledPrice(label="1", amount=800)])
+    await c.message.answer_invoice("Premium (1 year)", "365 days full access", "premium_365_days", "", "XTR", [LabeledPrice(label="1 year", amount=800)])
     await c.answer()
 
 async def on_pre_checkout_query(q): await q.answer(ok=True)
 
-# !!! ОБНОВЛЕННАЯ ФУНКЦИЯ: ТЕПЕРЬ С УВЕДОМЛЕНИЕМ АДМИНА !!!
 async def on_successful_payment(message: Message):
     payment_info = message.successful_payment
     payload = payment_info.invoice_payload
     user_id = message.from_user.id
-    user = message.from_user
     
     days = 30
     if "90" in payload: days = 90
@@ -217,32 +242,25 @@ async def on_successful_payment(message: Message):
     
     success = await users_repo.activate_premium(user_id, days)
     if success:
-        # Уведомляем пользователя
-        lang = (await users_repo.get_user(user_id)).get('language_code', 'en')
+        user = await users_repo.get_user(user_id)
+        lang = user.get('language_code', 'en') if user else 'en'
         kb = get_main_menu_keyboard(lang, True)
         await message.answer(f"🌟 <b>Success!</b> Premium for {days} days activated.", reply_markup=kb, parse_mode="HTML")
         await track_safely(user_id, "payment_success", {"amount": payment_info.total_amount, "currency": "XTR", "days": days})
 
-        # --- БЛОК УВЕДОМЛЕНИЯ АДМИНОВ ---
-        # Формируем сообщение
-        user_name = html.quote(user.full_name)
-        username = f"(@{user.username})" if user.username else ""
+        # Уведомление АДМИНА
+        user_name = html.quote(message.from_user.full_name)
+        username = f"(@{message.from_user.username})" if message.from_user.username else ""
         alert_text = (
-            f"💰 <b>НОВАЯ ПРОДАЖА!</b>\n\n"
+            f"💰 <b>NEW SALE!</b>\n\n"
             f"👤 User: {user_name} {username}\n"
             f"🆔 ID: <code>{user_id}</code>\n"
             f"📅 Plan: {days} days\n"
             f"💸 Amount: {payment_info.total_amount} XTR"
         )
-        
-        # Рассылаем всем админам
         for admin_id in ADMIN_IDS:
-            try:
-                await message.bot.send_message(admin_id, alert_text, parse_mode="HTML")
-            except Exception as e:
-                # Админ мог заблокировать бота, не роняем программу
-                logger.warning(f"Failed to notify admin {admin_id}: {e}")
-
+            try: await message.bot.send_message(admin_id, alert_text, parse_mode="HTML")
+            except Exception: pass
     else:
         logger.error(f"Paid but not activated! User: {user_id}")
         await message.answer("Error activating. Contact support.")
