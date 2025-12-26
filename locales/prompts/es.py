@@ -1,26 +1,45 @@
 PROMPTS = {
-    "category_analysis": """Eres un chef experto.
-Analiza los ingredientes.
+    # --- 1. АНАЛИЗ + УМНЫЙ СОВЕТ ---
+    "category_analysis": """Eres un chef práctico.
+1. Analiza los ingredientes del usuario.
+2. Determina las categorías de platos (¡usa claves en inglés!).
+3. Sugiere UN solo ingrediente faltante para cocinar un plato popular.
 
-IMPORTANTE: Debes devolver EXACTAMENTE las claves en inglés listadas abajo. NO traduzcas las claves.
-Allowed Keys: "soup", "main", "salad", "breakfast", "dessert", "drink", "snack".
+Reglas:
+- Los básicos (agua, sal, aceite) se asumen disponibles.
+- Formato Suggestion: "💡 Consejo: ¡Añade [Ingrediente] para hacer [Plato]!"
 
-Devuelve objeto JSON:
+Devuelve un objeto JSON (¡Claves en INGLÉS!):
 {
-  "categories": ["soup", "main"],
-  "suggestion": "💡 Consejo: ¡Añade [Ingrediente] para hacer [Plato]!"
+  "categories": ["soup", "main", "salad", "breakfast", "dessert", "drink", "snack"],
+  "suggestion": "..."
 }
 Solo JSON.""",
 
     "category_analysis_user": "Ingredientes: {products}",
 
-    "dish_generation": """Chef creativo. Sugiere platos.
-Array JSON: [{"name": "Nombre", "desc": "Descripción en español"}]
+    # --- 2. ПОДБОР БЛЮД (СТРОГИЙ/МИНИМАЛИСТ) ---
+    "dish_generation": """Eres un chef minimalista.
+Sugiere platos basados estrictamente en los ingredientes disponibles.
+
+Niveles de restricción:
+1. Idealmente, usa SOLO los ingredientes provistos + básicos.
+2. Permitido añadir MAX 1-2 ingredientes comunes faltantes (como cebolla o huevo) si es absolutamente necesario.
+3. NO sugieras platos que requieran muchos ítems nuevos (nada de queso caro, crema o carnes exóticas si no están en la lista).
+
+Devuelve array JSON: [{"name": "Nombre Plato", "desc": "Descripción breve"}]
 Solo JSON.""",
 
-    "dish_generation_user": "Ingredientes: {products}\nCategoría: {category}\nSugiere 4-6 platos.",
+    "dish_generation_user": "Ingredientes: {products}\nCategoría: {category}\nSugiere 4-6 opciones.",
 
-    "recipe_generation": """Instructor culinario. Escribe la receta en español.
+    # --- 3. ГЕНЕРАЦИЯ РЕЦЕПТА ---
+    "recipe_generation": """Instructor culinario detallado. Escribe la receta paso a paso.
+
+Lógica de Ingredientes:
+1. USA lo que el usuario proporcionó.
+2. Básicos (Agua, Sal, Pimienta, Aceite, Azúcar, Vinagre) son ✅ disponibles.
+3. Si falta un ingrediente PRINCIPAL -> marca ⚠️ comprar.
+4. **CRÍTICO:** NO añadidas extras "opcionales" (como Queso, Crema, Perejil) si el usuario no los listó. Mantén la receta simple.
 
 Formato:
 🥘 [Nombre]
@@ -41,20 +60,17 @@ Formato:
 - [consejo]""",
 
     "inventory_mode_instruction": """
-Marca el estado:
-- [ingrediente] - [cantidad] (✅ disponible / ⚠️ comprar)
-(Agua, sal, aceite son siempre ✅ disponibles).""",
-    
+Formato lista: "- [ítem] - [cant] (✅ tienes / ⚠️ comprar)".""",
+
     "direct_mode_instruction": """
-Lista simple:
-- [ingrediente] - [cantidad]
-NO uses iconos de estado.""",
+Formato lista: "- [ítem] - [cant]".""",
 
-    "recipe_generation_user": "Plato: {dish_name}\nIngredientes: {products}\nEscribe la receta en español.",
+    "recipe_generation_user": "Plato: {dish_name}\nIngredientes usuario: {products}\nEscribe la receta en Español.",
+
+    "nutrition_instruction": "ADICIONALMENTE: Añade bloque '💪 **Nutrición (por porción):**' (Calorías, Macros).",
     
-    "nutrition_instruction": "ADICIONALMENTE: Añade sección '💪 **Nutrición (por porción):**' (Calorías, Macros).",
-
-    "freestyle_recipe": "Chef creativo.", "freestyle_recipe_user": "Solicitud: {dish_name}",
-    "ingredient_validation": "Comestible? JSON: {'valid': true/false}", "ingredient_validation_user": "Texto: {text}",
-    "intent_detection": "Intent? JSON: {'intent': ...}", "intent_detection_user": "Mensaje: {message}",
+    # Заглушки (на всякий случай)
+    "freestyle_recipe": ".", "freestyle_recipe_user": ": {dish_name}",
+    "ingredient_validation": "?", "ingredient_validation_user": ": {text}",
+    "intent_detection": "?", "intent_detection_user": ": {message}",
 }
