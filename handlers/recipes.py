@@ -19,74 +19,89 @@ async def track_safely(user_id: int, event_name: str, data: dict = None):
 
 def safe_format_recipe_text(text: str) -> str:
     if not text: return ""
-    # Удаляем ** перед экранированием, чтобы сохранить жирный шрифт при конвертации
-    # Но надежнее сначала экранировать < >, а потом работать с Markdown
     text = html.quote(text)
-    
-    # Заголовки (###)
+    # Заголовки (### Заголовок)
     text = re.sub(r'#{1,6}\s*(.*?)$', r'<b>\1</b>', text, flags=re.MULTILINE)
     # Жирный (**text**)
     text = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', text, flags=re.DOTALL)
-    # Альт. жирный (__text__)
+    # Альтернативный жирный (__text__)
     text = re.sub(r'__(.*?)__', r'<b>\1</b>', text, flags=re.DOTALL)
-    # Курсив (*text*)
+    # Курсив (*text*) - проверка, чтобы не ломать жирный
     text = re.sub(r'(?<!\*)\*(?!\*)(.*?)(?<!\*)\*(?!\*)', r'<i>\1</i>', text, flags=re.DOTALL)
     # Списки
     text = re.sub(r'^\s*[\-\*]\s+', r'• ', text, flags=re.MULTILINE)
-    # Код
+    # Моноширинный (`code`)
     text = re.sub(r'`(.*?)`', r'<code>\1</code>', text, flags=re.DOTALL)
-    
     return text
 
+# --- МУЛЬТИЯЗЫЧНАЯ ПРОВЕРКА НА ПРЯМОЙ ЗАПРОС ---
 def parse_direct_request(text: str) -> str | None:
     """
-    Расширенная проверка триггеров для прямых команд на 6 языках.
+    Проверяет, является ли текст командой (на EN, DE, FR, IT, ES).
+    Вырезает мусорные слова (артикли, предлоги) и возвращает название блюда.
     """
     text = text.strip()
     lower_text = text.lower()
     
-    # Список триггеров (без пробелов в конце, пробелы проверим кодом)
+    # Расширенный список триггеров
     triggers = [
-        # RU
-        "рецепт", "дай рецепт", "дайте рецепт", "приготовь", "хочу", "как приготовить", "сделай",
-        
-        # EN
-        "recipe", "give recipe", "give me", "make", "cook", "how to cook", "i want", "show me", "create",
-        
-        # DE
+        # ENGLISH
+        "recipe", "give me", "give", "make", "cook", "how to cook", "i want", "create", "show me",
+        # GERMAN
         "rezept", "gib mir", "zeig mir", "koch", "koche", "wie kocht man", "ich will", "zubereiten",
-        
-        # FR (добавлены вариации)
-        "recette", "donne-moi", "donne moi", "donnez-moi", "donnez moi", 
-        "cuisine", "cuisiner", "je veux", "comment faire", "comment cuisiner", "préparer",
-        
-        # IT
-        "ricetta", "dammi", "dimmi", "cucina", "cucinare", "voglio", "come fare", "prepara",
-        
-        # ES
-        "receta", "dame", "cocina", "cocinar", "quiero", "como hacer", "preparar"
+        # FRENCH ("Donne-moi" добавлено!)
+        "recette", "donne-moi", "donne moi", "donnez-moi", "donnez moi", "cuisine", "cuisiner", 
+        "je veux", "comment faire", "comment cuisiner", "préparer", "faire",
+        # ITALIAN
+        "ricetta", "dammi", "dimmi", "cucina", "cucinare", "voglio", "vorrei", "come fare", "prepara",
+        # SPANISH
+        "receta", "dame", "cocina", "cocinar", "quiero", "como hacer", "preparar", "dame una"
     ]
     
-    # Убираем знаки препинания в начале (", дай...")
+    # Очищаем начало строки от знаков
     clean_text = lower_text.lstrip(".,!?¡¿- ")
     
     for trigger in triggers:
-        # Проверяем "Триггер " (с пробелом)
-        if clean_text.startswith(trigger + " "):
-            # Нашли! Берем остаток строки из ОРИГИНАЛЬНОГО текста (сохраняя регистр названия блюда)
-            # Вычисляем смещение начала блюда
-            start_index = text.lower().find(trigger) + len(trigger)
-            dish_candidate = text[start_index:].strip(" .,!?")
+        # Проверяем, начинается ли текст с триггера
+        if clean_text.startswith(trigger):
             
-            # Дополнительная чистка предлогов (для "recipe OF...", "recette DE...")
-            # Удаляем 'for ', 'of ', 'für ', 'de ', 'di ', 'del ', 'para ', 'por ' в начале
-            dish_candidate = re.sub(r'^(for|of|für|de|du|des|di|del|para|por)\s+', '', dish_candidate, flags=re.IGNORECASE)
+            # Находим, где кончается триггер
+            start_index = clean_text.find(trigger) + len(trigger)
+            # Отрезаем триггер, получаем "остаток" (например: " une recette de boeuf")
+            remaining = clean_text[start_index:].strip()
             
-            return dish_candidate
+            # --- ЧИСТКА "МУСОРНЫХ" СЛОВ ---
+            # Удаляем артикли и предлоги в начале блюда, чтобы не искать рецепт "a pizza" или "une pizza"
+            # EN: a, an, the, for, of
+            # FR: un, une, le, la, les, du, de, des, pour
+            # DE: ein, eine, der, die, das, für, von
+            # ES: un, una, el, la, los, las, para, de
+            # IT: un, una, il, la, lo, per, di
+            
+            junk_pattern = r'^(a|an|the|for|of|about|' \
+                           r'un|une|le|la|les|l\'|du|de|des|pour|' \
+                           r'ein|eine|einen|der|die|das|für|von|' \
+                           r'el|los|las|para|' \
+                           r'il|lo|per|di)\s+'
+            
+            # Чистим (флаг IGNORECASE уже учтен, т.к. работаем с lower_text)
+            dish_name = re.sub(junk_pattern, '', remaining)
+            
+            # Также удаляем слово "recette"/"recipe" повторно, если фраза была "Donne moi une recette de..."
+            # Триггер "donne-moi" съел первую часть, осталось "une recette de..."
+            if dish_name.startswith("recipe ") or dish_name.startswith("recette ") or \
+               dish_name.startswith("rezept ") or dish_name.startswith("ricetta ") or dish_name.startswith("receta "):
+                   dish_name = dish_name.split(' ', 1)[1] # Отрезаем первое слово
+                   # И снова чистим предлоги (of, de, ...)
+                   dish_name = re.sub(junk_pattern, '', dish_name.strip())
+
+            # Если после всех чисток что-то осталось — это и есть блюдо!
+            if dish_name and len(dish_name) > 1:
+                return dish_name.rstrip('.?!')
 
     return None
 
-
+# --- ГЕНЕРАЦИЯ И ОТПРАВКА ---
 async def generate_and_send_recipe(message_or_callback, user_id, dish_name, products, lang, is_direct=False):
     try:
         user_data = await users_repo.get_user(user_id)
@@ -97,7 +112,6 @@ async def generate_and_send_recipe(message_or_callback, user_id, dish_name, prod
         if isinstance(message_or_callback, Message): wait_msg = await msg_obj.answer(get_text(lang, "processing"))
         else: wait_msg = await msg_obj.edit_text(get_text(lang, "processing"))
             
-        # Генерация (передаем is_direct для отключения галочек ингредиентов)
         recipe = await groq_service.generate_recipe(dish_name, products, lang, user_id, is_premium, is_direct)
         await wait_msg.delete()
 
@@ -114,7 +128,7 @@ async def generate_and_send_recipe(message_or_callback, user_id, dish_name, prod
             "type": "direct" if is_direct else "selection"
         })
         
-        # ХАК ДЛЯ ПРЯМЫХ ЗАПРОСОВ (Для работы кнопок)
+        # ХАК ДЛЯ ПРЯМЫХ ЗАПРОСОВ (Чтобы кнопки работали с индексом 0)
         if is_direct:
             fake_dishes = [{"name": dish_name, "category": "direct"}]
             state_manager.set_generated_dishes(user_id, fake_dishes)
@@ -122,14 +136,11 @@ async def generate_and_send_recipe(message_or_callback, user_id, dish_name, prod
             dish_index = 0
         else:
              dishes = state_manager.get_generated_dishes(user_id) or []
-             # Ищем блюдо в списке по названию
-             dish_index = 0
-             for i, d in enumerate(dishes):
-                 if d.get('name') == dish_name:
-                     dish_index = i
-                     state_manager.set_current_dish(user_id, d)
-                     break
+             dish_index = next((i for i, d in enumerate(dishes) if d['name'] == dish_name), 0)
+             if dishes and dish_index < len(dishes):
+                  state_manager.set_current_dish(user_id, dishes[dish_index])
         
+        # Кнопки
         is_favorite = await favorites_repo.is_favorite(user_id, dish_name)
         builder = InlineKeyboardBuilder()
         
@@ -141,11 +152,10 @@ async def generate_and_send_recipe(message_or_callback, user_id, dish_name, prod
         if is_direct:
             builder.row(InlineKeyboardButton(text=get_text(lang, "btn_restart"), callback_data="restart"))
         else:
-            back_data = "back_to_categories"
             another_cb = message_or_callback.data if isinstance(message_or_callback, CallbackQuery) else "restart"
             builder.row(
                 InlineKeyboardButton(text=get_text(lang, "btn_another"), callback_data=another_cb),
-                InlineKeyboardButton(text=get_text(lang, "btn_back"), callback_data=back_data)
+                InlineKeyboardButton(text=get_text(lang, "btn_back"), callback_data="back_to_categories")
             )
         
         await msg_obj.answer(final_recipe_text, reply_markup=builder.as_markup(), parse_mode="HTML")
@@ -161,7 +171,6 @@ async def generate_and_send_recipe(message_or_callback, user_id, dish_name, prod
 async def handle_text_message(message: Message):
     user_id = message.from_user.id
     text = message.text.strip()
-    
     user_data = await users_repo.get_user(user_id)
     lang = user_data.get('language_code', 'en') # Default EN
     
@@ -173,30 +182,26 @@ async def handle_text_message(message: Message):
     direct_dish = parse_direct_request(text)
     
     if direct_dish:
-        # Это прямой запрос
+        # Это команда! "Boeuf bourguignon"
         state_manager.set_products(user_id, "") 
         await generate_and_send_recipe(message, user_id, direct_dish, "", lang, is_direct=True)
         return
 
-    # 2. ОБЫЧНЫЙ СПИСОК ПРОДУКТОВ
+    # 2. СПИСОК ПРОДУКТОВ (если не сработало выше)
     state_manager.set_products(user_id, text)
     wait_msg = await message.answer(get_text(lang, "processing"))
     
     try:
-        # Анализ (dict)
         analysis_result = await groq_service.analyze_products(text, lang, user_id)
         await wait_msg.delete()
         
-        # Разбор результата
         if not analysis_result or not analysis_result.get("categories"):
-            # Не смогли выделить категории
             await track_safely(user_id, "category_analysis_failed", {"products": text})
             await message.answer(get_text(lang, "error_not_enough_products"))
             return
         
         categories = analysis_result["categories"]
         suggestion = analysis_result.get("suggestion")
-        
         state_manager.set_categories(user_id, categories)
         
         if suggestion:
@@ -206,14 +211,8 @@ async def handle_text_message(message: Message):
         for category in categories:
             builder.row(InlineKeyboardButton(text=get_text(lang, category), callback_data=f"cat_{category}"))
         builder.row(InlineKeyboardButton(text=get_text(lang, "btn_restart"), callback_data="restart"))
-        
         await message.answer(get_text(lang, "choose_category"), reply_markup=builder.as_markup())
-        
-    except Exception as e:
-        logger.error(f"Analysis error: {e}")
-        await message.answer(get_text(lang, "error_generation"))
-
-# ... (Остальные методы: handle_category_selection, dish_selection, back, register - без изменений) ...
+    except: await message.answer(get_text(lang, "error_generation"))
 
 async def handle_category_selection(callback: CallbackQuery):
     user_id = callback.from_user.id
@@ -235,7 +234,7 @@ async def handle_category_selection(callback: CallbackQuery):
         for i, dish in enumerate(dishes):
             builder.row(InlineKeyboardButton(text=f"{dish.get('name')}", callback_data=f"dish_{i}"))
         builder.row(InlineKeyboardButton(text=get_text(lang, "btn_back"), callback_data="back_to_categories"))
-        await callback.message.answer(get_text(lang, "choose_dish").format(category=get_text(lang, category)), reply_markup=builder.as_markup())
+        await callback.message.answer(get_text(lang, "choose_dish"), reply_markup=builder.as_markup())
     except: await callback.message.answer(get_text(lang, "error_generation"))
 
 async def handle_dish_selection(callback: CallbackQuery):
@@ -251,9 +250,14 @@ async def handle_dish_selection(callback: CallbackQuery):
         state_manager.set_current_dish(user_id, dish)
         await callback.answer()
         
-        # Вызов генерации (Обычный)
-        await generate_and_send_recipe(callback, user_id, dish.get('name'), state_manager.get_products(user_id), lang, is_direct=False)
-        
+        await generate_and_send_recipe(
+            message_or_callback=callback,
+            user_id=user_id,
+            dish_name=dish.get('name'),
+            products=state_manager.get_products(user_id),
+            lang=lang,
+            is_direct=False
+        )
     except: await callback.message.answer(get_text(lang, "error_generation"))
 
 async def handle_back_to_categories(callback: CallbackQuery):
