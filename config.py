@@ -11,7 +11,7 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 # Админы (пустой список для тестов)
-ADMIN_IDS: List[int] = [] 
+ADMIN_IDS = [7201211546] 
 
 SECRET_PROMO_CODE = os.getenv("SECRET_PROMO_CODE", "FOOD2025")
 
