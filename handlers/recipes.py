@@ -73,7 +73,17 @@ async def generate_and_send_recipe(message_or_callback, user_id, dish_name, prod
             
         # Calling Groq Service
         recipe = await groq_service.generate_recipe(dish_name, products, lang, user_id, is_premium, is_direct)
-        await wait_msg.delete()
+        if not recipe or recipe.strip() == "":
+            await wait_msg.delete()
+            # Используем existing msg object
+            target = message_or_callback if isinstance(message_or_callback, Message) else message_or_callback.message
+            await target.answer(get_text(lang, "recipe_error"))
+            return
+
+        final_text = safe_format_recipe_text(recipe)
+        state_manager.set_current_recipe_text(user_id, final_text)
+
+        await track_safely(user_id, "recipe_generated", {"dish": dish_name})
 
         # Check refusal
         if get_text(lang, "safety_refusal") in recipe:
@@ -93,36 +103,25 @@ async def generate_and_send_recipe(message_or_callback, user_id, dish_name, prod
             dish_index = 0
         else:
              dishes = state_manager.get_generated_dishes(user_id) or []
-             dish_index = 0
-             for i, d in enumerate(dishes):
-                 if d.get('name') == dish_name:
-                     dish_index = i
-                     state_manager.set_current_dish(user_id, d)
-                     break
+             dish_index = next((i for i, d in enumerate(dishes) if d.get('name') == dish_name), 0)
         
-        # Build Keyboard
         is_favorite = await favorites_repo.is_favorite(user_id, dish_name)
-        builder = InlineKeyboardBuilder()
+        b = InlineKeyboardBuilder()
+        if is_favorite: b.row(InlineKeyboardButton(text=get_text(lang, "btn_remove_from_fav"), callback_data=f"remove_fav_{dish_index}"))
+        else: b.row(InlineKeyboardButton(text=get_text(lang, "btn_add_to_fav"), callback_data=f"add_fav_{dish_index}"))
         
-        if is_favorite:
-            builder.row(InlineKeyboardButton(text=get_text(lang, "btn_remove_from_fav"), callback_data=f"remove_fav_{dish_index}"))
+        if is_direct: b.row(InlineKeyboardButton(text=get_text(lang, "btn_restart"), callback_data="restart"))
         else:
-            builder.row(InlineKeyboardButton(text=get_text(lang, "btn_add_to_fav"), callback_data=f"add_fav_{dish_index}"))
+            prev = message_or_callback.data if isinstance(message_or_callback, CallbackQuery) else "restart"
+            b.row(InlineKeyboardButton(text=get_text(lang, "btn_another"), callback_data=prev),
+                  InlineKeyboardButton(text=get_text(lang, "btn_back"), callback_data="back_to_categories"))
         
-        if is_direct:
-            builder.row(InlineKeyboardButton(text=get_text(lang, "btn_restart"), callback_data="restart"))
-        else:
-            back_data = "back_to_categories"
-            another_cb = message_or_callback.data if isinstance(message_or_callback, CallbackQuery) else "restart"
-            builder.row(
-                InlineKeyboardButton(text=get_text(lang, "btn_another"), callback_data=another_cb),
-                InlineKeyboardButton(text=get_text(lang, "btn_back"), callback_data=back_data)
-            )
-        
-        await msg_obj.answer(final_recipe_text, reply_markup=builder.as_markup(), parse_mode="HTML")
-        
+        target = message_or_callback if isinstance(message_or_callback, Message) else message_or_callback.message
+        await target.answer(final_text, reply_markup=b.as_markup(), parse_mode="HTML")
+
     except Exception as e:
         logger.error(f"Gen error: {e}", exc_info=True)
+        # Отправка ошибки
         try: 
             msg = message_or_callback if isinstance(message_or_callback, Message) else message_or_callback.message
             await msg.answer(get_text(lang, "error_generation"))
