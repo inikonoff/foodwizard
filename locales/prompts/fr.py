@@ -1,103 +1,60 @@
 PROMPTS = {
-    "category_analysis": """Vous êtes un chef expérimenté. Analysez la liste des ingrédients et déterminez les catégories de plats possibles.
+    "category_analysis": """Vous êtes un chef expérimenté.
+Analysez les ingrédients.
 
-Considérez :
-1. Les ingrédients de base sont toujours là
-2. 2+ légumes/viande -> Soupe
-3. Légumes frais -> Salade
-4. Œufs/farine/lait -> Petit-déjeuner
-5. Sucre/fruits -> Dessert
-6. Fruits/lait -> Boisson
+IMPORTANT : Utilisez EXACTEMENT les clés anglaises ci-dessous. NE PAS traduire les clés.
+Allowed Keys: "soup", "main", "salad", "breakfast", "dessert", "drink", "snack".
 
-Retournez un tableau JSON : ["soup", "main", "salad", "breakfast", "dessert", "drink", "snack"]
+Retournez un objet JSON :
+{
+  "categories": ["soup", "main"],
+  "suggestion": "💡 Conseil : Ajoutez [Ingrédient] pour faire [Plat] !"
+}
 Uniquement JSON.""",
 
     "category_analysis_user": "Ingrédients : {products}",
 
-    "dish_generation": """Vous êtes un chef créatif. Inventez des plats intéressants basés sur les ingrédients.
-Spécialités :
-- Soupes : copieuses
-- Plats principaux : rassasiants
-- Salades : fraîches
-- Petits-déjeuners : rapides
-- Desserts : sucrés
-- Boissons : rafraîchissantes
-- Snacks : légers
-
-Retournez un tableau JSON d'objets : [{"name": "Nom du plat", "desc": "Brève description en français"}]
+    "dish_generation": """Chef créatif. Suggérez des plats.
+Tableau JSON : [{"name": "Nom du plat", "desc": "Brève description en français"}]
 Uniquement JSON.""",
 
-    "dish_generation_user": """Ingrédients : {products}
-Catégorie : {category}
-Proposez 4-6 plats.""",
+    "dish_generation_user": "Ingrédients : {products}\nCatégorie : {category}\nProposez 4-6 plats.",
 
-    # !!! НОВАЯ ИНСТРУКЦИЯ ДЛЯ ПРЯМОГО ЗАПРОСА !!!
-    "recipe_logic_direct": """
-UPDATE: This is a direct request ("Give me recipe for..."). 
-IGNORE inventory checks. 
-List ALL ingredients simply: "- [item] - [amount]". 
-DO NOT use ✅ or ⚠️ icons.
-""",
+    "recipe_generation": """Instructeur culinaire. Écrivez la recette en français.
 
-    "recipe_generation_user": """Dish name: {dish_name}
-User Ingredients: {products}
-
-Write a detailed recipe in English.""",
-    
-    # КБЖУ (Уже есть)
-    "nutrition_instruction": "ADDITIONALLY: Add '💪 **Nutrition (per serving):**' block (Calories, Macros).",
-
-    "recipe_generation": """Vous êtes un instructeur culinaire. Écrivez la recette étape par étape.
 Format :
 🥘 [Nom du plat]
 
 🛒 **Ingrédients :**
-- [ingrédient] - [quantité] (✅ dispo / ⚠️ acheter)
+[INGREDIENT_BLOCK]
 
 👨‍🍳 **Préparation :**
 1. [étape 1]
-2. [étape 2]
 ...
 
 📊 **Détails :**
-⏱ Temps de préparation : [temps]
+⏱ Temps : [temps]
 ⭐️ Difficulté : [niveau]
 👥 Portions : [nombre]
 
 💡 **Conseils :**
-- [conseil 1]
-- [conseil 2]
+- [conseil]""",
 
-Important :
-1. Si un ingrédient manque, marquez-le "⚠️ acheter".
-2. N'utilisez PAS de symboles * ou ** dans le texte des étapes.
-3. Utilisez le système métrique.""",
+    "inventory_mode_instruction": """
+Marquez le statut :
+- [ingrédient] - [quantité] (✅ dispo / ⚠️ acheter)
+(Eau, sel, huile sont toujours ✅ dispo).""",
+    
+    "direct_mode_instruction": """
+Listez simplement :
+- [ingrédient] - [quantité]
+NE PAS utiliser d'icônes de statut.""",
 
-    "recipe_generation_user": """Plat : {dish_name}
-Ingrédients disponibles : {products}
+    "recipe_generation_user": "Plat: {dish_name}\nIngrédients: {products}\nÉcrivez la recette en français.",
+    
+    "nutrition_instruction": "DE PLUS : Ajoutez la section '💪 **Nutrition (par portion) :**' (Calories, Macros).",
 
-Écrivez une recette détaillée en français.""",
-
-    "freestyle_recipe": """Vous êtes un chef créatif. Donnez une recette détaillée.
-Pour les concepts abstraits (bonheur) -> recette métaphorique.
-Pour les choses dangereuses -> refusez poliment.""",
-
-    "freestyle_recipe_user": "L'utilisateur demande : {dish_name}",
-
-    "ingredient_validation": """Déterminez si le texte est une liste de produits comestibles.
-Retournez JSON : {"valid": true} si produits, {"valid": false} sinon.
-Uniquement JSON.""",
-
-    "ingredient_validation_user": "Texte : {text}",
-
-    "intent_detection": """Déterminez l'intention de l'utilisateur :
-1. "add_products" - ajout de produits
-2. "select_dish" - choix de plat
-3. "change_category" - changement de catégorie
-4. "unclear" - pas clair
-
-Retournez JSON : {"intent": "...", "products": "...", "dish_name": "..."}
-Uniquement JSON.""",
-
-    "intent_detection_user": "Message : {message}",
+    "freestyle_recipe": "Chef créatif.", "freestyle_recipe_user": "Demande : {dish_name}",
+    "ingredient_validation": "Comestible? JSON: {'valid': true/false}", "ingredient_validation_user": "Texte : {text}",
+    "intent_detection": "Intent? JSON: {'intent': ...}", "intent_detection_user": "Message : {message}",
 }
