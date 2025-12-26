@@ -9,7 +9,7 @@ from services.voice_service import VoiceService
 from services.groq_service import groq_service
 from locales.texts import get_text
 from state_manager import state_manager
-from handlers.recipes import parse_direct_request, generate_and_send_recipe 
+from handlers.recipes import parse_direct_request, generate_and_send_recipe # ИМПОРТ
 
 logger = logging.getLogger(__name__)
 voice_service = VoiceService()
@@ -21,9 +21,7 @@ async def track_safely(user_id: int, event_name: str, data: dict = None):
 async def handle_voice_message(message: Message):
     user_id = message.from_user.id
     user_data = await users_repo.get_user(user_id)
-    
-    # !!! DEFAULT LANGUAGE = EN !!!
-    lang = user_data.get('language_code', 'en') if user_data else 'en'
+    lang = user_data.get('language_code', 'en')
     
     allowed, used, limit = await users_repo.check_and_increment_request(user_id, "voice")
     if not allowed:
@@ -38,7 +36,6 @@ async def handle_voice_message(message: Message):
         temp_path = f"{os.getcwd()}/{message.voice.file_id}.ogg"
         await message.bot.download_file(file.file_path, temp_path)
         
-        # Здесь voice_service должен быть уже готов использовать Google с 'en' по дефолту
         text = await voice_service.process_voice(temp_path, lang)
         
         if not text:
@@ -49,7 +46,7 @@ async def handle_voice_message(message: Message):
         await wait_msg.delete()
         await message.answer(get_text(lang, "voice_recognized").format(text=text))
 
-        # --- 1. ПРЯМОЙ ЗАПРОС? (Триггеры теперь EN/DE/FR/IT/ES) ---
+        # --- 1. ПРЯМОЙ ЗАПРОС? ---
         direct_dish = parse_direct_request(text)
         if direct_dish:
             state_manager.set_products(user_id, "")
@@ -57,17 +54,26 @@ async def handle_voice_message(message: Message):
             await track_safely(user_id, "voice_command_success", {"cmd": text})
             return
 
-        # --- 2. ОБЫЧНЫЙ СПИСОК ПРОДУКТОВ ---
+        # --- 2. АНАЛИЗ (Dict: categories + suggestion) ---
         state_manager.set_products(user_id, text)
         wait_msg = await message.answer(get_text(lang, "processing"))
-        categories = await groq_service.analyze_products(text, lang)
+        
+        analysis_result = await groq_service.analyze_products(text, lang)
         await wait_msg.delete()
         
-        if not categories:
+        if not analysis_result or not analysis_result.get("categories"):
             await message.answer(get_text(lang, "error_not_enough_products"))
             return
         
+        categories = analysis_result["categories"]
+        suggestion = analysis_result.get("suggestion")
+
         state_manager.set_categories(user_id, categories)
+        
+        # Показываем умный совет
+        if suggestion:
+             await message.answer(suggestion)
+             
         from aiogram.utils.keyboard import InlineKeyboardBuilder
         builder = InlineKeyboardBuilder()
         for cat in categories:
@@ -78,7 +84,7 @@ async def handle_voice_message(message: Message):
         await track_safely(user_id, "voice_recognized_success", {"lang": lang})
 
     except Exception as e:
-        logger.error(f"Voice error: {e}")
+        logger.error(f"Voice error: {e}", exc_info=True)
         try: await wait_msg.delete()
         except: pass
         await message.answer(get_text(lang, "error_generation"))
