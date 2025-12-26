@@ -215,7 +215,6 @@ async def handle_set_language(callback: CallbackQuery):
 
 async def handle_show_favorites(callback: CallbackQuery):
     from handlers.favorites import handle_favorite_pagination
-    callback.data = "fav_page_1"
     await handle_favorite_pagination(callback)
 
 async def handle_show_help(callback: CallbackQuery):
