@@ -4,6 +4,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 # --- ОПИСАНИЯ ПРЕМИУМА ---
+
 PREMIUM_DESC_EN = """💎 **Premium Benefits:**
 
 ✅ **Favorites:** Unlimited saving
@@ -55,27 +56,17 @@ TEXTS: Dict[str, Dict[str, str]] = {
     
     # ================= АНГЛИЙСКИЙ (EN - DEFAULT) =================
     "en": {
-        # ИНСТРУКЦИЯ ПРОМОКОДА
-        "promo_instruction": """ℹ️ **How to enter a Promo Code:**
-
-Type the command followed by your code.
-
-Example:
-<code>/code FOOD2025</code>""",
-
-        # НАЗВАНИЯ ЯЗЫКОВ
-        "lang_en": "🇬🇧 English", "lang_de": "🇩🇪 German",
+        "lang_ru": "🇷🇺 Russian", "lang_en": "🇬🇧 English", "lang_de": "🇩🇪 German",
         "lang_fr": "🇫🇷 French", "lang_it": "🇮🇹 Italian", "lang_es": "🇪🇸 Spanish",
 
-        "welcome": """👋 **Welcome to FoodWizard.pro!** 🧙‍♂️
+        # ОБНОВЛЕННОЕ ПРИВЕТСТВИЕ
+        "welcome": """👋 **Welcome to FoodWizard.pro!**
 
-🎤 Dictate (or write) a list of ingredients, and I'll suggest a meal.
+🥕 **Have ingredients?**
+Dictate or write a list, and I'll suggest a meal.
 
-⚡️ **Or give a direct command:**
-— *"Give me a recipe for pancakes"*
-— *"I want pizza"*
-
-👇 Waiting for your ingredients!""",
+⚡️ **Know what you want?**
+Just say or write: "Give me a recipe for [dish]\"""",
         
         "start_manual": "", 
         "processing": "⏳ Thinking...",
@@ -110,7 +101,7 @@ Example:
         "premium_required_title": "💎 **Premium Required**",
         "premium_required_text": "The **Favorites** feature is limited in the free version.",
         "premium_description": PREMIUM_DESC_EN,
-        "limit_favorites_exceeded": "🔒 **Limit reached!**\n\nFree version: 3 recipes. Get Premium for unlimited storage.",
+        "limit_favorites_exceeded": "🔒 **Limit reached!**\n\nFree version allows 3 recipes. Get Premium for unlimited storage.",
         
         "welcome_gift_alert": "🎁 **Gift from FoodWizard.pro!**\n\nIn 48 hours you will receive **7 Days of Premium** for free! Stay tuned. 😉",
         "trial_activated_notification": "🎁 **Your Gift is Active!**\n\n7 Days of Premium activated.\n✅ Nutrition Facts\n✅ Unlimited Favorites\n✅ 50 Voice requests",
@@ -126,11 +117,28 @@ Example:
         "safety_refusal": "🚫 Food only.",
         "help_title": "❓ **Help**",
         "help_text": "Send ingredients or ask 'Recipe for...'.",
+        
+        "promo_instruction": """ℹ️ **How to enter a Promo Code:**
+
+Type the command followed by your code.
+
+Example:
+<code>/code FOOD2025</code>""",
+
+        # Для BotFather (оставляем, не удаляем ключи)
         "bot_description": "...", "bot_short_description": "...", "thanks": "😊", "easter_egg": "🥚",
     },
     
     # ================= НЕМЕЦКИЙ =================
     "de": {
+        "welcome": """👋 **Willkommen bei FoodWizard.pro!**
+
+🥕 **Haben Sie Zutaten?**
+Diktieren oder schreiben Sie eine Liste, und ich schlage ein Gericht vor.
+
+⚡️ **Wissen Sie, was Sie wollen?**
+Sagen oder schreiben Sie einfach: "Gib mir ein Rezept für [Gericht]\"""",
+        
         "premium_description": PREMIUM_DESC_DE,
         "promo_instruction": """ℹ️ **Promo-Code eingeben:**
 
@@ -142,6 +150,14 @@ Beispiel:
 
     # ================= ФРАНЦУЗСКИЙ =================
     "fr": {
+        "welcome": """👋 **Bienvenue sur FoodWizard.pro !**
+
+🥕 **Vous avez des ingrédients ?**
+Dictez ou écrivez une liste, et je vous suggérerai un plat.
+
+⚡️ **Vous savez ce que vous voulez ?**
+Dites ou écrivez simplement : "Donne-moi une recette de [plat]\"""",
+        
         "premium_description": PREMIUM_DESC_FR,
         "promo_instruction": """ℹ️ **Comment saisir le code :**
 
@@ -153,6 +169,14 @@ Exemple :
 
     # ================= ИТАЛЬЯНСКИЙ =================
     "it": {
+        "welcome": """👋 **Benvenuto su FoodWizard.pro!**
+
+🥕 **Hai degli ingredienti?**
+Dettali o scrivili, e ti suggerirò un pasto.
+
+⚡️ **Sai cosa vuoi?**
+Di' o scrivi semplicemente: "Dammi una ricetta per [piatto]\"""",
+
         "premium_description": PREMIUM_DESC_IT,
         "promo_instruction": """ℹ️ **Come inserire il codice:**
 
@@ -164,6 +188,14 @@ Esempio:
 
     # ================= ИСПАНСКИЙ =================
     "es": {
+        "welcome": """👋 **¡Bienvenido a FoodWizard.pro!**
+
+🥕 **¿Tienes ingredientes?**
+Dicta o escribe una lista, y te sugeriré una comida.
+
+⚡️ **¿Sabes lo que quieres?**
+Solo di o escribe: "Dame una receta de [plato]\"""",
+
         "premium_description": PREMIUM_DESC_ES,
         "promo_instruction": """ℹ️ **Cómo canjear el código:**
 
@@ -174,32 +206,38 @@ Ejemplo:
     }
 }
 
-# Заполняем пустоты (копируем остальные английские ключи в другие языки)
+# Заполняем пустоты для других языков (базируясь на EN)
 base_lang = TEXTS["en"]
 for lang in ["de", "fr", "it", "es"]:
-    current_desc = TEXTS[lang].get("premium_description")
-    current_instr = TEXTS[lang].get("promo_instruction")
-    
-    # Копируем всё из EN
+    # 1. Сохраняем уникальные переводы (которые мы только что определили)
+    saved_translations = {}
+    for key in ["welcome", "premium_description", "promo_instruction"]:
+        if key in TEXTS[lang]:
+            saved_translations[key] = TEXTS[lang][key]
+
+    # 2. Заливаем всё из EN
     for k, v in base_lang.items():
         if k not in TEXTS[lang]:
             TEXTS[lang][k] = v
             
-    # Восстанавливаем переведенные части
-    if current_desc: TEXTS[lang]["premium_description"] = current_desc
-    if current_instr: TEXTS[lang]["promo_instruction"] = current_instr
-    
-    # Копируем названия языков для меню
+    # 3. Возвращаем переведенные уникальные ключи на место
+    for k, v in saved_translations.items():
+        TEXTS[lang][k] = v
+
+    # 4. Названия языков всегда берем из базы, чтобы не дублировать
     for l_key in ["lang_ru", "lang_en", "lang_de", "lang_fr", "lang_it", "lang_es"]:
         TEXTS[lang][l_key] = base_lang[l_key]
 
+
 def get_text(lang: str, key: str, **kwargs) -> str:
+    # 1. Если язык неизвестен, fallback на EN
     if lang not in TEXTS: lang = "en"
     lang_dict = TEXTS.get(lang, TEXTS["en"])
+    
+    # 2. Получаем текст (с фоллбэком на EN, если ключа нет)
     text = lang_dict.get(key, TEXTS["en"].get(key, ""))
     
     if kwargs and text:
         try: return text.format(**kwargs)
-        except KeyError: 
-            return text
+        except KeyError: return text
     return text
