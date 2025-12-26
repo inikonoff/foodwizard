@@ -64,7 +64,7 @@ async def handle_restart(callback: CallbackQuery):
     kb = get_main_menu_keyboard(lang, user_data.get('is_premium', False))
     txt = safe_format_text(get_text(lang, "welcome", name=html.quote(callback.from_user.first_name)))
     # Тут редактируем, потому что это ответ на кнопку
-    try: await callback.message.edit_text(txt, reply_markup=kb, parse_mode="HTML")
+    try: await callback.message.edit_text(txt, reply_markup=None, parse_mode="HTML")
     except: await callback.message.answer(txt, reply_markup=kb, parse_mode="HTML")
     await callback.answer()
 
