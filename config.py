@@ -9,7 +9,8 @@ WEBHOOK_URL = os.environ.get("WEBHOOK_URL", "")
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 DATABASE_URL = os.getenv("DATABASE_URL")
-ADMIN_IDS = [7201211546] 
+
+ADMIN_IDS: List[int] = []
 
 SECRET_PROMO_CODE = os.getenv("SECRET_PROMO_CODE", "TRIAL99")
 
