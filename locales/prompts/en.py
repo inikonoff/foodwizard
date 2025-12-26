@@ -62,6 +62,22 @@ Format:
 
 Important: Do NOT use * or ** in steps text.""",
 
+    # !!! НОВАЯ ИНСТРУКЦИЯ ДЛЯ ПРЯМОГО ЗАПРОСА !!!
+    "recipe_logic_direct": """
+UPDATE: This is a direct request ("Give me recipe for..."). 
+IGNORE inventory checks. 
+List ALL ingredients simply: "- [item] - [amount]". 
+DO NOT use ✅ or ⚠️ icons.
+""",
+
+    "recipe_generation_user": """Dish name: {dish_name}
+User Ingredients: {products}
+
+Write a detailed recipe in English.""",
+    
+    # КБЖУ (Уже есть)
+    "nutrition_instruction": "ADDITIONALLY: Add '💪 **Nutrition (per serving):**' block (Calories, Macros).",
+    
     "recipe_generation_user": """Dish: {dish_name}
 User Ingredients: {products}
 
