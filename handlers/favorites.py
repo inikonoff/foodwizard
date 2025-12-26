@@ -17,10 +17,14 @@ logger = logging.getLogger(__name__)
 # Я приведу только handle_add_to_favorites и важные части
 
 async def handle_favorite_pagination(callback: CallbackQuery):
-    user_id = callback.from_user.id
-    lang = (await users_repo.get_user(user_id)).get('language_code', 'en')
-    try: page = int(callback.data.split('_')[2])
-    except: page = 1
+    # ...
+    # 1. Попытка парсинга
+    page = 1
+    parts = callback.data.split('_')
+    # "show_favorites" -> len=2, index 2 fail.
+    # "fav_page_2" -> len=3.
+    if len(parts) >= 3 and parts[2].isdigit():
+        page = int(parts[2])
     favorites, total = await favorites_repo.get_favorites_page(user_id, page)
     if not favorites:
         await callback.message.edit_text(get_text(lang, "favorites_empty"))
