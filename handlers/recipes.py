@@ -78,6 +78,56 @@ def parse_direct_request(text: str) -> str | None:
             
     return None
 
+# handlers/recipes.py
+
+# ... (импорты и другие функции) ...
+
+# --- МУЛЬТИЯЗЫЧНАЯ ПРОВЕРКА НА ПРЯМОЙ ЗАПРОС ---
+def parse_direct_request(text: str) -> str | None:
+    """
+    Проверяет триггеры на всех языках и извлекает название блюда.
+    """
+    triggers = [
+        # ENGLISH
+        "recipe ", "recipe for ", "give me ", "make ", "cook ", "how to cook ", "i want ",
+        
+        # GERMAN
+        "rezept ", "rezept für ", "gib mir ein rezept für ", "gib mir ", 
+        "koche ", "wie kocht man ", "ich will ",
+        
+        # FRENCH
+        "recette ", "recette de ", "donne-moi une recette de ", "donne-moi ", 
+        "cuisine ", "comment faire ", "je veux ", 
+        
+        # ITALIAN
+        "ricetta ", "ricetta di ", "dammi una ricetta per ", "dammi ", 
+        "cucina ", "come fare ", "voglio ",
+        
+        # SPANISH
+        "receta ", "receta de ", "dame una receta de ", "dame ", 
+        "cocina ", "como hacer ", "quiero ", "dame una "
+    ]
+    
+    # Нормализуем текст (удаляем лишние пробелы, приводим к нижнему регистру)
+    # Удаляем знаки препинания в начале (например, если сказали ", дай рецепт")
+    lower_text = text.lower().strip().lstrip('.,!? ')
+    
+    for trigger in triggers:
+        trigger = trigger.strip()
+        
+        # Проверяем вхождение триггера В НАЧАЛЕ фразы
+        # Сначала пробуем точное совпадение с пробелом "recipe pizza"
+        if lower_text.startswith(trigger + " "):
+            return text[len(trigger)+1:].strip().rstrip('.?!')
+        
+        # Затем пробуем без пробела, если это слово целиком "recipe:"
+        if lower_text.startswith(trigger):
+            return text[len(trigger):].strip().rstrip('.?!')
+            
+    return None
+
+# ... (остальной код) ...
+
 async def generate_and_send_recipe(message_or_callback, user_id, dish_name, products, lang, is_direct=False):
     try:
         # Убедимся, что dish_name красивый (даже если пришел из списка)
