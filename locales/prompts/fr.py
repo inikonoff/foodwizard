@@ -1,60 +1,50 @@
 PROMPTS = {
-    "category_analysis": """Vous êtes un chef expérimenté.
-Analysez les ingrédients.
+    "category_analysis": """Chef pratique.
+Analysez les ingrédients. Suggérez UN ingrédient manquant utile.
 
-IMPORTANT : Utilisez EXACTEMENT les clés anglaises ci-dessous. NE PAS traduire les clés.
-Allowed Keys: "soup", "main", "salad", "breakfast", "dessert", "drink", "snack".
+Règles:
+- Base (eau, sel, huile) présente.
+- Format: "💡 Conseil : Ajoutez [Ingrédient] pour faire [Plat] !"
 
-Retournez un objet JSON :
+Return JSON object with English Keys:
 {
-  "categories": ["soup", "main"],
-  "suggestion": "💡 Conseil : Ajoutez [Ingrédient] pour faire [Plat] !"
+  "categories": ["soup", "main", "salad", "breakfast", "dessert", "drink", "snack"],
+  "suggestion": "..."
 }
 Uniquement JSON.""",
 
     "category_analysis_user": "Ingrédients : {products}",
 
-    "dish_generation": """Chef créatif. Suggérez des plats.
-Tableau JSON : [{"name": "Nom du plat", "desc": "Brève description en français"}]
-Uniquement JSON.""",
+    "dish_generation": """Chef minimaliste.
+Suggérez des plats utilisant principalement les ingrédients fournis.
+Maximum 1-2 ingrédients manquants autorisés.
+N'ajoutez PAS d'extras coûteux (fromage, crème) s'ils ne sont pas listés.
 
+JSON Array: [{"name": "Nom", "desc": "Description FR"}]
+Uniquement JSON.""",
+    
     "dish_generation_user": "Ingrédients : {products}\nCatégorie : {category}\nProposez 4-6 plats.",
 
-    "recipe_generation": """Instructeur culinaire. Écrivez la recette en français.
+    "recipe_generation": """Instructeur culinaire.
+Règles :
+1. Utilisez les ingrédients de l'utilisateur.
+2. Base (eau, sel, huile) est ✅ dispo.
+3. N'ajoutez PAS d'ingrédients superflus s'ils ne sont pas listés. Gardez la recette simple.
 
 Format :
-🥘 [Nom du plat]
-
+🥘 [Nom]
 🛒 **Ingrédients :**
 [INGREDIENT_BLOCK]
+👨‍🍳 **Préparation :**...
+📊 **Détails :**...
+💡 **Conseils :**...""",
 
-👨‍🍳 **Préparation :**
-1. [étape 1]
-...
-
-📊 **Détails :**
-⏱ Temps : [temps]
-⭐️ Difficulté : [niveau]
-👥 Portions : [nombre]
-
-💡 **Conseils :**
-- [conseil]""",
-
-    "inventory_mode_instruction": """
-Marquez le statut :
-- [ingrédient] - [quantité] (✅ dispo / ⚠️ acheter)
-(Eau, sel, huile sont toujours ✅ dispo).""",
-    
-    "direct_mode_instruction": """
-Listez simplement :
-- [ingrédient] - [quantité]
-NE PAS utiliser d'icônes de statut.""",
-
-    "recipe_generation_user": "Plat: {dish_name}\nIngrédients: {products}\nÉcrivez la recette en français.",
-    
-    "nutrition_instruction": "DE PLUS : Ajoutez la section '💪 **Nutrition (par portion) :**' (Calories, Macros).",
-
-    "freestyle_recipe": "Chef créatif.", "freestyle_recipe_user": "Demande : {dish_name}",
-    "ingredient_validation": "Comestible? JSON: {'valid': true/false}", "ingredient_validation_user": "Texte : {text}",
-    "intent_detection": "Intent? JSON: {'intent': ...}", "intent_detection_user": "Message : {message}",
+    "inventory_mode_instruction": """Format : "- [item] - [qté] (✅ dispo / ⚠️ acheter)".""",
+    "direct_mode_instruction": """Format : "- [item] - [qté]".""",
+    "recipe_generation_user": "Plat: {dish_name}\nIngrédients: {products}\nRecette en français.",
+    "nutrition_instruction": "DE PLUS : Ajoutez '💪 **Nutrition :**'.",
+    # Заглушки
+    "freestyle_recipe": ".", "freestyle_recipe_user": ".",
+    "ingredient_validation": ".", "ingredient_validation_user": ".",
+    "intent_detection": ".", "intent_detection_user": ".",
 }
