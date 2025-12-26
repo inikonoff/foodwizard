@@ -1,55 +1,42 @@
 PROMPTS = {
-    # 1. АНАЛИЗ
-    "category_analysis": """Du bist ein praktischer Koch.
-Analysiere die Zutaten. Schlage EINE fehlende Zutat vor, die ein gutes Gericht ermöglicht.
+    "category_analysis": """Erfahrener Koch.
+1. Analysiere Zutaten.
+2. Schlage EINE fehlende Zutat vor (Geschmacksbrücke).
+   - Maximum 1-2 neue Zutaten vorschlagen.
 
-Regeln:
-- Basis (Wasser, Salz, Öl) ist da.
-- Suggestion format: "💡 Idee: Füge [Zutat] hinzu, um [Gericht] zu machen!"
-
-Return JSON object:
+Return JSON Object:
 {
   "categories": ["soup", "main", "salad", "breakfast", "dessert", "drink", "snack"],
-  "suggestion": "💡 Idee: Kaufe Sahne für eine Cremesuppe!"
+  "suggestion": "💡 Tipp: Füge [Zutat] hinzu für [Gericht]!"
 }
-WICHTIG: Keys müssen Englisch bleiben ("soup", "main"...). Values (Suggestion) auf Deutsch.""",
-
+WICHTIG: Categories keys müssen englisch sein. Suggestion auf Deutsch.""",
     "category_analysis_user": "Zutaten: {products}",
 
-    # 2. ПОДБОР БЛЮД (МИНИМАЛИЗМ)
-    "dish_generation": """Minimalistischer Koch.
-Schlage Gerichte vor, die hauptsächlich die vorhandenen Zutaten nutzen.
+    "dish_generation": """Kreativer Koch.
+Nutze vorhandene Zutaten + Basis (Wasser, Öl).
 Erlaube maximal 1-2 fehlende Zutaten.
-Vermeide komplexe Gerichte mit vielen Einkäufen (Käse, Sahne etc.), wenn nicht angegeben.
+JSON Array: [{"name": "Name", "desc": "Beschreibung DE"}]
+Only JSON.""",
+    "dish_generation_user": "Zutaten: {products}\nKategorie: {category}\n4-6 Gerichte.",
 
-JSON Array: [{"name": "Gericht", "desc": "Kurzbeschreibung DE"}]
-Nur JSON.""",
-    
-    "dish_generation_user": "Zutaten: {products}\nKategorie: {category}\nSchlage 4-6 Gerichte vor.",
-
-    # 3. РЕЦЕПТ
     "recipe_generation": """Kulinarischer Lehrer.
-Regeln:
-1. Nutze die Zutaten des Nutzers.
-2. Basis (Wasser, Öl, Salz) ist ✅ vorhanden.
-3. Füge KEINE unnötigen Extras (Käse, Kräuter) hinzu, wenn sie nicht gelistet wurden. Halte das Rezept einfach.
+
+REGELN:
+1. Liste NUR verwendete Zutaten.
+2. KEINE Status-Symbole (✅/⚠️). Reines Listenformat: "- [Menge] [Zutat]".
 
 Format:
 🥘 [Name]
 🛒 **Zutaten:**
-[INGREDIENT_BLOCK]
-👨‍🍳 **Zubereitung:**
-...
+- [Menge] [Zutat]
+👨‍🍳 **Zubereitung:**...
 📊 **Details:**...
-💡 **Tipps:**...""",
-
-    "inventory_mode_instruction": """Format: "- [Zutat] - [Menge] (✅ vorhanden / ⚠️ kaufen)".""",
-    "direct_mode_instruction": """Format: "- [Zutat] - [Menge]".""",
-
+💡 **Chef-Geheimnisse:**...""",
     "recipe_generation_user": "Gericht: {dish_name}\nZutaten: {products}\nRezept auf Deutsch.",
+
+    "nutrition_instruction": "ZUSÄTZLICH: Füge '💪 **Nährwerte:**' hinzu (Kalorien).",
     
-    "nutrition_instruction": "ZUSÄTZLICH: Füge '💪 **Nährwerte:**' hinzu.",
     "freestyle_recipe": "Chef.", "freestyle_recipe_user": ": {dish_name}",
-    "ingredient_validation": "?", "ingredient_validation_user": ": {text}",
-    "intent_detection": "?", "intent_detection_user": ": {message}",
+    "ingredient_validation": "Essbar? JSON {'valid': bool}", "ingredient_validation_user": ": {text}",
+    "intent_detection": "Intent JSON", "intent_detection_user": ": {message}",
 }
