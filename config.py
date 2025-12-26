@@ -9,11 +9,9 @@ WEBHOOK_URL = os.environ.get("WEBHOOK_URL", "")
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 DATABASE_URL = os.getenv("DATABASE_URL")
-
-# Админы (пустой список для тестов)
 ADMIN_IDS = [7201211546] 
 
-SECRET_PROMO_CODE = os.getenv("SECRET_PROMO_CODE", "FOOD2025")
+SECRET_PROMO_CODE = os.getenv("SECRET_PROMO_CODE", "TRIAL99")
 
 GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 GROQ_MAX_TOKENS = int(os.getenv("GROQ_MAX_TOKENS", "1000"))
