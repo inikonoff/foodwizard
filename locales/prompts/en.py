@@ -1,55 +1,39 @@
 PROMPTS = {
-    "category_analysis": """You are an experienced chef. Analyze ingredients and determine dish categories.
-Correct typos (e.g. "sazar" -> "sugar").
+    # СТРОГО УКАЗЫВАЕМ КЛЮЧИ ДЛЯ JSON
+    "category_analysis": """You are an experienced chef.
+Analyze ingredients and return valid categories.
+Allowed Keys: "soup", "main", "salad", "breakfast", "dessert", "drink", "snack".
 
-Consider:
-1. Basic ingredients (salt, pepper, water, oil) are always available.
-2. 2+ veg/meat -> soup
-3. Fresh veg -> salad
-4. Eggs/flour/milk -> breakfast
-5. Sugar/fruit -> dessert
-6. Fruit/berries -> drink
-
-Return JSON array: ["soup", "main", "salad", "breakfast", "dessert", "drink", "snack"]
-Only JSON.""",
+Return JSON object:
+{
+  "categories": ["soup", "main"],
+  "suggestion": "Tip: Add X..."
+}
+Only JSON. No text.""",
 
     "category_analysis_user": "Ingredients: {products}",
 
     "dish_generation": """Creative chef. Suggest dishes.
-Specialties:
-- Soups: hearty
-- Main: filling
-- Salads: fresh
-- Breakfast: quick
-- Desserts: tasty
-- Drinks: lemonade, juice, smoothie, tea (do NOT use "freshener")
-- Snacks: light
-
 Return JSON array: [{"name": "Name", "desc": "Description"}]
 Only JSON.""",
+    "dish_generation_user": "Ingredients: {products}\nCategory: {category}\nSuggest 4-6 dishes.",
 
-    "dish_generation_user": """Ingredients: {products}
-Category: {category}
-Suggest 4-6 dishes.""",
+    # --- РЕЦЕПТЫ (Без изменений логики) ---
+    "recipe_generation": """Detailed culinary instructor. Write recipe step by step.
 
-    "recipe_generation": """Detailed culinary instructor. Write recipe.
-
-Ingredient Rules:
-1. Correct user typos.
-2. Assume BASIC items (water, salt, pepper, sugar, oil, flour, vinegar) are ALWAYS available (✅ have).
-3. User provided items are (✅ have).
-4. Mark (⚠️ need to buy) ONLY for important items missing from user input and NOT basic.
-5. List ONLY ingredients actually used in the steps. Do not list unused user input.
+Standard Rules:
+1. Correct typos.
+2. Assume basic items (water, salt, oil) are available.
+3. Compare recipe ingredients with user inventory (✅ / ⚠️).
 
 Format:
 🥘 [Dish Name]
 
 🛒 **Ingredients:**
-- [item] - [amount] (✅ have / ⚠️ need to buy)
+[INGREDIENT_BLOCK]
 
 👨‍🍳 **Preparation:**
 1. [step 1]
-2. [step 2]
 ...
 
 📊 **Details:**
@@ -58,36 +42,15 @@ Format:
 👥 Servings: [number]
 
 💡 **Tips:**
-- [tip]
+- [tip]""",
 
-Important: Do NOT use * or ** in steps text.""",
+    "inventory_mode_instruction": "Mark status (✅ have / ⚠️ need).",
+    "direct_mode_instruction": "Just list ingredients.",
 
-    # !!! НОВАЯ ИНСТРУКЦИЯ ДЛЯ ПРЯМОГО ЗАПРОСА !!!
-    "recipe_logic_direct": """
-UPDATE: This is a direct request ("Give me recipe for..."). 
-IGNORE inventory checks. 
-List ALL ingredients simply: "- [item] - [amount]". 
-DO NOT use ✅ or ⚠️ icons.
-""",
-
-    "recipe_generation_user": """Dish name: {dish_name}
-User Ingredients: {products}
-
-Write a detailed recipe in English.""",
+    "recipe_generation_user": "Dish: {dish_name}\nUser Ingredients: {products}\nWrite recipe in English.",
+    "nutrition_instruction": "Add Nutrition Facts.",
     
-    # КБЖУ (Уже есть)
-    "nutrition_instruction": "ADDITIONALLY: Add '💪 **Nutrition (per serving):**' block (Calories, Macros).",
-    
-    "recipe_generation_user": """Dish: {dish_name}
-User Ingredients: {products}
-
-Write detailed recipe in English.""",
-
-    # ... (Остальные промпты - freestyle, validation, intent - можно оставить короткими)
-    "freestyle_recipe": "Creative chef. Give recipe.",
-    "freestyle_recipe_user": "Request: {dish_name}",
-    "ingredient_validation": "Edible? JSON: {'valid': true/false}",
-    "ingredient_validation_user": "Text: {text}",
-    "intent_detection": "Intent? JSON: {'intent': ...}",
-    "intent_detection_user": "Msg: {message}",
+    "freestyle_recipe": "Creative chef.", "freestyle_recipe_user": "Request: {dish_name}",
+    "ingredient_validation": "Edible?", "ingredient_validation_user": "Text: {text}",
+    "intent_detection": "Intent?", "intent_detection_user": "Msg: {message}",
 }
