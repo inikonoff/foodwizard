@@ -1,48 +1,49 @@
-import os
-import json
 from typing import Dict, Any
-import importlib
 
-# Динамически загружаем все промпты
-PROMPTS: Dict[str, Dict[str, str]] = {}
+# 1. Импортируем словари из соседних файлов
+# Если какого-то файла не будет, бот не упадет, а создаст пустой словарь
+try: from .en import PROMPTS as en_prompts
+except ImportError: en_prompts = {}
 
-# Языки, которые мы поддерживаем
-LANGUAGES = ["ru", "en", "de", "fr", "it", "es"]
+try: from .de import PROMPTS as de_prompts
+except ImportError: de_prompts = {}
 
-# Загружаем промпты для каждого языка
-for lang in LANGUAGES:
-    try:
-        # Пытаемся импортировать модуль locales.prompts.<lang> (например, locales.prompts.ru)
-        module_name = f"locales.prompts.{lang}"
-        module = importlib.import_module(module_name)
-        PROMPTS[lang] = getattr(module, "PROMPTS", {})
-    except ImportError:
-        print(f"?? Промпты для языка '{lang}' не найдены. Пропускаем.")
-        PROMPTS[lang] = {}
+try: from .fr import PROMPTS as fr_prompts
+except ImportError: fr_prompts = {}
 
-def get_prompt(lang: str, prompt_name: str, **kwargs) -> str:
-    """Получает промпт для указанного языка с подстановкой переменных"""
-    # Если язык не поддерживается, используем русский как fallback
-    if lang not in PROMPTS:
-        lang = "ru"
+try: from .it import PROMPTS as it_prompts
+except ImportError: it_prompts = {}
+
+try: from .es import PROMPTS as es_prompts
+except ImportError: es_prompts = {}
+
+# 2. Собираем единый реестр
+PROMPTS_REGISTRY = {
+    "en": en_prompts,
+    "de": de_prompts,
+    "fr": fr_prompts,
+    "it": it_prompts,
+    "es": es_prompts,
+}
+
+# 3. Главная функция
+def get_prompt(lang: str, key: str) -> str:
+    """Получает текст промпта с безопасным фоллбэком на Английский."""
+    # Если язык не поддерживается, берем EN
+    if lang not in PROMPTS_REGISTRY:
+        lang = "en"
+        
+    current_dict = PROMPTS_REGISTRY.get(lang)
     
-    prompts_for_lang = PROMPTS.get(lang, PROMPTS["ru"])
-    prompt = prompts_for_lang.get(prompt_name, "")
+    # Если словарь пустой (файл не создали) -> берем EN
+    if not current_dict:
+        current_dict = PROMPTS_REGISTRY["en"]
+        
+    # Пробуем достать ключ
+    val = current_dict.get(key)
     
-    if not prompt and lang != "ru":
-        # Fallback на русский, если промпт не найден
-        prompt = PROMPTS["ru"].get(prompt_name, "")
-    
-    # Подставляем переменные, если они есть
-    if kwargs and prompt:
-        try:
-            return prompt.format(**kwargs)
-        except KeyError:
-            # Если промпт не содержит всех ключей, возвращаем как есть
-            return prompt
-    
-    return prompt
-
-def get_all_prompts() -> Dict[str, Dict[str, str]]:
-    """Возвращает весь словарь промптов для всех языков (НОВАЯ ФУНКЦИЯ)"""
-    return PROMPTS
+    # Если ключа нет в текущем языке -> берем из EN
+    if not val:
+        val = PROMPTS_REGISTRY["en"].get(key, "")
+        
+    return val
