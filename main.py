@@ -80,8 +80,6 @@ async def start_web_server():
 
 # --- ПЕРИОДИЧЕСКИЕ ЗАДАЧИ ---
 
-register_all_handlers(dp)
-
 async def check_premium_expiry_periodically():
     """Проверяет истечение подписки раз в день"""
     while True:
@@ -182,6 +180,8 @@ async def on_shutdown(dispatcher: Dispatcher, bot: Bot):
     await dispatcher.storage.close()
     await bot.session.close() 
     logger.info("👋 Бот остановлен.")
+
+register_all_handlers(dp)
 
 # --- УПРАВЛЕНИЕ ЖИЗНЕННЫМ ЦИКЛОМ (Context Manager) ---
 @contextlib.asynccontextmanager
