@@ -42,7 +42,7 @@ DO NOT use ✅ or ⚠️ icons.
     "recipe_generation_user": """Dish name: {dish_name}
 User Ingredients: {products}
 
-Write a detailed recipe in English.""",
+Write a detailed recipe in Spanish.""",
     "recipe_generation_user": "Plato: {dish_name}\nIngredientes: {products}\nReceta en Español.",
 
     "nutrition_instruction": "ADICIONALMENTE: Añade '💪 **Nutrición:**' (Calorías).",
