@@ -80,6 +80,8 @@ async def start_web_server():
 
 # --- ПЕРИОДИЧЕСКИЕ ЗАДАЧИ ---
 
+register_all_handlers(dp)
+
 async def check_premium_expiry_periodically():
     """Проверяет истечение подписки раз в день"""
     while True:
