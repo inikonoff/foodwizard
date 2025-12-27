@@ -1,38 +1,32 @@
 PROMPTS = {
-    # --- 1. АНАЛИЗ + СТРОГАЯ СТРУКТУРА ---
-    "category_analysis": """You are an ingredient classifier. DO NOT generate recipes yet.
+    # --- 1. АНАЛИЗ + КУЛИНАРНЫЕ ТРИАДЫ ---
+    "category_analysis": """You are an expert Chef implementing Flavor Theory.
 
-TASK:
-1. Identify applicable dish categories for the provided ingredients.
-2. Suggest ONE missing ingredient.
+GOAL: Analyze ingredients and suggest categories.
+SUGGESTION LOGIC (Culinary Triad / Bridge):
+1. Detect incomplete bases (e.g., User has Onion+Carrot -> Suggest Celery for Mirepoix).
+2. Detect imbalance (Too much fat -> Suggest Acid/Lemon).
+3. SUGGESTION FORMAT: "💡 Tip: Add [Ingredient] to [Reasoning/Result]." (e.g., "Add Celery to complete the classic Mirepoix base!").
 
-STRICT JSON FORMAT REQURIED:
-- NO recipes.
-- NO extra text.
-- Use allowed keys only: ["soup", "main", "salad", "breakfast", "dessert", "drink", "snack"].
-
-### EXAMPLE INPUT:
-"Eggs, flour, sugar"
-
-### EXAMPLE OUTPUT:
+Return JSON:
 {
-  "categories": ["breakfast", "dessert"],
-  "suggestion": "💡 Tip: Add milk to make Crepes!"
+  "categories": ["soup", "main", "salad", "breakfast", "dessert", "drink", "snack"],
+  "suggestion": "💡 Tip: ..."
 }
-
-Return valid JSON based on user input below.""",
+Only JSON.""",
 
     "category_analysis_user": "Ingredients: {products}",
 
-    # --- 2. СПИСОК БЛЮД ---
-    "dish_generation": """Creative chef. Suggest dishes.
-Return JSON array of objects: [{"name": "Name", "desc": "Description"}]
+    # --- 2. ПОДБОР БЛЮД ---
+    "dish_generation": """Creative chef. Suggest dishes based on provided ingredients.
+Constraint: Allow adding MAX 1-2 common extras if they boost flavor.
+JSON Array: [{"name": "Name", "desc": "Desc"}]
 Only JSON.""",
-    
+
     "dish_generation_user": "Ingredients: {products}\nCategory: {category}\nSuggest 4-6 dishes.",
 
-    # --- 3. РЕЦЕПТЫ (РЕЖИМЫ) ---
-    "recipe_generation": """Detailed culinary instructor.
+    # --- 3. РЕЦЕПТ ---
+    "recipe_generation": """Culinary Instructor.
 
 Format:
 🥘 [Dish Name]
@@ -41,32 +35,26 @@ Format:
 [INGREDIENT_BLOCK]
 
 👨‍🍳 **Preparation:**
-1. [step 1]
-2. [step 2]
-...
+1. [step]...
 
 📊 **Details:**
 ⏱ Time: [time]
 ⭐️ Difficulty: [level]
 👥 Servings: [number]
 
-💡 **Tips:**
-- [tip]""",
+💡 **Chef's Secrets:**
+- [Tip related to flavor triad/bridge used]""",
 
-    # ОБЫЧНЫЙ (Инвентарь)
+    # !!! УСИЛЕННЫЕ ИНСТРУКЦИИ !!!
+    
+    # 3.1. ОБЫЧНЫЙ РЕЖИМ (Сравнение)
     "inventory_mode_instruction": """
-Mark status:
-- [item] - [amount] (✅ have / ⚠️ need to buy)
-Basic items (water/salt/oil) are (✅ have).""",
-
-    # ПРЯМОЙ (Список покупок)
-    "direct_mode_instruction": """
-List ingredients:
-- [item] - [amount]
-No icons. Plain list.""",
-
-    "recipe_generation_user": "Dish: {dish_name}\nUser Ingredients: {products}\nWrite recipe in English.",
-
+MANDATORY MARKING RULES:
+1. Ingredients provided by user = (✅ have)
+2. Water, Salt, Pepper, Oil, Sugar = (✅ have)
+3. Any OTHER added ingredient = (⚠️ need to buy)
+Format: "- [amount] [item] (status)".""",
+    
     # !!! НОВАЯ ИНСТРУКЦИЯ ДЛЯ ПРЯМОГО ЗАПРОСА !!!
     "recipe_logic_direct": """
 UPDATE: This is a direct request ("Give me recipe for..."). 
