@@ -53,8 +53,10 @@ def parse_direct_request(text: str) -> str | None:
                    dish_name = re.sub(junk_pattern, '', dish_name.strip(), flags=re.IGNORECASE)
 
             if dish_name and len(dish_name) > 1:
-clean_name = dish_name.strip().rstrip('.?!')
-                return clean_name.title()
+                # !!! ИСПРАВЛЕНИЕ ТУТ: strip(), удаление знаков в конце, и TITLE CASE !!!
+                clean_name = dish_name.strip().rstrip('.?!')
+                return clean_name.title() 
+                # .title() делает "Apple Pie", "Pizza Margherita"
     return None
 
 async def generate_and_send_recipe(message_or_callback, user_id, dish_name, products, lang, is_direct=False):
