@@ -1,41 +1,51 @@
 PROMPTS = {
-    "category_analysis": """Eres un Chef IA.
-1. Analiza ingredientes.
-2. Elige categorías VIABLES.
+    # 1. АНАЛИЗ
+    "category_analysis": """You are an expert chef.
+Analyze ingredients.
 
-IMPORTANTE: Usa SOLO claves en INGLÉS: ["soup", "main", "salad", "breakfast", "dessert", "drink", "snack"].
+IMPORTANT: Use ONLY ENGLISH KEYS for categories: ["soup", "main", "salad", "breakfast", "dessert", "drink", "snack"].
+DO NOT translate keys (do NOT use 'sopas').
 
-Output JSON:
+Return JSON object:
 {
-  "categories": ["main", "soup"],
-  "suggestion": "💡 Consejo: ¡Añade [Ingrediente]!"
-}""",
+  "categories": ["soup", "main"],
+  "suggestion": "💡 Consejo: ¡Añade [Ingrediente] para hacer [Plato]!"
+}
+Only JSON.""",
 
     "category_analysis_user": "Ingredientes: {products}",
 
-    "dish_generation": """Chef creativo. Sugiere 4-6 platos.
-JSON Array: [{"name": "Nombre", "desc": "Descripción en Español"}]
-Solo JSON.""",
-    "dish_generation_user": "Ingredientes: {products}\nCategoría: {category}\n4-6 platos.",
+    # 2. СПИСОК БЛЮД
+    "dish_generation": """Creative chef. Suggest 4-6 dishes.
+Return JSON array: [{"name": "Nombre", "desc": "Descripción en Español"}]
+Only JSON.""",
+    
+    "dish_generation_user": "Ingredientes: {products}\nCategoría: {category}\nSugiere 4-6 platos.",
 
-    "recipe_generation": """Instructor culinario.
-IDIOMA: Español.
+    # 3. РЕЦЕПТ
+    "recipe_generation": """Detailed Culinary Instructor.
+LANGUAGE: Spanish.
 
-ESTRUCTURA OBLIGATORIA:
-1. 🥘 Título
-2. 🛒 Ingredientes
-3. 👨‍🍳 Preparación (¡Pasos detallados OBLIGATORIOS!)
-4. 📊 Detalles
-5. 💡 Consejos
+MANDATORY STRUCTURE:
+1. 🥘 [Nombre]
+2. 🛒 **Ingredientes:**
+[INGREDIENT_BLOCK]
+3. 👨‍🍳 **Preparación:** (WRITE DETAILED NUMBERED STEPS! Mandatory.)
+4. 📊 **Detalles:** (Tiempo, Dificultad, Porciones)
+5. 💡 **Consejos:**
 
-REGLAS INGREDIENTES:
-- [INGREDIENT_BLOCK]
-- Sin iconos (✅). Lista limpia.""",
+RULES:
+- List only used ingredients.
+- NO icons (✅/⚠️).""",
 
     "inventory_mode_instruction": """Formato: "- [Cant] [Ingrediente]".""",
+    
     "direct_mode_instruction": """Formato: "- [Cant] [Ingrediente]".""",
+
     "recipe_generation_user": "Plato: {dish_name}\nIngredientes: {products}\nEscribe la receta COMPLETA en Español.",
-    "nutrition_instruction": "ADICIONALMENTE: Añade '💪 **Nutrición:**'.",
+
+    "nutrition_instruction": "ADICIONALMENTE: Añade '💪 **Nutrición:**' (Calorías).",
+    
     "freestyle_recipe": ".", "freestyle_recipe_user": ": {dish_name}",
     "ingredient_validation": ".", "ingredient_validation_user": ": {text}",
     "intent_detection": ".", "intent_detection_user": ": {message}",
