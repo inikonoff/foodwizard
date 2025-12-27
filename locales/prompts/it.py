@@ -42,7 +42,8 @@ DO NOT use ✅ or ⚠️ icons.
     "recipe_generation_user": """Dish name: {dish_name}
 User Ingredients: {products}
 
-Write a detailed recipe in English.""",
+Write a detailed recipe in Italian.""",
+    
     "recipe_generation_user": "Piatto: {dish_name}\nIngredienti: {products}\nRicetta in Italiano.",
 
     "nutrition_instruction": "INOLTRE: Aggiungi '💪 **Nutrizione:**' (Calorie).",
