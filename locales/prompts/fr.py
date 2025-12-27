@@ -1,54 +1,43 @@
 PROMPTS = {
-    "category_analysis": """Chef expert.
+    "category_analysis": """Vous êtes un Chef IA.
 1. Analysez les ingrédients.
-2. Suggérez UN ingrédient manquant pour améliorer le goût.
-   - Max 1-2 nouveaux ingrédients.
+2. Choisissez des catégories PERTINENTES (pas de dessert si seulement viande).
 
-Return JSON Object:
+IMPORTANT : Les clés JSON doivent rester en ANGLAIS : ["soup", "main", "salad", "breakfast", "dessert", "drink", "snack"].
+NE PAS TRADUIRE LES CLÉS DANS LE JSON.
+
+Output JSON:
 {
-  "categories": ["soup", "main", "salad", "breakfast", "dessert", "drink", "snack"],
-  "suggestion": "💡 Conseil : Ajoutez [Ingrédient] pour faire [Plat] !"
-}
-IMPORTANT: Clés 'categories' en Anglais. Suggestion en Français.""",
-    "category_analysis_user": "Ingrédients : {products}",
+  "categories": ["main", "soup"],
+  "suggestion": "💡 Conseil : Ajoutez [Ingrédient] !"
+}""",
 
-    "dish_generation": """Chef créatif.
-Utilisez les ingrédients fournis + base.
-Max 1-2 ingrédients manquants autorisés.
-JSON Array: [{"name": "Nom", "desc": "Description FR"}]
-Only JSON.""",
+    "category_analysis_user": "Ingrédients: {products}",
+
+    "dish_generation": """Chef créatif. Suggérez 4-6 plats.
+JSON Array: [{"name": "Nom", "desc": "Description en Français"}]
+Uniquement JSON.""",
     "dish_generation_user": "Ingrédients : {products}\nCatégorie : {category}\n4-6 plats.",
 
     "recipe_generation": """Instructeur culinaire.
+LANGUE : Français.
 
-RÈGLES :
-1. Listez UNIQUEMENT les ingrédients utilisés.
-2. PAS d'icônes (✅/⚠️). Format simple : "- [Qté] [Ingrédient]".
+STRUCTURE OBLIGATOIRE :
+1. 🥘 Titre
+2. 🛒 Ingrédients
+3. 👨‍🍳 Préparation (Étapes détaillées. INDISPENSABLE !)
+4. 📊 Détails
+5. 💡 Conseils
 
-Format :
-🥘 [Nom]
-🛒 **Ingrédients :**
-- [Qté] [Ingrédient]
-👨‍🍳 **Préparation :**...
-📊 **Détails :**...
-💡 **Secrets du Chef :**...""",
-     "recipe_logic_direct": """
-UPDATE: This is a direct request ("Give me recipe for..."). 
-IGNORE inventory checks. 
-List ALL ingredients simply: "- [item] - [amount]". 
-DO NOT use ✅ or ⚠️ icons.
-""",
+RÈGLES INGRÉDIENTS :
+- [INGREDIENT_BLOCK]
+- Pas d'icônes (✅). Liste simple.""",
 
-    "recipe_generation_user": """Dish name: {dish_name}
-User Ingredients: {products}
-
-Write a detailed recipe in French.""",
-    
-    "recipe_generation_user": "Plat: {dish_name}\nIngrédients: {products}\nRecette en Français.",
-
-    "nutrition_instruction": "DE PLUS : Ajoutez '💪 **Nutrition :**' (Calories).",
-    
-    "freestyle_recipe": "Chef.", "freestyle_recipe_user": ": {dish_name}",
-    "ingredient_validation": "Comestible? JSON {'valid': bool}", "ingredient_validation_user": ": {text}",
-    "intent_detection": "Intent JSON", "intent_detection_user": ": {message}",
+    "inventory_mode_instruction": """Format : "- [Qté] [Ingrédient]".""",
+    "direct_mode_instruction": """Format : "- [Qté] [Ingrédient]".""",
+    "recipe_generation_user": "Plat: {dish_name}\nIngrédients: {products}\nÉcrivez la recette COMPLÈTE en Français.",
+    "nutrition_instruction": "DE PLUS : Ajoutez '💪 **Nutrition :**'.",
+    "freestyle_recipe": ".", "freestyle_recipe_user": ": {dish_name}",
+    "ingredient_validation": ".", "ingredient_validation_user": ": {text}",
+    "intent_detection": ".", "intent_detection_user": ": {message}",
 }
