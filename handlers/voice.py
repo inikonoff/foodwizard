@@ -23,10 +23,10 @@ async def handle_voice_message(message: Message):
     user_data = await users_repo.get_user(user_id)
     lang = user_data.get('language_code', 'en')
     
-    allowed, used, limit = await users_repo.check_and_increment_request(user_id, "voice")
-    if not allowed:
-        await message.answer(get_text(lang, "limit_voice_exceeded"), parse_mode="HTML")
-        return
+    limit_check_result = await users_repo.check_and_increment_request(user_id, "voice")
+if not limit_check_result[0]:  # Если success == False
+    await message.answer(get_text(lang, "limit_voice_exceeded"), parse_mode="HTML")
+    return
 
     wait_msg = await message.answer(get_text(lang, "processing"))
     temp_path = None
