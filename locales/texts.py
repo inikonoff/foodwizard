@@ -3,241 +3,130 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# --- ОПИСАНИЯ ПРЕМИУМА ---
-
 PREMIUM_DESC_EN = """💎 **Premium Benefits:**
-
 ✅ **Favorites:** Unlimited saving
 ✅ **Health:** Nutrition facts (Calories/Macros)
 ✅ **Limits:** 100 text / 50 voice (daily)
 ✅ **Ingredients:** Up to 50 per request
-✅ **Support:** Priority support
-
 👇 **Choose a plan:**"""
 
 PREMIUM_DESC_DE = """💎 **Premium-Vorteile:**
-
 ✅ **Favoriten:** Unbegrenzt speichern
-✅ **Gesundheit:** Nährwertangaben
+✅ **Gesundheit:** Nährwertangaben (Kalorien)
 ✅ **Limits:** 100 Text / 50 Sprache
-✅ **Support:** Priorisierter Support
-
 👇 **Wählen Sie einen Plan:**"""
 
 PREMIUM_DESC_FR = """💎 **Avantages Premium :**
-
 ✅ **Favoris :** Sauvegarde illimitée
 ✅ **Santé :** Infos nutritionnelles
 ✅ **Limites :** 100 texte / 50 voix
-✅ **Support :** Support prioritaire
-
 👇 **Choisissez un plan :**"""
 
 PREMIUM_DESC_IT = """💎 **Vantaggi Premium:**
-
-✅ **Preferiti:** Salvataggio illimitato
+✅ **Preferiti:** Illimitati
 ✅ **Salute:** Valori nutrizionali
 ✅ **Limiti:** 100 testo / 50 vocale
-✅ **Supporto:** Supporto prioritario
-
 👇 **Scegli un piano:**"""
 
 PREMIUM_DESC_ES = """💎 **Beneficios Premium:**
-
-✅ **Favoritos:** Guardado ilimitado
+✅ **Favoritos:** Ilimitados
 ✅ **Salud:** Información nutricional
 ✅ **Límites:** 100 texto / 50 voz
-✅ **Soporte:** Soporte prioritario
-
 👇 **Elige un plan:**"""
 
-
-TEXTS: Dict[str, Dict[str, str]] = {
-    
-    # ================= АНГЛИЙСКИЙ (EN - DEFAULT) =================
+TEXTS = {
     "en": {
-        "lang_ru": "🇷🇺 Russian", "lang_en": "🇬🇧 English", "lang_de": "🇩🇪 German",
-        "lang_fr": "🇫🇷 French", "lang_it": "🇮🇹 Italian", "lang_es": "🇪🇸 Spanish",
-
-        # ОБНОВЛЕННОЕ ПРИВЕТСТВИЕ
-        "welcome": """👋 **Welcome to FoodWizard.pro!**
-
-🥕 **Have ingredients?**
-Dictate or write a list, and I'll suggest a meal.
-
-⚡️ **Know what you want?**
-Just say or write: "Give me a recipe for [dish]\"""",
-        
-        "start_manual": "", 
-        "processing": "⏳ Thinking...",
-        "menu": "🍴 **Main Menu**",
+        "lang_en": "🇬🇧 English", "lang_de": "🇩🇪 Deutsch", "lang_fr": "🇫🇷 Français", "lang_it": "🇮🇹 Italiano", "lang_es": "🇪🇸 Español",
+        "welcome": """👋 **Welcome to FoodWizard.pro!**\n🥕 **Have ingredients?**\nDictate or write them.\n⚡️ **Or say:**\n"Give me a recipe for [dish]\"""",
+        "start_manual": "", "processing": "⏳ Thinking...", "menu": "🍴 **Main Menu**",
         "choose_language": "🌐 **Choose Language:**",
-        "soup": "🍜 Soups", "main": "🥩 Main Courses", "salad": "🥗 Salads",
-        "breakfast": "🥞 Breakfasts", "dessert": "🍰 Desserts", "drink": "🍹 Drinks", "snack": "🥨 Snacks",
-        
-        "btn_favorites": "⭐️ Favorites", "btn_restart": "🔄 Restart",
-        "btn_change_lang": "🌐 Language", "btn_help": "❓ Help",
+        "soup": "🍜 Soups", "main": "🥩 Main Courses", "salad": "🥗 Salads", "breakfast": "🥞 Breakfasts", "dessert": "🍰 Desserts", "drink": "🍹 Drinks", "snack": "🥨 Snacks",
+        "btn_favorites": "⭐️ Favorites", "btn_restart": "🔄 Restart", "btn_change_lang": "🌐 Language", "btn_help": "❓ Help",
         "btn_add_to_fav": "☆ Add to Favorites", "btn_remove_from_fav": "🌟 In Favorites",
-        "btn_back": "⬅️ Back", "btn_another": "➡️ Another Recipe",
-        "btn_buy_premium": "💎 Get Premium", "btn_page": "Page {page}/{total}",
-        
-        "choose_category": "📝 **Select a category:**",
-        "choose_dish": "🍳 **Select a dish:**",
-        "recipe_title": "✨ **Recipe: {dish_name}**",
-        "recipe_ingredients": "🛒 **Ingredients:**",
-        "recipe_instructions": "📝 **Instructions:**",
-        "recipe_error": "❌ Could not generate recipe.",
-        "dish_list_error": "❌ Could not get dish list.",
-        "error_session_expired": "Session expired. Start over.",
-        
-        "favorites_title": "⭐️ **Your Favorites**",
-        "favorites_empty": "😔 Favorites list is empty.",
-        "favorite_added": "⭐ Recipe **{dish_name}** saved!",
-        "favorite_removed": "🗑 Recipe **{dish_name}** removed.",
-        "favorite_limit": "❌ Limit reached ({limit}).",
-        "favorites_list": "⭐️ **Favorites** (page {page}/{total_pages}):\n\n{recipes}",
-        "favorites_recipe_item": "{num}. {dish} (from {date})\n",
-        
-        "premium_required_title": "💎 **Premium Required**",
-        "premium_required_text": "The **Favorites** feature is limited in the free version.",
+        "btn_back": "⬅️ Back", "btn_another": "➡️ Another Recipe", "btn_buy_premium": "💎 Get Premium", "btn_page": "Page {page}/{total}",
+        "choose_category": "📝 **Category:**", "choose_dish": "🍳 **Dish:**",
+        "recipe_title": "✨ {dish_name}", "favorites_title": "⭐️ **Favorites**", "favorites_empty": "😔 List is empty.",
+        "premium_required_title": "💎 Premium", "premium_required_text": "Feature locked.",
         "premium_description": PREMIUM_DESC_EN,
-        "limit_favorites_exceeded": "🔒 **Limit reached!**\n\nFree version allows 3 recipes. Get Premium for unlimited storage.",
-        
-        "welcome_gift_alert": "🎁 **Gift from FoodWizard.pro!**\n\nIn 48 hours you will receive **7 Days of Premium** for free! Stay tuned. 😉",
-        "trial_activated_notification": "🎁 **Your Gift is Active!**\n\n7 Days of Premium activated.\n✅ Nutrition Facts\n✅ Unlimited Favorites\n✅ 50 Voice requests",
+        "limit_favorites_exceeded": "🔒 Limit: 3 recipes. Get Premium.",
+        "welcome_gift_alert": "🎁 **Gift coming soon!** 7 Days Premium in 48h.",
+        "limit_voice_exceeded": "❌ Voice limit!", "limit_text_exceeded": "❌ Text limit!",
+        "error_not_enough_products": "🤔 Need ingredients.",
+        "voice_recognized": "✅ {text}",
+        "lang_changed": "🌐 Language: English",
+        "help_title": "❓ **Help**", "help_text": "Send ingredients to get recipe.",
+        "promo_instruction": "ℹ️ Use: <code>/code CODE</code>"
+    },
 
-        "limit_voice_exceeded": "❌ **Voice limit exceeded!**\n💎 Get Premium.",
-        "limit_text_exceeded": "❌ **Text limit exceeded!**\n💎 Get Premium.",
-        "error_voice_recognition": "🗣️ **Voice error.**",
-        "error_generation": "❌ Error.",
-        "error_unknown": "❌ Error.",
-        "error_not_enough_products": "🤔 Need more ingredients.",
-        "voice_recognized": "✅ Recognized: {text}",
-        "lang_changed": "🌐 Language changed to English.",
-        "safety_refusal": "🚫 Food only.",
-        "help_title": "❓ **Help**",
-        "help_text": "Send ingredients or ask 'Recipe for...'.",
-        
-        "promo_instruction": """ℹ️ **How to enter a Promo Code:**
+    "de": {
+        "lang_en": "🇬🇧 Englisch", "lang_de": "🇩🇪 Deutsch", "lang_fr": "🇫🇷 Französisch", "lang_it": "🇮🇹 Italienisch", "lang_es": "🇪🇸 Spanisch",
+        "welcome": """👋 **Willkommen!**\n🥕 **Haben Sie Zutaten?**\nSchreiben oder sprechen Sie.\n⚡️ **Oder:**\n"Rezept für [Gericht]" """,
+        "menu": "🍴 **Hauptmenü**", "choose_language": "🌐 **Sprache:**", "processing": "⏳ Moment...",
+        "btn_favorites": "⭐️ Favoriten", "btn_restart": "🔄 Neustart", "btn_change_lang": "🌐 Sprache", "btn_help": "❓ Hilfe",
+        "btn_add_to_fav": "☆ Speichern", "btn_remove_from_fav": "🌟 Gespeichert", "btn_back": "⬅️ Zurück", "btn_another": "➡️ Noch eins", "btn_buy_premium": "💎 Premium",
+        "choose_category": "📝 **Kategorie:**", "choose_dish": "🍳 **Gericht:**",
+        "favorites_title": "⭐️ **Favoriten**", "favorites_empty": "😔 Leer.",
+        "premium_description": PREMIUM_DESC_DE,
+        "lang_changed": "🌐 Sprache: Deutsch", "promo_instruction": "ℹ️ Benutze: <code>/code CODE</code>",
+        # Для категорий копируем EN в цикле ниже, или можно перевести:
+        "soup": "🍜 Suppen", "main": "🥩 Hauptgerichte", "salad": "🥗 Salate", 
+        "breakfast": "🥞 Frühstücke", "dessert": "🍰 Desserts", "drink": "🍹 Getränke", "snack": "🥨 Snacks"
+    },
 
-Type the command followed by your code.
-
-Example:
-<code>/code FOOD2025</code>""",
-
-        # Для BotFather (оставляем, не удаляем ключи)
-        "bot_description": "...", "bot_short_description": "...", "thanks": "😊", "easter_egg": "🥚",
+    "fr": {
+        "lang_en": "🇬🇧 Anglais", "lang_de": "🇩🇪 Allemand", "lang_fr": "🇫🇷 Français", "lang_it": "🇮🇹 Italien", "lang_es": "🇪🇸 Espagnol",
+        "welcome": """👋 **Bienvenue !**\n🥕 **Ingrédients ?**\nÉcrivez ou dictez.\n⚡️ **Ou :**\n"Recette de [plat]" """,
+        "menu": "🍴 **Menu**", "choose_language": "🌐 **Langue :**", "processing": "⏳ Attente...",
+        "btn_favorites": "⭐️ Favoris", "btn_restart": "🔄 Redémarrer", "btn_change_lang": "🌐 Langue", "btn_help": "❓ Aide",
+        "btn_add_to_fav": "☆ Sauvegarder", "btn_remove_from_fav": "🌟 Enregistré", "btn_back": "⬅️ Retour", "btn_another": "➡️ Autre", "btn_buy_premium": "💎 Premium",
+        "choose_category": "📝 **Catégorie :**", "choose_dish": "🍳 **Plat :**",
+        "favorites_title": "⭐️ **Favoris**", "favorites_empty": "😔 Vide.",
+        "premium_description": PREMIUM_DESC_FR,
+        "lang_changed": "🌐 Langue : Français", "promo_instruction": "ℹ️ Utilisez : <code>/code CODE</code>",
+        "soup": "🍜 Soupes", "main": "🥩 Plats", "salad": "🥗 Salades", 
+        "breakfast": "🥞 Petit-déj", "dessert": "🍰 Desserts", "drink": "🍹 Boissons", "snack": "🥨 Snacks"
     },
     
-    # ================= НЕМЕЦКИЙ =================
-    "de": {
-        "welcome": """👋 **Willkommen bei FoodWizard.pro!**
-
-🥕 **Haben Sie Zutaten?**
-Diktieren oder schreiben Sie eine Liste, und ich schlage ein Gericht vor.
-
-⚡️ **Wissen Sie, was Sie wollen?**
-Sagen oder schreiben Sie einfach: "Gib mir ein Rezept für [Gericht]\"""",
-        
-        "premium_description": PREMIUM_DESC_DE,
-        "promo_instruction": """ℹ️ **Promo-Code eingeben:**
-
-Geben Sie den Befehl und dann Ihren Code ein.
-
-Beispiel:
-<code>/code FOOD2025</code>"""
-    },
-
-    # ================= ФРАНЦУЗСКИЙ =================
-    "fr": {
-        "welcome": """👋 **Bienvenue sur FoodWizard.pro !**
-
-🥕 **Vous avez des ingrédients ?**
-Dictez ou écrivez une liste, et je vous suggérerai un plat.
-
-⚡️ **Vous savez ce que vous voulez ?**
-Dites ou écrivez simplement : "Donne-moi une recette de [plat]\"""",
-        
-        "premium_description": PREMIUM_DESC_FR,
-        "promo_instruction": """ℹ️ **Comment saisir le code :**
-
-Tapez la commande suivie de votre code.
-
-Exemple :
-<code>/code FOOD2025</code>"""
-    },
-
-    # ================= ИТАЛЬЯНСКИЙ =================
-    "it": {
-        "welcome": """👋 **Benvenuto su FoodWizard.pro!**
-
-🥕 **Hai degli ingredienti?**
-Dettali o scrivili, e ti suggerirò un pasto.
-
-⚡️ **Sai cosa vuoi?**
-Di' o scrivi semplicemente: "Dammi una ricetta per [piatto]\"""",
-
-        "premium_description": PREMIUM_DESC_IT,
-        "promo_instruction": """ℹ️ **Come inserire il codice:**
-
-Digita il comando seguito dal tuo codice.
-
-Esempio:
-<code>/code FOOD2025</code>"""
-    },
-
-    # ================= ИСПАНСКИЙ =================
     "es": {
-        "welcome": """👋 **¡Bienvenido a FoodWizard.pro!**
-
-🥕 **¿Tienes ingredientes?**
-Dicta o escribe una lista, y te sugeriré una comida.
-
-⚡️ **¿Sabes lo que quieres?**
-Solo di o escribe: "Dame una receta de [plato]\"""",
-
-        "premium_description": PREMIUM_DESC_ES,
-        "promo_instruction": """ℹ️ **Cómo canjear el código:**
-
-Escribe el comando seguido de tu código.
-
-Ejemplo:
-<code>/code FOOD2025</code>"""
+         "lang_en": "🇬🇧 Inglés", "lang_de": "🇩🇪 Alemán", "lang_fr": "🇫🇷 Francés", "lang_it": "🇮🇹 Italiano", "lang_es": "🇪🇸 Español",
+         "welcome": """👋 **¡Hola!**\n🥕 **¿Ingredientes?**\nEscribe o dicta.\n⚡️ **O:**\n"Receta de [plato]" """,
+         "menu": "🍴 **Menú**", "choose_language": "🌐 **Idioma:**", "processing": "⏳ Pensando...",
+         "btn_favorites": "⭐️ Favoritos", "btn_restart": "🔄 Reiniciar", "btn_change_lang": "🌐 Idioma", "btn_help": "❓ Ayuda",
+         "btn_add_to_fav": "☆ Guardar", "btn_remove_from_fav": "🌟 Guardado", "btn_back": "⬅️ Atrás", "btn_another": "➡️ Otro", "btn_buy_premium": "💎 Premium",
+         "choose_category": "📝 **Categoría:**", "choose_dish": "🍳 **Plato:**",
+         "favorites_title": "⭐️ **Favoritos**", "favorites_empty": "😔 Vacío.",
+         "premium_description": PREMIUM_DESC_ES,
+         "lang_changed": "🌐 Idioma: Español", "promo_instruction": "ℹ️ Usa: <code>/code CODE</code>",
+         "soup": "🍜 Sopas", "main": "🥩 Platos", "salad": "🥗 Ensaladas", 
+         "breakfast": "🥞 Desayuno", "dessert": "🍰 Postres", "drink": "🍹 Bebidas", "snack": "🥨 Snacks"
+    },
+    
+    "it": {
+         "lang_en": "🇬🇧 Inglese", "lang_de": "🇩🇪 Tedesco", "lang_fr": "🇫🇷 Francese", "lang_it": "🇮🇹 Italiano", "lang_es": "🇪🇸 Spagnolo",
+         "welcome": """👋 **Ciao!**\n🥕 **Ingredienti?**\nScrivi o detta.\n⚡️ **O:**\n"Ricetta di [piatto]" """,
+         "menu": "🍴 **Menu**", "choose_language": "🌐 **Lingua:**", "processing": "⏳ Attendo...",
+         "btn_favorites": "⭐️ Preferiti", "btn_restart": "🔄 Riavvia", "btn_change_lang": "🌐 Lingua", "btn_help": "❓ Aiuto",
+         "btn_add_to_fav": "☆ Salva", "btn_remove_from_fav": "🌟 Salvato", "btn_back": "⬅️ Indietro", "btn_another": "➡️ Altro", "btn_buy_premium": "💎 Premium",
+         "choose_category": "📝 **Categoria:**", "choose_dish": "🍳 **Piatto:**",
+         "favorites_title": "⭐️ **Preferiti**", "favorites_empty": "😔 Vuota.",
+         "premium_description": PREMIUM_DESC_IT,
+         "lang_changed": "🌐 Lingua: Italiano", "promo_instruction": "ℹ️ Usa: <code>/code CODE</code>",
+         "soup": "🍜 Zuppe", "main": "🥩 Secondi", "salad": "🥗 Insalate", 
+         "breakfast": "🥞 Colazione", "dessert": "🍰 Dessert", "drink": "🍹 Bevande", "snack": "🥨 Snack"
     }
 }
 
-# Заполняем пустоты для других языков (базируясь на EN)
+# --- COPY FALLBACKS FROM EN ---
 base_lang = TEXTS["en"]
 for lang in ["de", "fr", "it", "es"]:
-    # 1. Сохраняем уникальные переводы (которые мы только что определили)
-    saved_translations = {}
-    for key in ["welcome", "premium_description", "promo_instruction"]:
-        if key in TEXTS[lang]:
-            saved_translations[key] = TEXTS[lang][key]
-
-    # 2. Заливаем всё из EN
-    for k, v in base_lang.items():
-        if k not in TEXTS[lang]:
-            TEXTS[lang][k] = v
-            
-    # 3. Возвращаем переведенные уникальные ключи на место
-    for k, v in saved_translations.items():
-        TEXTS[lang][k] = v
-
-    # 4. Названия языков всегда берем из базы, чтобы не дублировать
-    for l_key in ["lang_ru", "lang_en", "lang_de", "lang_fr", "lang_it", "lang_es"]:
-        TEXTS[lang][l_key] = base_lang[l_key]
-
+    for key, val in base_lang.items():
+        if key not in TEXTS[lang]:
+            TEXTS[lang][key] = val
 
 def get_text(lang: str, key: str, **kwargs) -> str:
-    # 1. Если язык неизвестен, fallback на EN
     if lang not in TEXTS: lang = "en"
-    lang_dict = TEXTS.get(lang, TEXTS["en"])
-    
-    # 2. Получаем текст (с фоллбэком на EN, если ключа нет)
-    text = lang_dict.get(key, TEXTS["en"].get(key, ""))
-    
+    text = TEXTS[lang].get(key, TEXTS["en"].get(key, ""))
     if kwargs and text:
         try: return text.format(**kwargs)
-        except KeyError: return text
+        except: return text
     return text
