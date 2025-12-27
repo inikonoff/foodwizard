@@ -21,7 +21,7 @@ if admin_str:
     except Exception:
         pass # Игнорируем ошибки парсинга
 
-SECRET_PROMO_CODE = os.getenv("SECRET_PROMO_CODE", "TRIAL99")
+SECRET_PROMO_CODE = os.getenv("SECRET_PROMO_CODE", "FOOD2025")
 
 # ===== НАСТРОЙКИ LLM =====
 GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
