@@ -1,9 +1,7 @@
 import logging
 import json
 import hashlib
-from typing import Dict, List, Optional, Union
-from datetime import datetime, timedelta, timezone
-
+from typing import Dict, List, Optional
 from groq import AsyncGroq 
 from config import GROQ_API_KEY, GROQ_MODEL, GROQ_MAX_TOKENS
 from database.cache import groq_cache
@@ -23,186 +21,129 @@ class GroqService:
     async def close(self):
         if self.client and hasattr(self.client, 'close'):
             await self.client.close()
-            logger.info("✅ Groq client session closed.")
 
     async def _send_request(self, system_prompt: str, user_prompt: str, 
                             temperature: float = 0.5, cache_type: str = "general", lang: str = "en", user_id: int = 0) -> str:
-        """Базовая функция отправки запроса с кэшированием"""
-        if not self.client:
-            return "Error: API key missing."
+        if not self.client: return "API Error"
         
         try:
             cache_key = groq_cache._generate_hash(f"{system_prompt[:300]}_{user_prompt[:300]}", lang, GROQ_MODEL)
-            
-            cached_response = await groq_cache.get(
-                prompt=cache_key,
-                lang=lang, 
-                model=GROQ_MODEL,
-                cache_type=cache_type
-            )
-            
-            if cached_response:
-                await metrics.track_event(user_id, "groq_cache_hit", {"key": cache_key, "lang": lang})
-                return cached_response
+            cached = await groq_cache.get(prompt=cache_key, lang=lang, model=GROQ_MODEL, cache_type=cache_type)
+            if cached:
+                await metrics.track_event(user_id, "groq_cache_hit", {"key": cache_key})
+                return cached
 
             is_json = cache_type in ["analysis", "validation", "intent", "dish_list"]
-            
-            # !!! ФИКС ОШИБКИ 400 !!!
-            # Groq требует явного слова "JSON" в system prompt при использовании json_object
             if is_json and "json" not in system_prompt.lower():
                 system_prompt += " Respond in JSON."
 
             completion = await self.client.chat.completions.create(
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt}
-                ],
-                model=GROQ_MODEL,
-                temperature=temperature,
-                max_tokens=GROQ_MAX_TOKENS,
+                messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}],
+                model=GROQ_MODEL, temperature=temperature, max_tokens=GROQ_MAX_TOKENS,
                 response_format={"type": "json_object"} if is_json else None,
                 timeout=60.0
             )
-
-            response_text = completion.choices[0].message.content
-            
-            await groq_cache.set(
-                prompt=cache_key,
-                response=response_text,
-                lang=lang, 
-                model=GROQ_MODEL,
-                tokens_used=completion.usage.total_tokens,
-                cache_type=cache_type
-            )
-            
-            await metrics.track_event(user_id, "groq_request", {"key": cache_key, "lang": lang}) 
-            return response_text
-
+            text = completion.choices[0].message.content
+            await groq_cache.set(prompt=cache_key, response=text, lang=lang, model=GROQ_MODEL, tokens_used=completion.usage.total_tokens, cache_type=cache_type)
+            await metrics.track_event(user_id, "groq_request", {"key": cache_key}) 
+            return text
         except Exception as e:
-            logger.error(f"❌ Ошибка Groq API в _send_request: {e}", exc_info=True)
-            # Возвращаем текст ошибки, который точно НЕ является JSON, чтобы не ломать логику парсинга ниже
+            logger.error(f"Groq API Error: {e}", exc_info=True)
             return "Server Error"
 
-
-    async def generate_recipe(self, dish_name: str, products: str, lang: str = "en", user_id: int = 0, is_premium: bool = False, is_direct: bool = False) -> str:
-        system_prompt = get_prompt(lang, "recipe_generation")
-        
-        # 1. Логика для ПРЯМОГО ЗАПРОСА
-        if is_direct:
-            direct_instruction = get_prompt(lang, "direct_mode_instruction")
-            if not direct_instruction: direct_instruction = "List ingredients simply."
-            
-            if "[INGREDIENT_BLOCK]" in system_prompt:
-                system_prompt = system_prompt.replace("[INGREDIENT_BLOCK]", direct_instruction)
-            else:
-                system_prompt += f"\n\n{direct_instruction}"
-        else:
-            # Логика для ИНВЕНТАРЯ (Галочки)
-            inventory_instruction = get_prompt(lang, "inventory_mode_instruction")
-            if not inventory_instruction: inventory_instruction = "Mark items with ✅/⚠️."
-            
-            if "[INGREDIENT_BLOCK]" in system_prompt:
-                system_prompt = system_prompt.replace("[INGREDIENT_BLOCK]", inventory_instruction)
-            else:
-                system_prompt += f"\n\n{inventory_instruction}"
-
-        # 2. Логика для ПРЕМИУМА (КБЖУ)
-        if is_premium:
-            nutrition_instr = get_prompt(lang, "nutrition_instruction")
-            if nutrition_instr:
-                system_prompt += f"\n\n{nutrition_instr}"
-        
-        user_prompt = get_prompt(lang, "recipe_generation_user").format(
-            dish_name=dish_name,
-            products=products
-        )
-        
-        cache_marker = "DIRECT" if is_direct else "INVENTORY"
-        user_prompt += f"\n[Context: {cache_marker}]"
-        
-        return await self._send_request(system_prompt, user_prompt, 0.7, "recipe", lang, user_id)
-
+    # 1. АНАЛИЗ (ТУТ БЫЛИ ПРОБЛЕМЫ)
     async def analyze_products(self, products: str, lang: str = "en", user_id: int = 0) -> Optional[Dict]:
-        system_prompt = get_prompt(lang, "category_analysis")
-        user_prompt = get_prompt(lang, "category_analysis_user").format(products=products)
+        system = get_prompt(lang, "category_analysis")
+        user = get_prompt(lang, "category_analysis_user").format(products=products)
         
-        response = await self._send_request(
-            system_prompt=system_prompt,
-            user_prompt=user_prompt,
-            temperature=0.1, # Низкая температура для строгой логики
-            cache_type="analysis",
-            lang=lang,
-            user_id=user_id
-        )
+        # Temp 0.1 -> Максимальная строгость, минимум фантазий о рецептах
+        response = await self._send_request(system, user, 0.1, "analysis", lang, user_id)
         
-        logger.info(f"Сырой ответ Groq (анализ): {response[:200]}...") 
+        logger.info(f"Analysis Raw: {response[:200]}...") 
         
         try:
-            clean_json = response.replace("```json", "").replace("```", "").strip()
-            data = json.loads(clean_json)
+            # Чистка
+            if "{" not in response: raise ValueError("No JSON found")
+            json_str = response[response.find('{'):response.rfind('}')+1]
+            data = json.loads(json_str)
             
             result = {"categories": [], "suggestion": None}
-            
-            if isinstance(data, list):
-                if all(isinstance(item, str) for item in data):
-                    result["categories"] = data
 
-            elif isinstance(data, dict):
-                if "categories" in data and isinstance(data["categories"], list):
+            if isinstance(data, dict):
+                # Проверяем все варианты, куда он мог запихнуть данные
+                if "categories" in data:
                     result["categories"] = data["categories"]
-                else:
-                    # Старый формат {soup: true}
-                    result["categories"] = [k for k, v in data.items() if v is True and k != "suggestion"]
+                elif "category" in data:
+                    result["categories"] = data["category"] # Некоторые модели путают s/без s
+                
+                # Фоллбэк: ищем любой список строк
+                if not result["categories"]:
+                    for v in data.values():
+                        if isinstance(v, list) and len(v) > 0 and isinstance(v[0], str):
+                            result["categories"] = v
+                            break
 
-                if "suggestion" in data:
-                    result["suggestion"] = data["suggestion"]
+                result["suggestion"] = data.get("suggestion")
             
             if result["categories"]:
                 return result
                 
         except Exception as e:
-            logger.error(f"Ошибка парсинга категорий: {e}", exc_info=True)
-        
+            logger.error(f"Analysis Parse Error: {e}", exc_info=True)
         return None
 
+    # 2. РЕЦЕПТ
+    async def generate_recipe(self, dish_name: str, products: str, lang: str = "en", user_id: int = 0, is_premium: bool = False, is_direct: bool = False) -> str:
+        base_prompt = get_prompt(lang, "recipe_generation")
+        
+        if is_direct:
+            mode_instr = get_prompt(lang, "direct_mode_instruction")
+            if not mode_instr: mode_instr = "List ingredients without checking availability."
+        else:
+            mode_instr = get_prompt(lang, "inventory_mode_instruction")
+            if not mode_instr: mode_instr = "Check availability (✅/⚠️)."
+
+        if "[INGREDIENT_BLOCK]" in base_prompt:
+            system_prompt = base_prompt.replace("[INGREDIENT_BLOCK]", mode_instr)
+        else:
+            system_prompt = base_prompt + "\n" + mode_instr
+
+        if is_premium:
+            nutri = get_prompt(lang, "nutrition_instruction")
+            if nutri: system_prompt += f"\n\n{nutri}"
+
+        user_prompt = get_prompt(lang, "recipe_generation_user").format(dish_name=dish_name, products=products)
+        marker = "DIRECT" if is_direct else "INVENTORY"
+        user_prompt += f"\n[Mode: {marker}]"
+        
+        return await self._send_request(system_prompt, user_prompt, 0.7, "recipe", lang, user_id)
+
+    # 3. СПИСОК БЛЮД
     async def generate_dishes_list(self, products: str, category: str, lang: str = "en", user_id: int = 0) -> Optional[List[Dict]]:
-        system_prompt = get_prompt(lang, "dish_generation")
-        user_prompt = get_prompt(lang, "dish_generation_user").format(products=products, category=category)
-        
-        response = await self._send_request(
-            system_prompt=system_prompt,
-            user_prompt=user_prompt,
-            temperature=0.5,
-            cache_type="dish_list",
-            lang=lang,
-            user_id=user_id
-        )
-        
-        logger.info(f"Сырой ответ Groq (блюда): {response[:200]}...")
-        
+        sys = get_prompt(lang, "dish_generation")
+        usr = get_prompt(lang, "dish_generation_user").format(products=products, category=category)
+        resp = await self._send_request(sys, usr, 0.5, "dish_list", lang, user_id)
         try:
-            clean_json = response.replace("```json", "").replace("```", "").strip()
-            data = json.loads(clean_json)
+            if "{" not in resp and "[" not in resp: return None
+            # Находим границы JSON
+            start = resp.find('[')
+            if start == -1: start = resp.find('{')
+            end = resp.rfind(']')
+            if end == -1: end = resp.rfind('}')
             
-            if isinstance(data, list):
-                if all(isinstance(item, dict) for item in data):
-                    return data
+            clean = resp[start:end+1]
+            data = json.loads(clean)
             
-            elif isinstance(data, dict):
-                # Ищем список внутри
-                for key, value in data.items():
-                    if isinstance(value, list) and all(isinstance(item, dict) for item in value):
-                        return value
-                        
-        except Exception as e:
-            logger.error(f"Ошибка парсинга списка блюд: {e}", exc_info=True)
-            
+            if isinstance(data, list): return data
+            if isinstance(data, dict):
+                 if "dishes" in data: return data["dishes"]
+                 for k, v in data.items(): 
+                     if isinstance(v, list) and v and isinstance(v[0], dict): return v
+        except: pass
         return None
 
-    async def validate_recipe(self, recipe_text: str, lang: str = "en", user_id: int = 0) -> bool:
-        return True # Заглушка, можно расширить позже
-    
-    async def determine_intent(self, user_message: str, context: str, lang: str = "en", user_id: int = 0) -> Dict:
-        return {"intent": "products", "content": user_message} # Заглушка
+    # Stubs
+    async def validate_recipe(self, *a, **k): return True
+    async def determine_intent(self, *a, **k): return {}
 
 groq_service = GroqService()
