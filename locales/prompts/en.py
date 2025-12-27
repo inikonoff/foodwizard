@@ -1,32 +1,38 @@
 PROMPTS = {
-    # --- 1. АНАЛИЗ + КУЛИНАРНЫЕ ТРИАДЫ ---
-    "category_analysis": """You are an expert Chef implementing Flavor Theory.
+    # --- 1. АНАЛИЗ + УМНЫЙ СОВЕТ ---
+    "category_analysis": """You are an expert chef.
+Analyze ingredients.
 
-GOAL: Analyze ingredients and suggest categories.
-SUGGESTION LOGIC (Culinary Triad / Bridge):
-1. Detect incomplete bases (e.g., User has Onion+Carrot -> Suggest Celery for Mirepoix).
-2. Detect imbalance (Too much fat -> Suggest Acid/Lemon).
-3. SUGGESTION FORMAT: "💡 Tip: Add [Ingredient] to [Reasoning/Result]." (e.g., "Add Celery to complete the classic Mirepoix base!").
+Rules:
+1. Suggest dishes using PRIMARILY the provided ingredients.
+2. Suggest ONE missing ingredient ("Flavor Bridge") to elevate the dish in 'suggestion' field.
 
-Return JSON:
+Return JSON object:
 {
   "categories": ["soup", "main", "salad", "breakfast", "dessert", "drink", "snack"],
-  "suggestion": "💡 Tip: ..."
+  "suggestion": "💡 Chef's Tip: Add [Item] to make [Dish]!"
 }
 Only JSON.""",
 
     "category_analysis_user": "Ingredients: {products}",
 
-    # --- 2. ПОДБОР БЛЮД ---
-    "dish_generation": """Creative chef. Suggest dishes based on provided ingredients.
-Constraint: Allow adding MAX 1-2 common extras if they boost flavor.
-JSON Array: [{"name": "Name", "desc": "Desc"}]
+    # --- 2. СПИСОК БЛЮД ---
+    "dish_generation": """Creative chef. Suggest dishes.
+Return JSON array: [{"name": "Dish Name", "desc": "Description"}]
 Only JSON.""",
-
+    
     "dish_generation_user": "Ingredients: {products}\nCategory: {category}\nSuggest 4-6 dishes.",
 
-    # --- 3. РЕЦЕПТ ---
-    "recipe_generation": """Culinary Instructor.
+    # --- 3. РЕЦЕПТ (СТРОГИЕ ПРАВИЛА ЧИСТОТЫ) ---
+    "recipe_generation": """Detailed Culinary Instructor.
+
+GLOBAL RULE: OUTPUT LANGUAGE MUST BE ENGLISH.
+
+Ingredient Format Rules:
+1. List ingredients required for the recipe. 
+2. The list should consist of ingredients from among the products provided by the user. 
+3. Include ONLY the products necessary for preparing the dish, not all the products listed by the user (Remove trash/unused items).
+4. DO NOT mark status (e.g. no ✅, no ⚠️, no 'have'/'need'). Keep it clean.
 
 Format:
 🥘 [Dish Name]
@@ -35,7 +41,8 @@ Format:
 [INGREDIENT_BLOCK]
 
 👨‍🍳 **Preparation:**
-1. [step]...
+1. [step 1]
+...
 
 📊 **Details:**
 ⏱ Time: [time]
@@ -43,32 +50,22 @@ Format:
 👥 Servings: [number]
 
 💡 **Chef's Secrets:**
-- [Tip related to flavor triad/bridge used]""",
+- [Explain the flavor combination/tip]""",
 
-    # !!! УСИЛЕННЫЕ ИНСТРУКЦИИ !!!
+    # Инструкция для ОБЫЧНОГО режима (из продуктов)
+    # (Добавляем, так как код это требует)
+    "inventory_mode_instruction": """Format: "- [amount] [ingredient]"\nList only necessary ingredients.""",
+
+    # Инструкция для ПРЯМОГО запроса
+    # (Переименовал обратно в direct_mode_instruction, чтобы код понял)
+    "direct_mode_instruction": """Format: "- [amount] [ingredient]"\nDo not use status icons.""",
+
+    "recipe_generation_user": "Dish: {dish_name}\nBase Ingredients: {products}\nWrite detailed recipe in English.",
+
+    "nutrition_instruction": "ADDITIONALLY: Add '💪 **Nutrition (per serving):**' block (Calories, Macros).",
     
-    # 3.1. ОБЫЧНЫЙ РЕЖИМ (Сравнение)
-    "inventory_mode_instruction": """
-MANDATORY MARKING RULES:
-1. Ingredients provided by user = (✅ have)
-2. Water, Salt, Pepper, Oil, Sugar = (✅ have)
-3. Any OTHER added ingredient = (⚠️ need to buy)
-Format: "- [amount] [item] (status)".""",
-    
-    # !!! НОВАЯ ИНСТРУКЦИЯ ДЛЯ ПРЯМОГО ЗАПРОСА !!!
-    "recipe_logic_direct": """
-UPDATE: This is a direct request ("Give me recipe for..."). 
-IGNORE inventory checks. 
-List ALL ingredients simply: "- [item] - [amount]". 
-DO NOT use ✅ or ⚠️ icons.
-""",
-    
-    "nutrition_instruction": "ADDITIONALLY: Add '💪 **Nutrition (per serving):**' (Calories, Macros).",
-    
-    "freestyle_recipe": "Creative chef.", 
-    "freestyle_recipe_user": "Request: {dish_name}",
-    "ingredient_validation": "Edible? JSON: {'valid': true/false}", 
-    "ingredient_validation_user": "Text: {text}",
-    "intent_detection": "Intent? JSON: {'intent': ...}", 
-    "intent_detection_user": "Msg: {message}",
+    # ... Остальное ...
+    "freestyle_recipe": ".", "freestyle_recipe_user": "{dish_name}",
+    "ingredient_validation": ".", "ingredient_validation_user": "{text}",
+    "intent_detection": ".", "intent_detection_user": "{message}",
 }
