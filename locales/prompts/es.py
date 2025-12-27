@@ -32,6 +32,17 @@ Formato:
 👨‍🍳 **Preparación:**...
 📊 **Detalles:**...
 💡 **Secretos del Chef:**...""",
+     "recipe_logic_direct": """
+UPDATE: This is a direct request ("Give me recipe for..."). 
+IGNORE inventory checks. 
+List ALL ingredients simply: "- [item] - [amount]". 
+DO NOT use ✅ or ⚠️ icons.
+""",
+
+    "recipe_generation_user": """Dish name: {dish_name}
+User Ingredients: {products}
+
+Write a detailed recipe in English.""",
     "recipe_generation_user": "Plato: {dish_name}\nIngredientes: {products}\nReceta en Español.",
 
     "nutrition_instruction": "ADICIONALMENTE: Añade '💪 **Nutrición:**' (Calorías).",
