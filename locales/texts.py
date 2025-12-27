@@ -40,7 +40,9 @@ TEXTS = {
         # ... существующие ключи ...
         "promo_instruction": "ℹ️ Use: <code>/code CODE</code>",
         
+        
         # ✅ ДОБАВЬТЕ ЭТИ НОВЫЕ КЛЮЧИ:
+        "welcome": """👋 **Welcome to FoodWizard.pro!**\n🥕 **Have ingredients?**\nDictate or write them.\n⚡️ **Or say:**\n"Give me a recipe for [dish]\"""",
         "safety_refusal": "⚠️ I cannot generate this recipe due to content policy restrictions.",
         "error_generation": "❌ Failed to generate recipe. Please try again with different ingredients.",
         "error_voice_recognition": "❌ Could not recognize speech. Please try typing instead.",
@@ -58,6 +60,7 @@ TEXTS = {
     },
 
     "de": {
+        "welcome": """👋 **Willkommen!**\n🥕 **Haben Sie Zutaten?**\nSchreiben oder sprechen Sie.\n⚡️ **Oder:**\n"Rezept für [Gericht]" """,
         "lang_en": "🇬🇧 Englisch", "lang_de": "🇩🇪 Deutsch", "lang_fr": "🇫🇷 Französisch", "lang_it": "🇮🇹 Italienisch", "lang_es": "🇪🇸 Spanisch",
         "welcome": """👋 **Willkommen!**\n🥕 **Haben Sie Zutaten?**\nSchreiben oder sprechen Sie.\n⚡️ **Oder:**\n"Rezept für [Gericht]" """,
         "menu": "🍴 **Hauptmenü**", "choose_language": "🌐 **Sprache:**", "processing": "⏳ Moment...",
@@ -73,6 +76,7 @@ TEXTS = {
     },
 
     "fr": {
+        "welcome": """👋 **Bienvenue !**\n🥕 **Ingrédients ?**\nÉcrivez ou dictez.\n⚡️ **Ou :**\n"Recette de [plat]" """,
         "lang_en": "🇬🇧 Anglais", "lang_de": "🇩🇪 Allemand", "lang_fr": "🇫🇷 Français", "lang_it": "🇮🇹 Italien", "lang_es": "🇪🇸 Espagnol",
         "welcome": """👋 **Bienvenue !**\n🥕 **Ingrédients ?**\nÉcrivez ou dictez.\n⚡️ **Ou :**\n"Recette de [plat]" """,
         "menu": "🍴 **Menu**", "choose_language": "🌐 **Langue :**", "processing": "⏳ Attente...",
@@ -87,6 +91,7 @@ TEXTS = {
     },
     
     "es": {
+         "welcome": """👋 **¡Hola!**\n🥕 **¿Ingredientes?**\nEscribe o dicta.\n⚡️ **O:**\n"Receta de [plato]" """,
          "lang_en": "🇬🇧 Inglés", "lang_de": "🇩🇪 Alemán", "lang_fr": "🇫🇷 Francés", "lang_it": "🇮🇹 Italiano", "lang_es": "🇪🇸 Español",
          "welcome": """👋 **¡Hola!**\n🥕 **¿Ingredientes?**\nEscribe o dicta.\n⚡️ **O:**\n"Receta de [plato]" """,
          "menu": "🍴 **Menú**", "choose_language": "🌐 **Idioma:**", "processing": "⏳ Pensando...",
@@ -101,6 +106,7 @@ TEXTS = {
     },
     
     "it": {
+         "welcome": """👋 **Ciao!**\n🥕 **Ingredienti?**\nScrivi o detta.\n⚡️ **O:**\n"Ricetta di [piatto]" """,
          "lang_en": "🇬🇧 Inglese", "lang_de": "🇩🇪 Tedesco", "lang_fr": "🇫🇷 Francese", "lang_it": "🇮🇹 Italiano", "lang_es": "🇪🇸 Spagnolo",
          "welcome": """👋 **Ciao!**\n🥕 **Ingredienti?**\nScrivi o detta.\n⚡️ **O:**\n"Ricetta di [piatto]" """,
          "menu": "🍴 **Menu**", "choose_language": "🌐 **Lingua:**", "processing": "⏳ Attendo...",
