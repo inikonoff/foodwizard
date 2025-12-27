@@ -18,10 +18,8 @@ async def track_safely(user_id: int, event_name: str, data: dict = None):
     except: pass
 
 def safe_format_recipe_text(text: str) -> str:
-    """Чистит и форматирует текст рецепта для HTML."""
     if not text: return ""
     text = html.quote(text)
-    # Преобразуем заголовки и жирный шрифт Markdown в HTML
     text = re.sub(r'#{1,6}\s*(.*?)$', r'<b>\1</b>', text, flags=re.MULTILINE)
     text = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', text, flags=re.DOTALL)
     text = re.sub(r'__(.*?)__', r'<b>\1</b>', text, flags=re.DOTALL)
@@ -31,7 +29,6 @@ def safe_format_recipe_text(text: str) -> str:
     return text
 
 def parse_direct_request(text: str) -> str | None:
-    """Мультиязычная проверка на прямой запрос рецепта."""
     text = text.strip()
     lower_text = text.lower()
     
@@ -50,11 +47,12 @@ def parse_direct_request(text: str) -> str | None:
         if clean_text.startswith(trigger):
             start_index = clean_text.find(trigger) + len(trigger)
             remaining = clean_text[start_index:].strip()
-            # Чистка артиклей и предлогов
+            
+            # Чистка артиклей
             junk_pattern = r'^(a|an|the|for|of|about|un|une|le|la|les|l\'|du|de|des|pour|ein|eine|einen|der|die|das|für|von|el|los|las|para|il|lo|per|di)\s+'
             dish_name = re.sub(junk_pattern, '', remaining, flags=re.IGNORECASE)
             
-            # Если запрос дублируется ("recette de recette...")
+            # Повторная чистка (recette de recette de...)
             if any(dish_name.startswith(w + " ") for w in ["recipe", "recette", "rezept", "ricetta", "receta"]):
                    dish_name = dish_name.split(' ', 1)[1]
                    dish_name = re.sub(junk_pattern, '', dish_name.strip(), flags=re.IGNORECASE)
@@ -62,7 +60,6 @@ def parse_direct_request(text: str) -> str | None:
             if dish_name and len(dish_name) > 1:
                 return dish_name.rstrip('.?!')
     return None
-
 
 async def generate_and_send_recipe(message_or_callback, user_id, dish_name, products, lang, is_direct=False):
     try:
@@ -77,7 +74,6 @@ async def generate_and_send_recipe(message_or_callback, user_id, dish_name, prod
         recipe = await groq_service.generate_recipe(dish_name, products, lang, user_id, is_premium, is_direct)
         await wait_msg.delete()
 
-        # Проверка на отказ
         if get_text(lang, "safety_refusal") in recipe:
              await msg_obj.answer(get_text(lang, "safety_refusal"))
              return
@@ -87,7 +83,7 @@ async def generate_and_send_recipe(message_or_callback, user_id, dish_name, prod
 
         await track_safely(user_id, "recipe_generated", {"dish": dish_name, "direct": is_direct})
         
-        # Подготовка данных для кнопок
+        # ХАК ДЛЯ ПРЯМЫХ ЗАПРОСОВ (Чтобы кнопки работали с индексом 0)
         if is_direct:
             fake_dishes = [{"name": dish_name, "category": "direct"}]
             state_manager.set_generated_dishes(user_id, fake_dishes)
@@ -105,21 +101,23 @@ async def generate_and_send_recipe(message_or_callback, user_id, dish_name, prod
         is_favorite = await favorites_repo.is_favorite(user_id, dish_name)
         builder = InlineKeyboardBuilder()
         
-        # Кнопки "Избранное"
         if is_favorite:
             builder.row(InlineKeyboardButton(text=get_text(lang, "btn_remove_from_fav"), callback_data=f"remove_fav_{dish_index}"))
         else:
             builder.row(InlineKeyboardButton(text=get_text(lang, "btn_add_to_fav"), callback_data=f"add_fav_{dish_index}"))
         
-        # Кнопки навигации
         if is_direct:
             builder.row(InlineKeyboardButton(text=get_text(lang, "btn_restart"), callback_data="restart"))
         else:
             back_data = "back_to_categories"
-            another_cb = message_or_callback.data if isinstance(message_or_callback, CallbackQuery) else "restart"
+            # Определяем callback для кнопки "Еще рецепт"
+            another_cb = "restart" # Упрощаем для стабильности
+            if isinstance(message_or_callback, CallbackQuery) and message_or_callback.data.startswith("cat_"):
+                 another_cb = message_or_callback.data # Возвращаемся в ту же категорию
+
             builder.row(
                 InlineKeyboardButton(text=get_text(lang, "btn_another"), callback_data=another_cb),
-                InlineKeyboardButton(text=get_text(lang, "btn_back"), callback_data=back_data)
+                InlineKeyboardButton(text=get_text(lang, "btn_back"), callback_data="back_to_categories")
             )
         
         await msg_obj.answer(final_recipe_text, reply_markup=builder.as_markup(), parse_mode="HTML")
@@ -136,28 +134,27 @@ async def handle_text_message(message: Message):
     user_id = message.from_user.id
     text = message.text.strip()
     
-    # Игнорируем команды
+    # 1. Защита от команд
     if text.startswith("/"):
         return
 
     user_data = await users_repo.get_user(user_id)
     lang = user_data.get('language_code', 'en')
     
-    # Лимиты
-    # ✅ ДОЛЖНО БЫТЬ:
-limit_result = await users_repo.check_and_increment_request(user_id, "text")
-if not limit_result[0]:
+    # 2. Проверка лимитов (БЕЗОПАСНАЯ РАСПАКОВКА)
+    limit_result = await users_repo.check_and_increment_request(user_id, "text")
+    if not limit_result[0]:
         await message.answer(get_text(lang, "limit_text_exceeded"), parse_mode="HTML")
         return
 
-    # 1. Прямой запрос
+    # 3. Прямой запрос
     direct_dish = parse_direct_request(text)
     if direct_dish:
         state_manager.set_products(user_id, "") 
         await generate_and_send_recipe(message, user_id, direct_dish, "", lang, is_direct=True)
         return
 
-    # 2. Анализ продуктов
+    # 4. Анализ продуктов
     state_manager.set_products(user_id, text)
     wait_msg = await message.answer(get_text(lang, "processing"))
     
@@ -174,7 +171,9 @@ if not limit_result[0]:
         suggestion = analysis_result.get("suggestion")
         
         state_manager.set_categories(user_id, categories)
-        if suggestion: await message.answer(suggestion)
+        
+        if suggestion:
+            await message.answer(suggestion)
             
         builder = InlineKeyboardBuilder()
         valid_count = 0
