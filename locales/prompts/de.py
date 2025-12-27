@@ -43,7 +43,7 @@ DO NOT use ✅ or ⚠️ icons.
     "recipe_generation_user": """Dish name: {dish_name}
 User Ingredients: {products}
 
-Write a detailed recipe in English.""",
+Write a detailed recipe in German.""",
     
     "recipe_generation_user": "Gericht: {dish_name}\nZutaten: {products}\nRezept auf Deutsch.",
 
