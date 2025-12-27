@@ -34,28 +34,27 @@ PREMIUM_DESC_ES = """💎 **Beneficios Premium:**
 ✅ **Límites:** 100 texto / 50 voz
 👇 **Elige un plan:**"""
 
+# Добавьте эти строки в TEXTS["en"] (после "promo_instruction"):
 TEXTS = {
     "en": {
-        "lang_en": "🇬🇧 English", "lang_de": "🇩🇪 Deutsch", "lang_fr": "🇫🇷 Français", "lang_it": "🇮🇹 Italiano", "lang_es": "🇪🇸 Español",
-        "welcome": """👋 **Welcome to FoodWizard.pro!**\n🥕 **Have ingredients?**\nDictate or write them.\n⚡️ **Or say:**\n"Give me a recipe for [dish]\"""",
-        "start_manual": "", "processing": "⏳ Thinking...", "menu": "🍴 **Main Menu**",
-        "choose_language": "🌐 **Choose Language:**",
-        "soup": "🍜 Soups", "main": "🥩 Main Courses", "salad": "🥗 Salads", "breakfast": "🥞 Breakfasts", "dessert": "🍰 Desserts", "drink": "🍹 Drinks", "snack": "🥨 Snacks",
-        "btn_favorites": "⭐️ Favorites", "btn_restart": "🔄 Restart", "btn_change_lang": "🌐 Language", "btn_help": "❓ Help",
-        "btn_add_to_fav": "☆ Add to Favorites", "btn_remove_from_fav": "🌟 In Favorites",
-        "btn_back": "⬅️ Back", "btn_another": "➡️ Another Recipe", "btn_buy_premium": "💎 Get Premium", "btn_page": "Page {page}/{total}",
-        "choose_category": "📝 **Category:**", "choose_dish": "🍳 **Dish:**",
-        "recipe_title": "✨ {dish_name}", "favorites_title": "⭐️ **Favorites**", "favorites_empty": "😔 List is empty.",
-        "premium_required_title": "💎 Premium", "premium_required_text": "Feature locked.",
-        "premium_description": PREMIUM_DESC_EN,
-        "limit_favorites_exceeded": "🔒 Limit: 3 recipes. Get Premium.",
-        "welcome_gift_alert": "🎁 **Gift coming soon!** 7 Days Premium in 48h.",
-        "limit_voice_exceeded": "❌ Voice limit!", "limit_text_exceeded": "❌ Text limit!",
-        "error_not_enough_products": "🤔 Need ingredients.",
-        "voice_recognized": "✅ {text}",
-        "lang_changed": "🌐 Language: English",
-        "help_title": "❓ **Help**", "help_text": "Send ingredients to get recipe.",
-        "promo_instruction": "ℹ️ Use: <code>/code CODE</code>"
+        # ... существующие ключи ...
+        "promo_instruction": "ℹ️ Use: <code>/code CODE</code>",
+        
+        # ✅ ДОБАВЬТЕ ЭТИ НОВЫЕ КЛЮЧИ:
+        "safety_refusal": "⚠️ I cannot generate this recipe due to content policy restrictions.",
+        "error_generation": "❌ Failed to generate recipe. Please try again with different ingredients.",
+        "error_voice_recognition": "❌ Could not recognize speech. Please try typing instead.",
+        "error_session_expired": "🕒 Session expired. Please start again.",
+        "trial_activated_notification": "🎁 **Premium Trial Activated!**\nYou now have 7 days of premium access.",
+        "favorite_added": "✅ '{dish_name}' added to favorites!",
+        "favorite_removed": "🗑 '{dish_name}' removed from favorites.",
+        "error_not_enough_products": "🤔 Not enough ingredients. Please add more items.",
+        "voice_recognized": "✅ Recognized: {text}",
+        "choose_category": "📝 **Choose Category:**",
+        "choose_dish": "🍳 **Choose Dish:** (Category: {category})",
+        "start_manual": "✍️ Type or dictate your ingredients.",
+        "help_title": "❓ **Help**",
+        "help_text": "📝 Send ingredients (e.g., 'eggs, milk, flour') to get recipe ideas.\n🎤 Or send a voice message.\n🍳 Or ask directly: 'Recipe for pancakes'.",
     },
 
     "de": {
