@@ -144,7 +144,9 @@ async def handle_text_message(message: Message):
     lang = user_data.get('language_code', 'en')
     
     # Лимиты
-    if not await users_repo.check_and_increment_request(user_id, "text")[0]:
+    # ✅ ДОЛЖНО БЫТЬ:
+limit_result = await users_repo.check_and_increment_request(user_id, "text")
+if not limit_result[0]:
         await message.answer(get_text(lang, "limit_text_exceeded"), parse_mode="HTML")
         return
 
