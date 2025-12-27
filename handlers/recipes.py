@@ -34,36 +34,46 @@ def safe_format_recipe_text(text: str) -> str:
     return text
 
 def parse_direct_request(text: str) -> str | None:
-    """Multilingual check for direct recipe requests."""
-    text = text.strip()
-    lower_text = text.lower()
-    
+    """
+    Проверяет триггеры на всех языках и извлекает название блюда.
+    """
     triggers = [
-        "recipe", "recipe for", "give me", "make", "cook", "how to cook", "i want", "create", "show me",
-        "rezept", "gib mir", "zeig mir", "koch", "koche", "wie kocht man", "ich will", "zubereiten",
-        "recette", "donne-moi", "donne moi", "donnez-moi", "donnez moi", "cuisine", "cuisiner", 
-        "je veux", "comment faire", "comment cuisiner", "préparer", "faire",
-        "ricetta", "dammi", "dimmi", "cucina", "cucinare", "voglio", "vorrei", "come fare", "prepara",
-        "receta", "dame", "cocina", "cocinar", "quiero", "como hacer", "preparar", "dame una"
+        # ENGLISH
+        "recipe ", "recipe for ", "give me ", "make ", "cook ", "how to cook ", "i want ",
+        
+        # GERMAN
+        "rezept ", "rezept für ", "gib mir ein rezept für ", "gib mir ", 
+        "koche ", "wie kocht man ", "ich will ",
+        
+        # FRENCH
+        "recette ", "recette de ", "donne-moi une recette de ", "donne-moi ", 
+        "cuisine ", "comment faire ", "je veux ", 
+        
+        # ITALIAN
+        "ricetta ", "ricetta di ", "dammi una ricetta per ", "dammi ", 
+        "cucina ", "come fare ", "voglio ",
+        
+        # SPANISH
+        "receta ", "receta de ", "dame una receta de ", "dame ", 
+        "cocina ", "como hacer ", "quiero ", "dame una "
     ]
     
-    clean_text = lower_text.lstrip(".,!?¿¡- ")
+    # Нормализуем текст (удаляем лишние пробелы, приводим к нижнему регистру)
+    # Удаляем знаки препинания в начале (например, если сказали ", дай рецепт")
+    lower_text = text.lower().strip().lstrip('.,!? ')
     
     for trigger in triggers:
-        if clean_text.startswith(trigger):
-            start_index = clean_text.find(trigger) + len(trigger)
-            remaining = clean_text[start_index:].strip()
-            # Clean articles and prepositions
-            junk_pattern = r'^(a|an|the|for|of|about|un|une|le|la|les|l\'|du|de|des|pour|ein|eine|einen|der|die|das|für|von|el|los|las|para|il|lo|per|di)\s+'
-            dish_name = re.sub(junk_pattern, '', remaining, flags=re.IGNORECASE)
+        trigger = trigger.strip()
+        
+        # Проверяем вхождение триггера В НАЧАЛЕ фразы
+        # Сначала пробуем точное совпадение с пробелом "recipe pizza"
+        if lower_text.startswith(trigger + " "):
+            return text[len(trigger)+1:].strip().rstrip('.?!')
+        
+        # Затем пробуем без пробела, если это слово целиком "recipe:"
+        if lower_text.startswith(trigger):
+            return text[len(trigger):].strip().rstrip('.?!')
             
-            # Handle duplication ("recette de recette...")
-            if any(dish_name.startswith(w + " ") for w in ["recipe", "recette", "rezept", "ricetta", "receta"]):
-                dish_name = dish_name.split(' ', 1)[1]
-                dish_name = re.sub(junk_pattern, '', dish_name.strip(), flags=re.IGNORECASE)
-
-            if dish_name and len(dish_name) > 1:
-                return dish_name.rstrip('.?!')
     return None
 
 
