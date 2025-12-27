@@ -14,14 +14,17 @@ from state_manager import state_manager
 logger = logging.getLogger(__name__)
 
 async def track_safely(user_id: int, event_name: str, data: dict = None):
-    try: await metrics.track_event(user_id, event_name, data)
-    except: pass
+    try: 
+        await metrics.track_event(user_id, event_name, data)
+    except: 
+        pass
 
 def safe_format_recipe_text(text: str) -> str:
-    """Чистит и форматирует текст рецепта для HTML."""
-    if not text: return ""
+    """Cleans and formats recipe text for HTML."""
+    if not text: 
+        return ""
     text = html.quote(text)
-    # Преобразуем заголовки и жирный шрифт Markdown в HTML
+    # Convert headers and bold text from Markdown to HTML
     text = re.sub(r'#{1,6}\s*(.*?)$', r'<b>\1</b>', text, flags=re.MULTILINE)
     text = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', text, flags=re.DOTALL)
     text = re.sub(r'__(.*?)__', r'<b>\1</b>', text, flags=re.DOTALL)
@@ -31,7 +34,7 @@ def safe_format_recipe_text(text: str) -> str:
     return text
 
 def parse_direct_request(text: str) -> str | None:
-    """Мультиязычная проверка на прямой запрос рецепта."""
+    """Multilingual check for direct recipe requests."""
     text = text.strip()
     lower_text = text.lower()
     
@@ -44,20 +47,20 @@ def parse_direct_request(text: str) -> str | None:
         "receta", "dame", "cocina", "cocinar", "quiero", "como hacer", "preparar", "dame una"
     ]
     
-    clean_text = lower_text.lstrip(".,!?¡¿- ")
+    clean_text = lower_text.lstrip(".,!?¿¡- ")
     
     for trigger in triggers:
         if clean_text.startswith(trigger):
             start_index = clean_text.find(trigger) + len(trigger)
             remaining = clean_text[start_index:].strip()
-            # Чистка артиклей и предлогов
+            # Clean articles and prepositions
             junk_pattern = r'^(a|an|the|for|of|about|un|une|le|la|les|l\'|du|de|des|pour|ein|eine|einen|der|die|das|für|von|el|los|las|para|il|lo|per|di)\s+'
             dish_name = re.sub(junk_pattern, '', remaining, flags=re.IGNORECASE)
             
-            # Если запрос дублируется ("recette de recette...")
+            # Handle duplication ("recette de recette...")
             if any(dish_name.startswith(w + " ") for w in ["recipe", "recette", "rezept", "ricetta", "receta"]):
-                   dish_name = dish_name.split(' ', 1)[1]
-                   dish_name = re.sub(junk_pattern, '', dish_name.strip(), flags=re.IGNORECASE)
+                dish_name = dish_name.split(' ', 1)[1]
+                dish_name = re.sub(junk_pattern, '', dish_name.strip(), flags=re.IGNORECASE)
 
             if dish_name and len(dish_name) > 1:
                 return dish_name.rstrip('.?!')
@@ -71,47 +74,59 @@ async def generate_and_send_recipe(message_or_callback, user_id, dish_name, prod
         
         msg_obj = message_or_callback if isinstance(message_or_callback, Message) else message_or_callback.message
         
-        if isinstance(message_or_callback, Message): wait_msg = await msg_obj.answer(get_text(lang, "processing"))
-        else: wait_msg = await msg_obj.edit_text(get_text(lang, "processing"))
+        if isinstance(message_or_callback, Message): 
+            wait_msg = await msg_obj.answer(get_text(lang, "processing"))
+        else: 
+            wait_msg = await msg_obj.edit_text(get_text(lang, "processing"))
             
         recipe = await groq_service.generate_recipe(dish_name, products, lang, user_id, is_premium, is_direct)
         await wait_msg.delete()
 
-        # Проверка на отказ
-        if get_text(lang, "safety_refusal") in recipe:
-             await msg_obj.answer(get_text(lang, "safety_refusal"))
-             return
+        # ✅ FIXED: Check if recipe is empty
+        if not recipe or not recipe.strip():
+            logger.warning(f"Empty recipe received for dish: {dish_name}")
+            error_msg = get_text(lang, "error_generation")
+            if not error_msg or not error_msg.strip():
+                error_msg = "Failed to generate recipe. Please try again."
+            await msg_obj.answer(error_msg)
+            return
+
+        # ✅ FIXED: Check for safety refusal (with null check)
+        safety_text = get_text(lang, "safety_refusal")
+        if safety_text and safety_text in recipe:
+            await msg_obj.answer(safety_text)
+            return
 
         final_recipe_text = safe_format_recipe_text(recipe)
         state_manager.set_current_recipe_text(user_id, final_recipe_text)
 
         await track_safely(user_id, "recipe_generated", {"dish": dish_name, "direct": is_direct})
         
-        # Подготовка данных для кнопок
+        # Prepare data for buttons
         if is_direct:
             fake_dishes = [{"name": dish_name, "category": "direct"}]
             state_manager.set_generated_dishes(user_id, fake_dishes)
             state_manager.set_current_dish(user_id, fake_dishes[0])
             dish_index = 0
         else:
-             dishes = state_manager.get_generated_dishes(user_id) or []
-             dish_index = 0
-             for i, d in enumerate(dishes):
-                 if d.get('name') == dish_name:
-                     dish_index = i
-                     state_manager.set_current_dish(user_id, d)
-                     break
+            dishes = state_manager.get_generated_dishes(user_id) or []
+            dish_index = 0
+            for i, d in enumerate(dishes):
+                if d.get('name') == dish_name:
+                    dish_index = i
+                    state_manager.set_current_dish(user_id, d)
+                    break
         
         is_favorite = await favorites_repo.is_favorite(user_id, dish_name)
         builder = InlineKeyboardBuilder()
         
-        # Кнопки "Избранное"
+        # Favorite buttons
         if is_favorite:
             builder.row(InlineKeyboardButton(text=get_text(lang, "btn_remove_from_fav"), callback_data=f"remove_fav_{dish_index}"))
         else:
             builder.row(InlineKeyboardButton(text=get_text(lang, "btn_add_to_fav"), callback_data=f"add_fav_{dish_index}"))
         
-        # Кнопки навигации
+        # Navigation buttons
         if is_direct:
             builder.row(InlineKeyboardButton(text=get_text(lang, "btn_restart"), callback_data="restart"))
         else:
@@ -128,35 +143,39 @@ async def generate_and_send_recipe(message_or_callback, user_id, dish_name, prod
         logger.error(f"Gen error: {e}", exc_info=True)
         try: 
             msg = message_or_callback if isinstance(message_or_callback, Message) else message_or_callback.message
-            await msg.answer(get_text(lang, "error_generation"))
-        except: pass
+            error_msg = get_text(lang, "error_generation")
+            if not error_msg or not error_msg.strip():
+                error_msg = "Error generating recipe."
+            await msg.answer(error_msg)
+        except Exception as inner_e:
+            logger.error(f"Could not send error message: {inner_e}")
 
 
 async def handle_text_message(message: Message):
     user_id = message.from_user.id
     text = message.text.strip()
     
-    # Игнорируем команды
+    # Ignore commands
     if text.startswith("/"):
         return
 
     user_data = await users_repo.get_user(user_id)
     lang = user_data.get('language_code', 'en')
     
-    # Лимиты
-    limit_check_result = await users_repo.check_and_increment_request(user_id, "text")
-    if not limit_check_result[0]:  # limit_check_result - это кортеж (success, message)
+    # ✅ FIXED: Correct limit check
+    limit_result = await users_repo.check_and_increment_request(user_id, "text")
+    if not limit_result[0]:
         await message.answer(get_text(lang, "limit_text_exceeded"), parse_mode="HTML")
         return
 
-    # 1. Прямой запрос
+    # 1. Direct request
     direct_dish = parse_direct_request(text)
     if direct_dish:
         state_manager.set_products(user_id, "") 
         await generate_and_send_recipe(message, user_id, direct_dish, "", lang, is_direct=True)
         return
 
-    # 2. Анализ продуктов
+    # 2. Product analysis
     state_manager.set_products(user_id, text)
     wait_msg = await message.answer(get_text(lang, "processing"))
     
@@ -173,24 +192,25 @@ async def handle_text_message(message: Message):
         suggestion = analysis_result.get("suggestion")
         
         state_manager.set_categories(user_id, categories)
-        if suggestion: await message.answer(suggestion)
+        if suggestion: 
+            await message.answer(suggestion)
             
         builder = InlineKeyboardBuilder()
         valid_count = 0
         for category in categories:
             label = get_text(lang, category)
-            # !!! ФИКС: Если перевода нет (None или пусто), ставим английский ключ как fallback !!!
+            # Fallback to English if translation missing
             if not label or label.strip() == "":
-                label = get_text("en", category) # Пробуем взять из английского
+                label = get_text("en", category)
                 if not label: 
-                    label = category.title() # Если и там нет - просто делаем красивый ключ
+                    label = category.title()
             
             builder.row(InlineKeyboardButton(text=label, callback_data=f"cat_{category}"))
             valid_count += 1
                 
         if valid_count == 0:
-             await message.answer(get_text(lang, "error_generation"))
-             return
+            await message.answer(get_text(lang, "error_generation"))
+            return
 
         builder.row(InlineKeyboardButton(text=get_text(lang, "btn_restart"), callback_data="restart"))
         
@@ -199,7 +219,10 @@ async def handle_text_message(message: Message):
         
     except Exception as e:
         logger.error(f"Analysis error: {e}", exc_info=True)
-        await message.answer(get_text(lang, "error_generation"))
+        error_msg = get_text(lang, "error_generation")
+        if not error_msg or not error_msg.strip():
+            error_msg = "Error analyzing ingredients."
+        await message.answer(error_msg)
 
 
 async def handle_category_selection(callback: CallbackQuery):
@@ -217,7 +240,8 @@ async def handle_category_selection(callback: CallbackQuery):
         dishes = await groq_service.generate_dishes_list(products, category, lang)
         await wait_msg.delete()
         if not dishes:
-            await callback.message.answer(get_text(lang, "error_generation"))
+            error_msg = get_text(lang, "error_generation")
+            await callback.message.answer(error_msg)
             return
         
         state_manager.set_generated_dishes(user_id, dishes)
@@ -226,10 +250,16 @@ async def handle_category_selection(callback: CallbackQuery):
             builder.row(InlineKeyboardButton(text=f"{dish.get('name')}", callback_data=f"dish_{i}"))
         builder.row(InlineKeyboardButton(text=get_text(lang, "btn_back"), callback_data="back_to_categories"))
         
-        # Исправление заголовка (удаление звездочек)
+        # Fixed header (removed asterisks)
         dish_header = get_text(lang, "choose_dish").replace("**", "").format(category=get_text(lang, category) or category)
         await callback.message.answer(dish_header, reply_markup=builder.as_markup())
-    except: await callback.message.answer(get_text(lang, "error_generation"))
+    except Exception as e:
+        logger.error(f"Category selection error: {e}", exc_info=True)
+        error_msg = get_text(lang, "error_generation")
+        if not error_msg or not error_msg.strip():
+            error_msg = "Error loading dishes."
+        await callback.message.answer(error_msg)
+
 
 async def handle_dish_selection(callback: CallbackQuery):
     user_id = callback.from_user.id
@@ -244,7 +274,13 @@ async def handle_dish_selection(callback: CallbackQuery):
         state_manager.set_current_dish(user_id, dish)
         await callback.answer()
         await generate_and_send_recipe(callback, user_id, dish.get('name'), state_manager.get_products(user_id), lang, is_direct=False)
-    except: await callback.message.answer(get_text(lang, "error_generation"))
+    except Exception as e:
+        logger.error(f"Dish selection error: {e}", exc_info=True)
+        error_msg = get_text(lang, "error_generation")
+        if not error_msg or not error_msg.strip():
+            error_msg = "Error selecting dish."
+        await callback.message.answer(error_msg)
+
 
 async def handle_back_to_categories(callback: CallbackQuery):
     user_id = callback.from_user.id
@@ -255,15 +291,16 @@ async def handle_back_to_categories(callback: CallbackQuery):
         return
     builder = InlineKeyboardBuilder()
     for category in categories:
-        # Аналогичная защита кнопок, как в handle_text_message
         label = get_text(lang, category)
-        if not label: label = category.title()
+        if not label: 
+            label = category.title()
         builder.row(InlineKeyboardButton(text=label, callback_data=f"cat_{category}"))
     
     builder.row(InlineKeyboardButton(text=get_text(lang, "btn_restart"), callback_data="restart"))
     
     header = get_text(lang, "choose_category").replace("**", "")
     await callback.message.edit_text(f"<b>{header}</b>", reply_markup=builder.as_markup(), parse_mode="HTML")
+
 
 def register_recipe_handlers(dp: Dispatcher):
     dp.message.register(handle_text_message, F.text, ~F.text.startswith('/'))
