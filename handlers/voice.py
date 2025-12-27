@@ -9,25 +9,31 @@ from services.voice_service import VoiceService
 from services.groq_service import groq_service
 from locales.texts import get_text
 from state_manager import state_manager
-from handlers.recipes import parse_direct_request, generate_and_send_recipe # ИМПОРТ
+from handlers.recipes import parse_direct_request, generate_and_send_recipe
 
 logger = logging.getLogger(__name__)
 voice_service = VoiceService()
 
 async def track_safely(user_id: int, event_name: str, data: dict = None):
-    try: await metrics.track_event(user_id, event_name, data)
-    except: pass
+    try: 
+        await metrics.track_event(user_id, event_name, data)
+    except: 
+        pass
 
 async def handle_voice_message(message: Message):
     user_id = message.from_user.id
     user_data = await users_repo.get_user(user_id)
     lang = user_data.get('language_code', 'en')
     
-    limit_check_result = await users_repo.check_and_increment_request(user_id, "voice")
-if not limit_check_result[0]:  # Если success == False
-    await message.answer(get_text(lang, "limit_voice_exceeded"), parse_mode="HTML")
-    return
-
+    # ✅ ИСПРАВЛЕНО: Правильная обработка результата
+    limit_result = await users_repo.check_and_increment_request(user_id, "voice")
+    if not limit_result[0]:  # limit_result[0] = success (True/False)
+        await message.answer(get_text(lang, "limit_voice_exceeded"), parse_mode="HTML")
+        return
+    
+    # Получаем статистику для информации (необязательно)
+    success, used_count, limit = limit_result
+    
     wait_msg = await message.answer(get_text(lang, "processing"))
     temp_path = None
     
@@ -54,11 +60,11 @@ if not limit_check_result[0]:  # Если success == False
             await track_safely(user_id, "voice_command_success", {"cmd": text})
             return
 
-        # --- 2. АНАЛИЗ (Dict: categories + suggestion) ---
+        # --- 2. АНАЛИЗ ПРОДУКТОВ ---
         state_manager.set_products(user_id, text)
         wait_msg = await message.answer(get_text(lang, "processing"))
         
-        analysis_result = await groq_service.analyze_products(text, lang)
+        analysis_result = await groq_service.analyze_products(text, lang, user_id)  # ✅ Добавлен user_id
         await wait_msg.delete()
         
         if not analysis_result or not analysis_result.get("categories"):
@@ -72,24 +78,35 @@ if not limit_check_result[0]:  # Если success == False
         
         # Показываем умный совет
         if suggestion:
-             await message.answer(suggestion)
+            await message.answer(suggestion)
              
         from aiogram.utils.keyboard import InlineKeyboardBuilder
         builder = InlineKeyboardBuilder()
         for cat in categories:
-             builder.row(types.InlineKeyboardButton(text=get_text(lang, cat), callback_data=f"cat_{cat}"))
-        builder.row(types.InlineKeyboardButton(text=get_text(lang, "btn_restart"), callback_data="restart"))
-        await message.answer(get_text(lang, "choose_category"), reply_markup=builder.as_markup())
+            # Получаем название категории на языке пользователя
+            cat_name = get_text(lang, cat)
+            if not cat_name or cat_name.strip() == "":
+                # Fallback на английский, если перевода нет
+                cat_name = get_text("en", cat) or cat.title()
+            builder.row(types.InlineKeyboardButton(text=cat_name, callback_data=f"cat_{cat}"))
         
-        await track_safely(user_id, "voice_recognized_success", {"lang": lang})
+        builder.row(types.InlineKeyboardButton(text=get_text(lang, "btn_restart"), callback_data="restart"))
+        
+        header = get_text(lang, "choose_category").replace("**", "")
+        await message.answer(f"<b>{header}</b>", reply_markup=builder.as_markup(), parse_mode="HTML")
+        
+        await track_safely(user_id, "voice_recognized_success", {"lang": lang, "text_length": len(text)})
 
     except Exception as e:
         logger.error(f"Voice error: {e}", exc_info=True)
-        try: await wait_msg.delete()
-        except: pass
+        try: 
+            await wait_msg.delete()
+        except: 
+            pass
         await message.answer(get_text(lang, "error_generation"))
     finally:
-        if temp_path and os.path.exists(temp_path): os.unlink(temp_path)
+        if temp_path and os.path.exists(temp_path): 
+            os.unlink(temp_path)
 
 def register_voice_handlers(dp: Dispatcher):
     dp.message.register(handle_voice_message, F.voice)
