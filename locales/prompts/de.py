@@ -32,6 +32,19 @@ Format:
 👨‍🍳 **Zubereitung:**...
 📊 **Details:**...
 💡 **Chef-Geheimnisse:**...""",
+
+     "recipe_logic_direct": """
+UPDATE: This is a direct request ("Give me recipe for..."). 
+IGNORE inventory checks. 
+List ALL ingredients simply: "- [item] - [amount]". 
+DO NOT use ✅ or ⚠️ icons.
+""",
+
+    "recipe_generation_user": """Dish name: {dish_name}
+User Ingredients: {products}
+
+Write a detailed recipe in English.""",
+    
     "recipe_generation_user": "Gericht: {dish_name}\nZutaten: {products}\nRezept auf Deutsch.",
 
     "nutrition_instruction": "ZUSÄTZLICH: Füge '💪 **Nährwerte:**' hinzu (Kalorien).",
