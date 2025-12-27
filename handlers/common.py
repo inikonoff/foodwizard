@@ -6,7 +6,7 @@ from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKe
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram import html
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 
 from database import db 
 from database.users import users_repo
